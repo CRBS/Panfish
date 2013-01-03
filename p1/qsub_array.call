@@ -1,0 +1,1 @@
+qsub -b y -cwd -t 1-10 -q lonestar_shadow.q,ranger_shadow.q -o /home/churas/panfish/p1/out/\$JOB_ID.\$TASK_ID.out -e /home/churas/panfish/p1/out/\$JOB_ID.\$TASK_ID.err /home/churas/panfish/p1/shadowp1.sh /home/churas/panfish/p1/testjob/testjob.sh
