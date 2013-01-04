@@ -18,9 +18,18 @@ for ($x = 0; $x < @ARGV;$x++){
 }
 #escape any $
 $stderr=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
+$stderr=~s/\$JOB_ID/\\\$JOB_ID/g;
 $stdout=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
-print "STDERR: $stderr\n";
-print "STDOUT: $stdout\n";
+$stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
+#print "STDERR: $stderr\n";
+#print "STDOUT: $stdout\n";
 #print "new arg list: $newArgList\n";
 
-print "qsub $newArgList -e /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.err -o /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.out /home/churas/src/panfish/p2/shadow.sh -panerr $stderr -panout $stdout $lastArg\n";
+$cmd = "qsub $newArgList -e /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.err -o /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.out /home/churas/src/panfish/p2/shadow.sh -panerr $stderr -panout $stdout $lastArg";
+#print "Running $cmd\n";
+$OUTPUT = `$cmd 2>&1`;
+
+$exitcode = $?;
+
+print "$OUTPUT\n";
+exit($exitcode);
