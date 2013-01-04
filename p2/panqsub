@@ -1,0 +1,26 @@
+#!/usr/bin/perl
+
+
+$newArgList = "";
+#extract stderr and stdout file paths and build a new argument list
+for ($x = 0; $x < @ARGV;$x++){
+  if ($ARGV[$x] eq "-e"){
+    $stderr = $ARGV[++$x];
+  }elsif ($ARGV[$x] eq "-o"){
+    $stdout = $ARGV[++$x];
+  }
+  elsif ($x+1 >= @ARGV) {
+    $lastArg = $ARGV[$x];
+  }
+  else {
+    $newArgList .=" $ARGV[$x]";
+  }
+}
+#escape any $
+$stderr=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
+$stdout=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
+print "STDERR: $stderr\n";
+print "STDOUT: $stdout\n";
+#print "new arg list: $newArgList\n";
+
+print "qsub $newArgList -e /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.err -o /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.out /home/churas/src/panfish/p2/shadowp2.sh -panerr $stderr -panout $stdout $lastArg\n";
