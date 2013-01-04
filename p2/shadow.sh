@@ -1,13 +1,29 @@
 #!/bin/bash
 
 
+on_usr2() {
+  echo "Caught USR2 signal...informing children...exiting..."
+  echo "Killed by signal" > $JOB_FILE.killed
+  exit 100
+}
+
+trap 'on_usr2' USR2
+
 function wait_for_job {
    #this should be in a config file and may need to be increased
    DONE_JOB_FILE="$JOB_FILE.done"
-   while [ ! -e $DONE_JOB_FILE ] ; do
+   FAILED_JOB_FILE="$JOB_FILE.failed"
+   while [[ ! -e $DONE_JOB_FILE && ! -e $FAILED_JOB_FILE ]] ; do
      echo "Job not completed... waiting... 60 seconds"
      sleep 60
    done
+   if [ -e $DONE_JOB_FILE ] ; then
+     return 0
+   fi
+
+   if [ -e $FAILED_JOB_FILE ] ; then
+     return 1
+   fi
 }
 
 echo "This is my host: $HOSTNAME"
@@ -38,8 +54,8 @@ if [ $? != 0 ] ; then
 fi
 
 wait_for_job $JOBID
+JOB_EXIT=$?
 
+echo "Job Completed `date +%s` with exit: $JOB_EXIT"
 
-echo "Job Completed `date +%s`"
-
-exit 0
+exit $JOB_EXIT
