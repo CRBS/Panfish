@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ $# -lt 1 ] ; then
+   echo "$0 <cluster queue> <directory to pull>"
+   echo ""
+   echo "This script reels in a directory from "
+   echo "the remote cluster corresponding to <cluster queue> specified"
+   echo ""
+   exit 1
+fi
+
+
+exit 0
