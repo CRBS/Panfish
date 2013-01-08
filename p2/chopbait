@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 if (@ARGV < 1){
-  print STDERR "$0 <script to chopup aka fix> <cluster to use if omitted all are used>\n";
+  print STDERR "$0 <script to chopup aka fix> <cluster to use, if omitted all are used>\n";
   exit(1);
 }
 
@@ -99,11 +99,4 @@ sub createPropHash {
 
   return \%propHash;
 }
-
-
-
-
-
-   
-
 
