@@ -32,7 +32,7 @@ $stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
 #print "STDOUT: $stdout\n";
 #print "new arg list: $newArgList\n";
 
-$cmd = "qsub $newArgList -e /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.err -o /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.out /home/churas/src/panfish/p2/line -panerr $stderr -panout $stdout $lastArg";
+$cmd = "qsub $newArgList -e /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.err -o /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.out /home/churas/src/panfish/p2/line $stdout $stderr $lastArg";
 #print "Running $cmd\n";
 $OUTPUT = `$cmd 2>&1`;
 
