@@ -1,10 +1,10 @@
 #!/bin/bash
 
 if [ $# -lt 1 ] ; then
-   echo "$0 <script to run remotely> (arguments for script)"
+   echo "$0 <stdout path> <stderr path> <script to run remotely> (arguments for script)"
    echo ""
-   echo "This script provides is a link aka line in fishing"
-   echo "terms between the local system and the script"
+   echo "This script provides a link (aka line in fishing"
+   echo "terms) between the local system and the script"
    echo "running on the remote cluster"
    exit 1
 fi
@@ -45,6 +45,7 @@ PROPFILE="`dirname $0`/panfish.properties"
 
 SUBMIT_DIR=`egrep "^submit.dir" $PROPFILE | sed "s/^.*= *//"`
 
+CAMERA_BASEDIR=`egrep "^$QUEUE.basedir" $PROPFILE | sed "s/^.*= *//"`
 
 
 
@@ -55,7 +56,16 @@ SUBMIT_DIR=`egrep "^submit.dir" $PROPFILE | sed "s/^.*= *//"`
 
 JOB_FILE="$SUBMIT_DIR/$QUEUE/$JOB_ID.$SGE_TASK_ID.job"
 
-echo "`pwd`ENDCURRENTDIR$*" > $JOB_FILE
+STDOUTFILE=$1
+shift
+STDERRFILE=$1
+shift
+COMMAND=$1
+shift
+
+CLUSTER_CMD="$COMMAND.$QUEUE"
+
+echo "`pwd`ENDCURRENTDIRexport CAMERA_BASEDIR=\"$CAMERA_BASEDIR\";export SGE_TASK_ID=\"$SGE_TASK_ID\";\$CAMERA_BASEDIR/$CLUSTER_CMD $* > \$CAMERA_BASEDIR/$STDOUTFILE 2> \$CAMERA_BASEDIR/$STDERRFILE" > $JOB_FILE
 
 if [ $? != 0 ] ; then
   echo "Error running job"
