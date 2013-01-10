@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -lt 1 ] ; then
-   echo "$0 <cluster queue> <directory to pull>"
+   echo "$0 <directory to pull> <cluster queue>"
    echo ""
    echo "This script reels in a directory from "
    echo "the remote cluster corresponding to <cluster queue> specified"
@@ -9,5 +9,56 @@ if [ $# -lt 1 ] ; then
    exit 1
 fi
 
+DIR_TO_PULL=$1
+
+CLUSTER=$2
+
+#Maximum retries before giving up on a transfer
+MAX_RETRIES=10
+
+#Sleeptime between transfer retries in seconds
+RETRY_SLEEP=100
+
+PROP_FILE="`dirname $0`/panfish.properties"
+
+REMOTEBASEDIR=`egrep "^$CLUSTER.basedir" $PROP_FILE | sed "s/^.*= *//"`
+REMOTEHOST=`egrep "^$CLUSTER.host" $PROP_FILE | sed "s/^.*= *//"`
+
+DIR_TO_PULL_PARENT=`dirname $DIR_TO_PULL`
+
+#
+# This function uses rsync to retreive data from remote cluster
+#
+function pull_dir_from_remote {
+
+   CMDXXX="$REMOTEBASEDIR/$DIR_TO_PULL"
+
+   X=1
+
+   while [ $X -le $MAX_RETRIES ]
+   do
+     echo "Running rsync -rtpz --stats --timeout=180 -e ssh $REMOTEHOST:$CMDXXX $DIR_TO_PULL_PARENT"
+     OUT=`rsync -rtpz --stats --timeout=180 -e ssh $REMOTEHOST:$CMDXXX $DIR_TO_PULL_PARENT 2>&1`
+     JOBEXIT=$?
+     if [ $JOBEXIT == 0 ] ; then
+       echo $OUT
+       return 0
+     fi
+
+     echo "Error rsync -rtpz --stats --timeout=180 -e ssh $REMOTEHOST:$CMDXXX $DIR_TO_PULL_PARENT: $JOBEXIT : $OUT"
+     X=$(( $X + 1 ))
+     echo "Sleeping $RETRY_SLEEP before attempting retry $X"
+     sleep $RETRY_SLEEP
+   done
+   return 1
+}
+
+# retreive directory from remote host
+pull_dir_from_remote
+
+if [ $? != 0 ] ; then
+  echo "Unable to retreive REMOTEBASEDIR/$DIR_TO_PUSH on remote host $REMOTEHOST" 1>&2
+  exit 1
+fi
 
 exit 0
