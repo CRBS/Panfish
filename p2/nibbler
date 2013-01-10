@@ -1,0 +1,73 @@
+#!/bin/bash
+
+if [ $# -lt 1 ] ; then
+   echo "$0 <cluster>"
+   echo ""
+   echo "This script runs jobs on the cluster that are specified by"
+   echo "files put in a specific directory.  These jobs come in"
+   echo "via a 'line' and the actual job is known as a hooked fish."
+   echo "Oh yeah we are knee deep in this analogy."
+   echo ""
+   echo "The job files should be named in this format:"
+   echo ""
+   echo "\$JOB_ID.\$TASK_ID.job"
+   echo ""
+   echo "Where $JOB_ID is the id of the job and $TASK_ID is the id of"
+   echo "the subtask of the job. Within the file the format should be"
+   echo "as follows:"
+   echo ""
+   echo "<CURRENT DIR>ENDCURRENTDIRexport CAMERA_BASEDIR=\"<PATH>\";export SGE_TASK_ID=\"\$TASK_ID\";<script to run and args> > <stdoutfile> 2> <stderrfile>"
+   echo ""
+   echo "The script collects enough of these jobs to fill a compute node"
+   echo "collating only jobs from same <CURRENT DIR>"
+   echo "The script then generates a fish script that runs these jobs which"
+   echo "are written to files in the <cluster> subfolder under the <CURRENT DIR>"
+   echo "of the job"
+   echo "Upon submission the status of the job is updated by appending .submitted suffix"
+   echo "Another responsibility of this script is to update status of all jobs in the folder"
+   echo "by appending proper suffix for each job.  Those suffixes are as follows:"
+   echo ""
+   echo ".submitted -- job submitted to queueing system"
+   echo ".running -- job running or queued queueing system"
+   echo ".done -- job completed"
+   echo ".failed -- job failed"
+   echo ""
+   exit 1
+fi
+
+CLUSTER=$1
+BASEDIR=`dirname $0`
+PROPFILE="$BASEDIR/panfish.properties"
+
+SUBMIT_DIR=`egrep "^submit.dir" $PROPFILE | sed "s/^.*= *//"`
+
+CAMERA_BASEDIR=`egrep "^$CLUSTER.basedir" $PROPFILE | sed "s/^.*= *//"`
+
+# Look in queue directory for cluster in question for any .job files
+# if found collect them into batches of X size based on config
+# write these entries into a file under the <queue> directory of the 
+# base directory of job.  
+# after doing this write a qsub file to be submitted with correct configs
+# for that cluster.
+BATCHED_JOBS=`$BASEDIR/job_batcher $CLUSTER 2>&1`
+
+if [ $? != 0 ] ; then
+  echo "Error while attempting to batch jobs : $BATCHED_JOBS"
+  exit 1
+fi
+
+
+# rsync these files to the remote cluster
+SYNC_BATCHED_JOBS_OUT=`$BASEDIR/chum_batched_job_files $BATCHED_JOBS 2>&1`
+
+if [ $? != 0 ] ; then
+   echo "Error sending batched jobs to remote cluster : $SYNC_BATCHED_JOBS_OUT"
+   exit 1
+fi
+
+# on the remote cluster submit this to the queueing system keeping a log of the submission somewhere
+# so we can record status
+# update job files as needed.
+
+
+

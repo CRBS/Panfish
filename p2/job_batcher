@@ -1,0 +1,81 @@
+#!/usr/bin/perl
+
+if (@ARGV < 1){
+  print STDERR "$0 <cluster>\n";
+  exit(1);
+}
+
+my $cluster = $ARGV[0];
+
+#
+# Constants
+# 
+$SUBMIT_DIR = "submit.dir";
+$JOB_TEMPLATE_DIR="job.template.dir";
+$PANFISH_PROPERTIES = "panfish.properties";
+
+
+my $propFile = `dirname $0`;
+chomp($propFile);
+$propFile.="/".$PANFISH_PROPERTIES;
+
+my $propHash = createPropHash($propFile);
+
+my $template_dir = $propHash->{$JOB_TEMPLATE_DIR};
+
+my $submit_dir = $propHash->{$SUBMIT_DIR}."/".$cluster;
+
+print "Template dir: $template_dir\n";
+print "submit dir: $submit_dir\n";
+print "cluster: $cluster\n";
+
+
+
+# Generate a hashtable with keys being job id (not task id) and value
+# being an array of job files
+# sort the job files so they are ordered by task id
+
+# Iterate through each job id key in hash table
+
+# Decide if there are enough jobs to submit.  
+# If there are more then # of jobs per node yes
+# If above not true, but job files are older then 5 minutes then yes
+
+# In a loop read in each job file and cat its contents into a new
+# file under cwd/(cluster)/(jobid).startTask.endTask
+
+# create a new file under cwd/(cluster)/(jobid).startTask.endTask.qsub
+# put header from template into file followed by invocation of job_runner
+# passing into the runner the first file created.
+
+# any files added to one of these should have the suffix .batched appended to file
+# name AND a line should be appended to the file with the path to the qsub file
+
+
+# print this qsub file to stdout and continue
+
+
+exit(1);
+
+
+#
+#
+# create prop hash
+sub createPropHash {
+  my $propfile = shift;
+  my %propHash = ();
+
+  open(DATA,$propfile) || die $!;
+
+  while(<DATA>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*) *= *(.*)$/){
+      $propHash{$1}=$2;
+    }
+  }
+  close(DATA);
+
+  return \%propHash;
+}
+
