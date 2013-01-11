@@ -146,7 +146,7 @@ sub writeOutQsubFile {
 #
 sub getJobsPerNodeFromTemplateFile {
    my $templateFile = shift;
-   my $jobs = undef;
+   my $jobs = 1; #if unknown assume 1
    open(TEMPLATEFILE,$templateFile) || die $!;
    while(<TEMPLATEFILE>){
      chomp();
