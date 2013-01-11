@@ -131,7 +131,7 @@ sub writeOutQsubFile {
       $line = $_;
       $line=~s/\@PANFISH_JOB_STDOUT_PATH\@/$remoteBaseDir\/$jobFileDir\/$jobFile.stdout/g;
       $line=~s/\@PANFISH_JOB_STDERR_PATH\@/$remoteBaseDir\/$jobFileDir\/$jobFile.stderr/g;
-      $line=~s/\@PANFISH_JOB_ID\@/fishyfornow/g;
+      $line=~s/\@PANFISH_JOB_NAME\@/fishyfornow/g;
       $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir\/$jobFileDir/g;
       $line=~s/\@PANFISH_RUN_JOB_SCRIPT\@/$runJobScript/g;
       $line=~s/\@PANFISH_JOB_FILE\@/$remoteBaseDir\/$jobFileDir\/$jobFile/g;
