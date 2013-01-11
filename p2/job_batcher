@@ -35,7 +35,7 @@ my $runJobScript = $propHash->{$cluster.".".$RUN_JOB_SCRIPT};
 print "Template dir: $template_dir\n";
 print "submit dir: $submit_dir\n";
 print "cluster: $cluster\n";
-
+print "jobs per node: $jobs_per_node\n";
 
 
 # Generate a hashtable with keys being job id (not task id) and value
@@ -154,7 +154,10 @@ sub getJobsPerNodeFromTemplateFile {
      if ($line=~/^#PBS * -l *.*ppn=(\d+).*$/){
        $jobs = $1;
      }
-
+     print "line: $line\n";
+     if ($line=~/^#\$ *-pe *1way *(\d+).*$/){
+       $jobs = $1;
+     }
    }
    close(TEMPLATEFILE);
    return $jobs;
