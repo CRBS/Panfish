@@ -10,3 +10,5 @@
 #PBS -l nodes=1:ppn=16,walltime=00:10:00
 #PBS -N @PANFISH_JOB_ID@
 #PBS -d @PANFISH_JOB_CWD@
+
+/usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
