@@ -22,10 +22,12 @@ function wait_for_job {
    #this should be in a config file and may need to be increased
    DONE_JOB_FILE="$JOB_FILE.done"
    FAILED_JOB_FILE="$JOB_FILE.failed"
+   echo "Waiting for job"
    while [[ ! -e $DONE_JOB_FILE && ! -e $FAILED_JOB_FILE ]] ; do
-     echo "Job not completed... waiting... 60 seconds"
+     echo -n "."
      sleep 60
    done
+   echo ""
    if [ -e $DONE_JOB_FILE ] ; then
      return 0
    fi
@@ -64,6 +66,11 @@ COMMAND=$1
 shift
 
 CLUSTER_CMD="$COMMAND.$QUEUE"
+
+if [ ! -e "$SUBMIT_DIR/$QUEUE" ] ; then
+   echo "$SUBMIT_DIR/$QUEUE does not exist" 1>&2
+   exit 1
+fi
 
 echo "`pwd`ENDCURRENTDIRexport CAMERA_BASEDIR=\"$CAMERA_BASEDIR\";export SGE_TASK_ID=\"$SGE_TASK_ID\";\$CAMERA_BASEDIR/$CLUSTER_CMD $* > \$CAMERA_BASEDIR/$STDOUTFILE 2> \$CAMERA_BASEDIR/$STDERRFILE" > $JOB_FILE
 
