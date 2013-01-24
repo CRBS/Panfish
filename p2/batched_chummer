@@ -1,0 +1,168 @@
+#!/usr/bin/perl
+
+if (@ARGV < 1){
+  print STDERR "$0 <cluster>\n";
+  print STDERR "This program uploads or chums batched job files\n";
+  print STDERR "to remote cluster.  The program looks for files\n";
+  print STDERR "with .batched suffix to find batched job files to\n";
+  print STDERR "send\n";
+  print STDERR "The code then attempts to perform the least number of\n";
+  print STDERR "rsync calls to push the data up\n";
+  exit(1);
+}
+
+my $cluster = $ARGV[0];
+
+#
+# Constants
+# 
+$SUBMIT_DIR = "submit.dir";
+$PANFISH_PROPERTIES = "panfish.properties";
+$BASEDIR = "basedir";
+$BATCHED_SUFFIX = ".batched";
+$AND_CHUMMED_SUFFIX = "andchummed";
+$QSUB_SUFFIX = ".qsub";
+$RUN_JOB_SCRIPT = "run.job.script";
+$BATCHED_JOB_KEY = "BATCHEDJOB:::";
+$HOST = "host";
+my $propFile = `dirname $0`;
+chomp($propFile);
+$propFile.="/".$PANFISH_PROPERTIES;
+
+my $propHash = createPropHash($propFile);
+
+my $template_dir = $propHash->{$JOB_TEMPLATE_DIR};
+
+my $submit_dir = $propHash->{$SUBMIT_DIR}."/".$cluster;
+
+my $remoteBaseDir = $propHash->{$cluster.".".$BASEDIR};
+
+my $runJobScript = $propHash->{$cluster.".".$RUN_JOB_SCRIPT};
+
+my $remotehost = $propHash->{$cluster.".".$HOST};
+print "Template dir: $template_dir\n";
+print "submit dir: $submit_dir\n";
+print "cluster: $cluster\n";
+
+
+# Generate a hash of directory paths where batched job files reside
+# without any duplicates
+my %jobHashByBatch = ();
+
+opendir(SUBDIR,$submit_dir) || die "Unable to read $submit_dir $!";
+my $dirent = readdir(SUBDIR);
+while(defined($dirent)){
+   if ($dirent=~/^([0-9]*).*.job.batched$/){
+     chomp($dirent);
+     if (!defined($jobByHashId{$1})){
+       # new job lets get the directory path and add
+       # to list
+       ($curdir,$cmd,$batchedjob) = parseJobFile($submit_dir."/".$dirent);
+       $batchedjob=~/^(.*)\/.*$/;
+       $batchedjob=$1; 
+       push (@{$jobHashByBatch{$batchedjob}},$dirent);
+     }
+   }
+   $dirent = readdir(SUBDIR);
+}
+closedir(SUBDIR);
+
+# Iterate through list and rsync data to remote cluster
+# Should we adjust job file to denote the chum?  perhaps
+# .batchedandchummed?
+for my $key ( keys %jobHashByBatch ){
+  print "key => $key\n";
+  
+  # rsync the path in $key to remote cluster
+  if (uploadBatchedJobs($key,$remoteBaseDir,$remotehost) != 0){
+     #there was an error
+     print STDERR "Error uploading $key\n";
+     next;
+  }
+
+  # need to append chummed to job file names so caller knows it has been pushed up.
+  for ($x = 0; $x < @{$jobHashByBatch{$key}}; $x++){
+     `/bin/mv $submit_dir/${$jobHashByBatch{$key}}[$x] $submit_dir/${$jobHashByBatch{$key}}[$x]$AND_CHUMMED_SUFFIX`;
+     print "\t\tRenaming ${$jobHashByBatch{$key}}[$x] to ${$jobHashByBatch{$key}}[$x]$AND_CHUMMED_SUFFIX\n";
+  }  
+
+
+  # iterate through job files in hash for key
+}
+
+#
+#
+#
+sub uploadBatchedJobs {
+  my $dir_to_push = shift;
+  my $remoteBaseDir = shift;
+  my $host = shift;
+
+  print "ssh $host /bin/mkdir -p $remoteBaseDir/$dir_to_push\n";
+  my $mkdirout = `ssh $host /bin/mkdir -p $remoteBaseDir/$dir_to_push 2>&1`;
+  if ($? != 0){
+    print STDERR "Error running: ssh $host /bin/mkdir -p $remoteBaseDir/$dir_to_push : $mkdirout\n";
+    return 1;
+  }
+
+  #need dir to push parent
+  $dir_to_push =~/^(.*)\//;
+  $dir_to_push_parent = $1;
+
+  print "rsync -rtpz --exclude '*.stderr' --exclude '*.stdout' --stats --timeout=180 -e ssh $dir_to_push $host:$remoteBaseDir/$dir_to_push_parent\n";
+  my $rsyncout=`rsync -rtpz --exclude '*.stderr' --exclude '*.stdout' --stats --timeout=180 -e ssh $dir_to_push $host:$remoteBaseDir/$dir_to_push_parent 2>&1`;
+  if ($? != 0){
+    print STDERR "Error running: rsync -rtpz --exclude '*.stderr' --exclude '*.stdout' --stats --timeout=180 -e ssh $dir_to_push $host:$remoteBaseDir/$dir_to_push_parent : $rsyncout\n";
+    return 1;
+  }
+
+  return 0;
+}
+
+
+#
+#
+#
+sub parseJobFile {
+  my $jobfile = shift;
+  my $curdir = undef;
+  my $cmd = undef;
+  my $batchedjob = undef;
+  open(JOBFILE,$jobfile) || die $!;
+  while(<JOBFILE>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*)ENDCURRENTDIR(.*)$/){
+      $curdir = $1;
+      $cmd = $2;
+    }
+    elsif ($line=~/^BATCHEDJOB:::(.*)$/){
+      $batchedjob = $1;
+    }
+  }
+  close(JOBFILE);
+  return ($curdir,$cmd,$batchedjob);
+}
+
+
+#
+#
+# create prop hash
+sub createPropHash {
+  my $propfile = shift;
+  my %propHash = ();
+
+  open(DATA,$propfile) || die $!;
+
+  while(<DATA>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*) *= *(.*)$/){
+      $propHash{$1}=$2;
+    }
+  }
+  close(DATA);
+
+  return \%propHash;
+}
+
