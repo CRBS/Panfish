@@ -1,0 +1,153 @@
+#!/usr/bin/perl
+
+if (@ARGV < 1){
+  print STDERR "$0 <cluster>\n";
+  print STDERR "This program takes batched job files and submits them\n";
+  print STDERR "to the cluster for processing.  In the process the\n";
+  print STDERR ".batched suffix is replaced with .submitted and\n";
+  print STDERR "the line QSUB:::<myqsub file> is appended to the file\n";
+  exit(1);
+}
+
+my $cluster = $ARGV[0];
+
+#
+# Constants
+# 
+$SUBMIT_DIR = "submit.dir";
+$JOB_TEMPLATE_DIR="job.template.dir";
+$PANFISH_PROPERTIES = "panfish.properties";
+$JOBS_PER_NODE = "jobs.per.node";
+$BASEDIR = "basedir";
+$BATCHED_SUFFIX = ".batched";
+$QSUB_SUFFIX = ".qsub";
+$RUN_JOB_SCRIPT = "run.job.script";
+$BATCHED_JOB_KEY = "BATCHEDJOB:::";
+$HOST = "host";
+$MYQSUB = "myqsub";
+my $propFile = `dirname $0`;
+chomp($propFile);
+$propFile.="/".$PANFISH_PROPERTIES;
+
+my $propHash = createPropHash($propFile);
+
+my $template_dir = $propHash->{$JOB_TEMPLATE_DIR};
+
+my $submit_dir = $propHash->{$SUBMIT_DIR}."/".$cluster;
+
+
+my $remoteBaseDir = $propHash->{$cluster.".".$BASEDIR};
+
+my $runJobScript = $propHash->{$cluster.".".$RUN_JOB_SCRIPT};
+my $remoteHost = $propHash->{$cluster.".".$HOST};
+
+my $myqsubCmd = $propHash->{$cluster.".".$MYQSUB};
+
+print "Template dir: $template_dir\n";
+print "submit dir: $submit_dir\n";
+print "cluster: $cluster\n";
+print "jobs per node: $jobs_per_node\n";
+
+
+# Generate a hashtable with keys being job id (not task id) and value
+# being an array of job files
+# sort the job files so they are ordered by task id
+my %jobHashByBatch = ();
+
+opendir(SUBDIR,$submit_dir) || die "Unable to read $submit_dir $!";
+my $dirent = readdir(SUBDIR);
+while(defined($dirent)){
+   chomp($dirent);
+   if ($dirent=~/^([0-9]*).*.job.batchedandchummed$/){
+       # new job lets get the directory path and add
+       # to list
+       ($curdir,$cmd,$batchedjob) = parseJobFile($submit_dir."/".$dirent);
+       push (@{$jobHashByBatch{$batchedjob}},$dirent);
+   }
+   $dirent = readdir(SUBDIR);
+}
+closedir(SUBDIR);
+
+
+
+# need to get all keys and
+# invoke myqsubstdin.sh like this to minimize ssh activity
+# echo -e "1.qsub\\n2.qsub" | ssh gordon.sdsc.edu /home/churas/gordon/myqsub/myqsubstdin.sh
+my $echoArgs = "";
+for my $key ( keys %jobHashByBatch ){
+   if ($echoArgs eq ""){
+      $echoArgs = "$remoteBaseDir/$key";
+   }
+   else {
+      $echoArgs .= "\\\\n$remoteBaseDir/$key";
+   }
+}
+
+print "$echoArgs\n";
+my $someOut = `echo -e "$echoArgs" | ssh $remoteHost $myqsubCmd`;
+print $someOut."\n";
+# take output and added QSUBFILE:::<qsub file path> to each job file
+
+# adjust suffixed to submitted
+
+
+
+for my $key ( keys %jobHashByBatch ){
+  print "key => $key\n";
+
+  for ($x = 0; $x < @{$jobHashByBatch{$key}}; $x++){
+     print "\t\t${$jobHashByBatch{$key}}[$x]\n";
+  }
+}
+
+
+
+
+exit(1);
+
+#
+#
+#
+sub parseJobFile {
+  my $jobfile = shift;
+  my $curdir = undef;
+  my $cmd = undef;
+  my $batchedjob = undef;
+  open(JOBFILE,$jobfile) || die $!;
+  while(<JOBFILE>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*)ENDCURRENTDIR(.*)$/){
+      $curdir = $1;
+      $cmd = $2;
+    }
+    elsif ($line=~/^BATCHEDJOB:::(.*)$/){
+      $batchedjob = $1;
+      
+    }
+  }
+  close(JOBFILE);
+  return ($curdir,$cmd,$batchedjob);
+}
+
+#
+#
+# create prop hash
+sub createPropHash {
+  my $propfile = shift;
+  my %propHash = ();
+
+  open(DATA,$propfile) || die $!;
+
+  while(<DATA>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*) *= *(.*)$/){
+      $propHash{$1}=$2;
+    }
+  }
+  close(DATA);
+
+  return \%propHash;
+}
+
