@@ -46,8 +46,6 @@ my $myqsubCmd = $propHash->{$cluster.".".$MYQSUB};
 print "Template dir: $template_dir\n";
 print "submit dir: $submit_dir\n";
 print "cluster: $cluster\n";
-print "jobs per node: $jobs_per_node\n";
-
 
 # Generate a hashtable with keys being job id (not task id) and value
 # being an array of job files
@@ -82,13 +80,42 @@ for my $key ( keys %jobHashByBatch ){
       $echoArgs .= "\\\\n$remoteBaseDir/$key";
    }
 }
-
-print "$echoArgs\n";
+if ($echoArgs eq ""){
+  print "No jobs to submit\n";
+  exit(0);
+}
 my $someOut = `echo -e "$echoArgs" | ssh $remoteHost $myqsubCmd`;
 print $someOut."\n";
-# take output and added QSUBFILE:::<qsub file path> to each job file
+# take output and added MYQSUB:::<qsub file path> to each job file
+my @qsubsplit = split("\n",$someOut);
 
-# adjust suffixed to submitted
+my $curkey = undef;
+
+for (my $y = 0; $y < @qsubsplit; $y++){
+   print "Examining $qsubsplit[$y]\n";
+   #check if this line is a qsub line or a job line
+   if ($qsubsplit[$y]=~/\.qsub$/){
+      $curkey = $qsubsplit[$y];
+      $curkey =~s/$remoteBaseDir\/?//;
+      print "\tcurkey => $curkey\n";
+   }
+   else {
+      if (defined($curkey)){
+         for (my $z = 0; $z < @{$jobHashByBatch{$curkey}}; $z++){
+             print "Writing out: $submit_dir/${$jobHashByBatch{$curkey}}[$z]\n";
+             open(WRITEY,">>$submit_dir/${$jobHashByBatch{$curkey}}[$z]") || die $!;
+             print WRITEY "MYQSUB:::$qsubsplit[$y]\n";
+             close(WRITEY);
+             $newsuffix = ${$jobHashByBatch{$curkey}}[$z];
+             $newsuffix =~s/batchedandchummed/submitted/;
+             print "/bin/mv $submit_dir/${$jobHashByBatch{$curkey}}[$z] $submit_dir/$newsuffix\n";
+             `/bin/mv $submit_dir/${$jobHashByBatch{$curkey}}[$z] $submit_dir/$newsuffix`;
+         }
+      }
+   }
+}
+
+
 
 
 
