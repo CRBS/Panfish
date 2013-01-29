@@ -78,6 +78,12 @@ function send_dir_to_remote {
    return 1
 }
 
+# if the base directory on remote host is not set then
+# this is a local queue just do nothing and exit
+if [ "$REMOTEBASEDIR" == "" ] ; then
+  exit 0
+fi
+
 #create directory on remote host if its not there
 create_dir_on_remote
 

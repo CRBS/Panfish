@@ -98,6 +98,13 @@ sub uploadBatchedJobs {
   my $remoteBaseDir = shift;
   my $host = shift;
 
+  # if the remotebasedirectory is empty then
+  # do nothing cause we don't have to send data
+  # anywhere
+  if ($remoteBaseDir -eq ""){
+    return 0;
+  }
+
   print "ssh $host /bin/mkdir -p $remoteBaseDir/$dir_to_push\n";
   my $mkdirout = `ssh $host /bin/mkdir -p $remoteBaseDir/$dir_to_push 2>&1`;
   if ($? != 0){

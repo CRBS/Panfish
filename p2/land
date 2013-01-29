@@ -53,11 +53,18 @@ function pull_dir_from_remote {
    return 1
 }
 
+# if the remote base directory is not set
+# then its local. Do nothing and exit
+if [ "$REMOTEBASEDIR" == "" ] ; then
+  exit 0
+fi
+
+
 # retreive directory from remote host
 pull_dir_from_remote
 
 if [ $? != 0 ] ; then
-  echo "Unable to retreive REMOTEBASEDIR/$DIR_TO_PUSH on remote host $REMOTEHOST" 1>&2
+  echo "Unable to retreive $REMOTEBASEDIR/$DIR_TO_PUSH on remote host $REMOTEHOST" 1>&2
   exit 1
 fi
 
