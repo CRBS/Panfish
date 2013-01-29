@@ -101,7 +101,7 @@ sub uploadBatchedJobs {
   # if the remotebasedirectory is empty then
   # do nothing cause we don't have to send data
   # anywhere
-  if ($remoteBaseDir -eq ""){
+  if ($remoteBaseDir eq ""){
     return 0;
   }
 
