@@ -84,7 +84,14 @@ if ($echoArgs eq ""){
   print "No jobs to submit\n";
   exit(0);
 }
-my $someOut = `echo -e "$echoArgs" | ssh $remoteHost $myqsubCmd`;
+my $someOut;
+if ($remoteBaseDir eq ""){
+   $someOut = `echo -e "$echoArgs" | $myqsubCmd`;
+}
+else {
+  $someOut = `echo -e "$echoArgs" | ssh $remoteHost $myqsubCmd`;
+}
+
 print $someOut."\n";
 # take output and added MYQSUB:::<qsub file path> to each job file
 my @qsubsplit = split("\n",$someOut);

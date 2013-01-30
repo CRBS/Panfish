@@ -85,8 +85,16 @@ if ($echoArgs eq ""){
   print "No jobs to watch\n";
   exit(0);
 }
-print "Trying to run:  echo -e \"$echoArgs\" | ssh $remoteHost $jobStatusCmd - -\n";
-my $someOut = `echo -e "$echoArgs" | ssh $remoteHost $jobStatusCmd - -`;
+
+if ($remoteBaseDir eq ""){
+  print "Trying to run:  echo -e \"$echoArgs\" | $jobStatusCmd - -\n";
+  $someOut = `echo -e "$echoArgs" | $jobStatusCmd - -`;
+}
+else {
+   print "Trying to run:  echo -e \"$echoArgs\" | ssh $remoteHost $jobStatusCmd - -\n";
+   $someOut = `echo -e "$echoArgs" | ssh $remoteHost $jobStatusCmd - -`;
+}
+
 print $someOut."\n";
 # take output and added MYQSUB:::<qsub file path> to each job file
 my @qsubsplit = split("\n",$someOut);
