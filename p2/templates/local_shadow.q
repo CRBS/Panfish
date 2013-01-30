@@ -1,5 +1,7 @@
 #!/bin/sh
 #
+# request Bourne shell as shell for job
+#$ -S /bin/sh
 #$ -V
 #$ -cwd
 #$ -o @PANFISH_JOB_STDOUT_PATH@
