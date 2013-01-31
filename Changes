@@ -1,0 +1,6 @@
+Revision history for Perl extension Panfish.
+
+0.01  Thu Jan 31 11:06:32 2013
+	- original version; created by h2xs 1.23 with options
+		-AXc -n Panfish
+

@@ -1,0 +1,271 @@
+#!/usr/bin/perl
+
+if (@ARGV < 1){
+  print STDERR "$0 <cluster>\n";
+  print STDERR "This program batches jobs together in bundles\n";
+  print STDERR "appropriate for the destination cluster\n";
+  print STDERR "any job files batched will have the suffix\n";
+  print STDERR ".batched appended to job file and within the file\n";
+  print STDERR "a BATCHED:::<path to qsub file> will be also appended\n";
+  exit(1);
+}
+
+my $cluster = $ARGV[0];
+
+#
+# Constants
+# 
+$SUBMIT_DIR = "submit.dir";
+$JOB_TEMPLATE_DIR="job.template.dir";
+$PANFISH_PROPERTIES = "panfish.properties";
+$JOBS_PER_NODE = "jobs.per.node";
+$BASEDIR = "basedir";
+$BATCHED_SUFFIX = ".batched";
+$QSUB_SUFFIX = ".qsub";
+$RUN_JOB_SCRIPT = "run.job.script";
+$BATCHED_JOB_KEY = "BATCHEDJOB:::";
+my $propFile = `dirname $0`;
+chomp($propFile);
+$propFile.="/".$PANFISH_PROPERTIES;
+
+my $propHash = createPropHash($propFile);
+
+my $template_dir = $propHash->{$JOB_TEMPLATE_DIR};
+
+my $submit_dir = $propHash->{$SUBMIT_DIR}."/".$cluster;
+
+my $jobs_per_node = getJobsPerNodeFromTemplateFile("$template_dir/$cluster");
+
+my $remoteBaseDir = $propHash->{$cluster.".".$BASEDIR};
+
+my $runJobScript = $propHash->{$cluster.".".$RUN_JOB_SCRIPT};
+
+print "Template dir: $template_dir\n";
+print "submit dir: $submit_dir\n";
+print "cluster: $cluster\n";
+print "jobs per node: $jobs_per_node\n";
+
+
+# Generate a hashtable with keys being job id (not task id) and value
+# being an array of job files
+# sort the job files so they are ordered by task id
+my %jobHashById = ();
+
+opendir(SUBDIR,$submit_dir) || die "Unable to read $submit_dir $!";
+my $dirent = readdir(SUBDIR);
+while(defined($dirent)){
+   if ($dirent=~/^([0-9]*).*job$/){
+     chomp($dirent);
+     push (@{$jobHashById{$1}},$dirent);
+#     $jobHashById{$1}="$dirent";
+#     print "$submit_dir/$dirent\n";
+   }
+
+
+   $dirent = readdir(SUBDIR);
+}
+closedir(SUBDIR);
+
+
+# Iterate through each job id key in hash table
+for my $key ( keys %jobHashById ){
+   @{$jobHashById{$key}} = sort sort_by_task_id @{$jobHashById{$key}};
+   print "$key and ".@{$jobHashById{$key}}."\n";
+
+   # Decide if there are enough jobs to submit.  
+   # If there are more then # of jobs per node yes
+   # If above not true, but job files are older then 5 minutes then yes
+#   for (my $x; $x < @{$jobHashById{$key}}; $x++){
+#      print "\t [ ".${@{$jobHashById{$key}}}[$x]." ]\n";
+#   }
+   if (@{$jobHashById{$key}} >= $jobs_per_node ||
+       isItOkayToSubmitJobs($jobHashById{$key}) eq "yes"){
+
+         # In a loop read in each job file and cat its contents into a new
+         # file under cwd/(cluster)/(jobid).startTask.endTask
+	 $val = shift @{$jobHashById{$key}};
+         $val =~/^.*\.(\d+)\.job/;
+         $minVal = $1;
+         my ($curdir,$command) = parseJobFile($submit_dir."/".$val);
+
+         mkdir("$curdir/$cluster");
+
+         print "$curdir\n";
+         $qsubFile = "$curdir/$cluster/fish.$key.$minVal$QSUB_SUFFIX";
+         open(JOBBYFILE,">$curdir/$cluster/fish.$key.$minVal") || die "$curdir/$cluster/fish.$key.$minVal $!";
+         $jobCount = 0;
+         while(defined($val) && $jobCount < $jobs_per_node){
+             print "\t $val\n";
+             ($curdir,$command) = parseJobFile($submit_dir."/".$val);
+             print JOBBYFILE "$command\n";
+             # any files added to one of these should have the suffix .batched appended to file
+             # name AND a line should be appended to the file with the path to the qsub file
+             open(ADDQSUBLINE,">>$submit_dir/$val") || die $!;
+             print ADDQSUBLINE "$BATCHED_JOB_KEY$qsubFile\n";
+             close(ADDQSUBLINE);
+
+             `/bin/mv $submit_dir/$val $submit_dir/$val$BATCHED_SUFFIX`;
+
+
+             $val = shift @{$jobHashById{$key}};
+             $jobCount++;
+         }
+         close(JOBBYFILE);         
+         # create a new file under cwd/(cluster)/(jobid).startTask.endTask.qsub
+         # put header from template into file followed by invocation of job_runner
+         # passing into the runner the first file created.
+         writeOutQsubFile("$template_dir/$cluster","$curdir/$cluster","fish.$key.$minVal",$remoteBaseDir,
+                          $runJobScript);
+         
+         # print this qsub file to stdout and continue
+         print "$qsubFile\n";
+   }
+}
+
+
+
+
+
+exit(1);
+
+sub isItOkayToSubmitJobs {
+   my $jobArr = shift;
+ 
+   for (my $x; $x < @{$jobArr}; $x++){
+      print "\t [ ".${@{$jobArr}}[$x]." ]\n";
+      $jobFile = ${@{$jobArr}}[$x];
+
+      #if these files are older then X minutes then we are good
+      #to submit otherwise just wait
+
+   }
+   return "no";
+}
+
+#
+#
+#
+sub writeOutQsubFile {
+   my $templateFile = shift;
+   my $jobFileDir = shift;
+   my $jobFile = shift;
+   my $remoteBaseDir = shift;
+   my $runJobScript = shift;
+   my $qsubFile = $jobFileDir."/".$jobFile.$QSUB_SUFFIX;
+   
+   open(TFILE,"$templateFile") || die $!;
+   open(QSUBBY,">$qsubFile") || die $!;
+   while(<TFILE>){
+      chomp();
+      $line = $_;
+      $line=~s/\@PANFISH_JOB_STDOUT_PATH\@/$remoteBaseDir\/$jobFileDir\/$jobFile.stdout/g;
+      $line=~s/\@PANFISH_JOB_STDERR_PATH\@/$remoteBaseDir\/$jobFileDir\/$jobFile.stderr/g;
+      $line=~s/\@PANFISH_JOB_NAME\@/fishyfornow/g;
+      $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir\/$jobFileDir/g;
+      $line=~s/\@PANFISH_RUN_JOB_SCRIPT\@/$runJobScript/g;
+      $line=~s/\@PANFISH_JOB_FILE\@/$remoteBaseDir\/$jobFileDir\/$jobFile/g;
+      print QSUBBY "$line\n";
+   }
+   close(QSUBBY);
+}
+
+
+#
+#
+#
+sub getJobsPerNodeFromTemplateFile {
+   my $templateFile = shift;
+   my $jobs = 1; #if unknown assume 1
+   open(TEMPLATEFILE,$templateFile) || die $!;
+   while(<TEMPLATEFILE>){
+     chomp();
+     $line = $_;
+     if ($line=~/^#PBS * -l *.*ppn=(\d+).*$/){
+       $jobs = $1;
+     }
+     if ($line=~/^#\$ *-pe *1way *(\d+).*$/){
+       $jobs = $1;
+     }
+   }
+   close(TEMPLATEFILE);
+   return $jobs;
+}
+
+#
+#
+#
+sub parseJobFile {
+  my $jobfile = shift;
+  my $curdir = undef;
+  my $cmd = undef;
+  open(JOBFILE,$jobfile) || die $!;
+  while(<JOBFILE>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*)ENDCURRENTDIR(.*)$/){
+      $curdir = $1;
+      $cmd = $2;
+      break;
+    }
+  }
+  close(JOBFILE);
+  return ($curdir,$cmd);
+}
+
+
+#
+#
+# create prop hash
+sub createPropHash {
+  my $propfile = shift;
+  my %propHash = ();
+
+  open(DATA,$propfile) || die $!;
+
+  while(<DATA>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*) *= *(.*)$/){
+      $propHash{$1}=$2;
+    }
+  }
+  close(DATA);
+
+  return \%propHash;
+}
+
+
+#
+# Sort job file names by task id
+# each job file is in format
+# JOB_ID.TASK_ID.job
+#
+# This sort routine sorts the by TASK_ID in ascending order after sorting
+# by job id
+# Matching TASK_ID's will have undetermined sort course this
+# should never happend
+sub sort_by_task_id {
+  #$a and $b are the job files
+  if (!($a=~/^(\d+)\.(\d+)\.job$/)){
+    return -1;
+  }
+  my $aJobId = $1;
+  my $aTaskId = $2;
+
+  
+  if (!($b=~/^(\d+)\.(\d+)\.job$/)){
+     return 1;
+  }  
+  
+  my $bJobId = $1;
+  my $bTaskId = $2;
+
+  if ($aJobId < $bJobId){
+     return -1;
+  }
+  if ($aJobId > $bJobId){
+     return 1;
+  }
+  
+  return $aTaskId <=> $bTaskId;
+}

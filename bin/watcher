@@ -1,0 +1,214 @@
+#!/usr/bin/perl
+
+if (@ARGV < 1){
+  print STDERR "$0 <cluster>\n";
+  print STDERR "This program looks for any jobs in submitted or running\n";
+  print STDERR "state as defined by suffix and checks the remote cluster\n";
+  print STDERR "for their job status updating as appropriate.\n";
+  print STDERR "by adjusting the suffix to .done, .running or .failed\n";
+  exit(1);
+}
+
+my $cluster = $ARGV[0];
+
+#
+# Constants
+# 
+$SUBMIT_DIR = "submit.dir";
+$JOB_TEMPLATE_DIR="job.template.dir";
+$PANFISH_PROPERTIES = "panfish.properties";
+$JOBS_PER_NODE = "jobs.per.node";
+$BASEDIR = "basedir";
+$BATCHED_SUFFIX = ".batched";
+$QSUB_SUFFIX = ".qsub";
+$RUN_JOB_SCRIPT = "run.job.script";
+$BATCHED_JOB_KEY = "BATCHEDJOB:::";
+$HOST = "host";
+$MYQSUB = "myqsub";
+$JOBSTATUS = "getjobstatus";
+my $propFile = `dirname $0`;
+chomp($propFile);
+$propFile.="/".$PANFISH_PROPERTIES;
+
+my $propHash = createPropHash($propFile);
+
+my $template_dir = $propHash->{$JOB_TEMPLATE_DIR};
+
+my $submit_dir = $propHash->{$SUBMIT_DIR}."/".$cluster;
+
+
+my $remoteBaseDir = $propHash->{$cluster.".".$BASEDIR};
+
+my $runJobScript = $propHash->{$cluster.".".$RUN_JOB_SCRIPT};
+my $remoteHost = $propHash->{$cluster.".".$HOST};
+
+my $myqsubCmd = $propHash->{$cluster.".".$MYQSUB};
+my $jobStatusCmd = $propHash->{$cluster.".".$JOBSTATUS};
+print "Template dir: $template_dir\n";
+print "submit dir: $submit_dir\n";
+print "cluster: $cluster\n";
+
+# Generate a hashtable with keys being job id (not task id) and value
+# being an array of job files
+# sort the job files so they are ordered by task id
+my %jobHashByBatch = ();
+
+opendir(SUBDIR,$submit_dir) || die "Unable to read $submit_dir $!";
+my $dirent = readdir(SUBDIR);
+while(defined($dirent)){
+   chomp($dirent);
+   if ($dirent=~/^([0-9]*).*.job.submitted|running$/){
+       # new job lets get the directory path and add
+       # to list
+       ($curdir,$cmd,$batchedjob,$myqsubjob) = parseJobFile($submit_dir."/".$dirent);
+       push (@{$jobHashByBatch{$myqsubjob}},$dirent);
+   }
+   $dirent = readdir(SUBDIR);
+}
+closedir(SUBDIR);
+
+
+
+# need to get all keys and
+# invoke myqsubstdin.sh like this to minimize ssh activity
+# echo -e "1.qsub\\n2.qsub" | ssh gordon.sdsc.edu /home/churas/gordon/myqsub/myqsubstdin.sh
+my $echoArgs = "";
+for my $key ( keys %jobHashByBatch ){
+   if ($echoArgs eq ""){
+      $echoArgs = "$key";
+   }
+   else {
+      $echoArgs .= "\\\\n$key";
+   }
+}
+if ($echoArgs eq ""){
+  print "No jobs to watch\n";
+  exit(0);
+}
+
+if ($remoteBaseDir eq ""){
+  print "Trying to run:  echo -e \"$echoArgs\" | $jobStatusCmd - -\n";
+  $someOut = `echo -e "$echoArgs" | $jobStatusCmd - -`;
+}
+else {
+   print "Trying to run:  echo -e \"$echoArgs\" | ssh $remoteHost $jobStatusCmd - -\n";
+   $someOut = `echo -e "$echoArgs" | ssh $remoteHost $jobStatusCmd - -`;
+}
+
+print $someOut."\n";
+# take output and added MYQSUB:::<qsub file path> to each job file
+my @qsubsplit = split("\n",$someOut);
+
+my $curkey = undef;
+
+for (my $y = 0; $y < @qsubsplit; $y++){
+   print "Examining $qsubsplit[$y]\n";
+   #check if this line is a qsub line or a job line
+   if ($qsubsplit[$y]=~/^(.*):::(.*)$/){
+      $curkey = $1;
+      $status = $2;
+   
+      if (defined($curkey)){
+         for (my $z = 0; $z < @{$jobHashByBatch{$curkey}}; $z++){
+             print "Looking at whether ${$jobHashByBatch{$curkey}}[$z] needs adjustment cause status is now: $status\n";
+             if ($status eq "SUBMITTED"){
+                updateFileStatusToMatchJobStatus($submit_dir."/".${$jobHashByBatch{$curkey}}[$z],$status);
+             }
+             elsif ($status eq "RUNNING"){
+                updateFileStatusToMatchJobStatus($submit_dir."/".${$jobHashByBatch{$curkey}}[$z],$status);
+             }
+             elsif ($status eq "FAILED"){
+                updateFileStatusToMatchJobStatus($submit_dir."/".${$jobHashByBatch{$curkey}}[$z],$status);
+             }
+             elsif ($status eq "COMPLETED"){
+                updateFileStatusToMatchJobStatus($submit_dir."/".${$jobHashByBatch{$curkey}}[$z],$status);
+             }
+             #$newsuffix = ${$jobHashByBatch{$curkey}}[$z];
+             #$newsuffix =~s/batchedandchummed/submitted/;
+             #print "/bin/mv $submit_dir/${$jobHashByBatch{$curkey}}[$z] $submit_dir/$newsuffix\n";
+             #`/bin/mv $submit_dir/${$jobHashByBatch{$curkey}}[$z] $submit_dir/$newsuffix`;
+         }
+      }
+   }
+}
+
+exit(1);
+
+#
+#
+#
+sub updateFileStatusToMatchJobStatus {
+   my $jobFile = shift;
+   my $status = shift;
+  
+   $status=~s/RUNNING/running/;
+   $status=~s/SUBMITTED/submitted/;
+   $status=~s/FAILED/failed/;
+   $status=~s/COMPLETED/done/;
+   if ($jobFile=~/^.*$status$/){
+     return 0; #do nothing we are good
+   }
+   $newJobFile = $jobFile;
+   $newJobFile=~s/\.submitted$/\.$status/;
+   $newJobFile=~s/\.running$/\.$status/;
+   $newJobFile=~s/\.failed$/\.$status/;
+   $newJobFile=~s/\.done$/\.$status/;
+   print "/bin/mv $jobFile $newJobFile\n";
+   $out=`/bin/mv $jobFile $newJobFile 2>&1`;
+   if ($? != 0){
+     print STDERR "Error : $out\n";
+   }
+   return 1;
+}
+
+
+#
+#
+#
+sub parseJobFile {
+  my $jobfile = shift;
+  my $curdir = undef;
+  my $cmd = undef;
+  my $batchedjob = undef;
+  my $myqsub = undef;
+
+  open(JOBFILE,$jobfile) || die $!;
+  while(<JOBFILE>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*)ENDCURRENTDIR(.*)$/){
+      $curdir = $1;
+      $cmd = $2;
+    }
+    elsif ($line=~/^BATCHEDJOB:::(.*)$/){
+      $batchedjob = $1;
+    }
+    elsif ($line=~/^MYQSUB:::(.*)$/){
+      $myqsub = $1;
+    }
+  }
+  close(JOBFILE);
+  return ($curdir,$cmd,$batchedjob,$myqsub);
+}
+
+#
+#
+# create prop hash
+sub createPropHash {
+  my $propfile = shift;
+  my %propHash = ();
+
+  open(DATA,$propfile) || die $!;
+
+  while(<DATA>){
+    chomp();
+    $line = $_;
+    if ($line=~/^(.*) *= *(.*)$/){
+      $propHash{$1}=$2;
+    }
+  }
+  close(DATA);
+
+  return \%propHash;
+}
+
