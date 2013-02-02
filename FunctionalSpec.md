@@ -135,47 +135,47 @@ This version will **NOT** support the following features
 Panfish Flowchart
 =================
 
-User
+**User**
 
-  ------------------------------
- |                              |
- | User sets up job for Panfish |
- |                              |
-  ------------------------------
-              ||
-             _||_
-            \    /
-             \  /
-              \/
-  ------------------------------
- |                              |
- | User invokes **cast** on job |
- | which submits shadow job and |
- | returns Grid Engine job id   | 
- |                              |
-  ------------------------------
-              ||
-             _||_
-            \    /
-             \  /
-              \/
-  ------------------------------
- |                              |
- | User calls **qstat** on id   |
- | and waits for job completion |
- |                              |
-  ------------------------------
-              ||
-             _||_
-            \    /
-             \  /
-              \/
-  ------------------------------
- |                              |
- | Upon job completion user     |
- | calls **land** to get result |
- |                              |
-  ------------------------------
+     ------------------------------
+    |                              |
+    | User sets up job for Panfish |
+    |                              |
+     ------------------------------
+                  ||
+                 _||_
+                \    /
+                 \  /
+                  \/
+     ------------------------------
+    |                              |
+    | User invokes **cast** on job |
+    | which submits shadow job and |
+    | returns Grid Engine job id   | 
+    |                              |
+     ------------------------------
+                  ||
+                 _||_
+                \    /
+                 \  /
+                  \/
+     ------------------------------
+    |                              |
+    | User calls **qstat** on id   |
+    | and waits for job completion |
+    |                              |
+     ------------------------------
+                  ||
+                 _||_
+                \    /
+                 \  /
+                  \/
+     ------------------------------
+    |                              |
+    | Upon job completion user     |
+    | calls **land** to get result |
+    |                              |
+     ------------------------------
 
 Program by Program Specification
 ================================
