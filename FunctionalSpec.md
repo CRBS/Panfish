@@ -18,6 +18,17 @@ details will be left for another document.
 THIS SPECIFICATION MAY CONTAIN ERRORS AND OMISSIONS.  YOU HAVE BEEN WARNED.
 
 
+Motivation
+==========
+
+Time and time again the following pattern has occurred that involves distributing
+work to multiple clusters.  These clusters usually offer only limited access and have
+wildly different configurations.  What ends up happening is custom code is written to
+send and retreive jobs on these clusters.  
+
+Panfish is attempt to generalize this code for a specific type of job so its easier to
+integrate these heterogeneous compute resources.
+
 Scenarios
 =========
 
@@ -129,7 +140,7 @@ This version will **NOT** support the following features
 
 * Panfish will only support SGE 6.1/6.2 and OpenPBS/Torque on the remote clusters.
 
-* **Cast** will NOT support all argument options of **qsub** only a subset to be determined later.
+* **Cast** will NOT support all argument options of **qsub** only the subset listed below.
 
 
 Panfish Flowchart
@@ -196,9 +207,9 @@ version these arguments will be supported:
 
 * **-t**  Lets caller specify the submission of an array job.
 
-* **-e**  Lets caller specifiy standard error stream.  
+* **-e**  Lets caller specify standard error stream.  
 
-* **-o**  Lets caller specifiy standard output stream.
+* **-o**  Lets caller specify standard output stream.
 
 * **-q**  Lets caller specify queues.  These queues should be the **shadow** queues configured for
           Panfish.
@@ -224,7 +235,7 @@ track his job by running qstat and looking for jobs with id of **523**
 
 An example of cast invocation without an array job:
 
-$ cast -t 1-2 -q gordon_shadow.q,local_shadow.q -e /foo/test/f1/o/\$TASK_ID.err -o /foo/test/f1/o/\$TASK_ID.out /foo/test/f1/testjob.sh
+$ cast -q gordon_shadow.q,local_shadow.q -e /foo/test/f1/o/\$TASK_ID.err -o /foo/test/f1/o/\$TASK_ID.out /foo/test/f1/testjob.sh
 Your job 524 ("line") has been submitted
 
 
