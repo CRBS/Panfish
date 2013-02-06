@@ -13,5 +13,5 @@ WriteMakefile(
     EXE_FILES         => $EXE_FILES,
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Panfish.pm', # retrieve abstract from module
-       AUTHOR         => 'chris <churas@localdomain>') : ()),
+       AUTHOR         => 'Christopher Churas<churas@ncmir.ucsd.edu>') : ()),
 );
