@@ -153,12 +153,6 @@ Diagram of flow
      ||                       \/
      ||  <----------- [returns job status]
      \/                                                   
-    User ---> [invokes] ----> qstat
-     ||                        ||
-     ||                        \/
-     ||  <---------- [checks on job status] 
-     ||
-     \/
     User ---> [invokes] ----> land
      ||                        ||
      \/                        \/
@@ -218,24 +212,114 @@ format as shown with a real configuration below:
     submit.dir=/home/churas/src/panfish/p2/shadow
     job.template.dir=/home/churas/src/panfish/p2/templates
 
-
+    # These properties are cluster specific and will need to
+    # be configured for each cluster
     gordon_shadow.q.host=churas@gordon.sdsc.edu
     gordon_shadow.q.basedir=/projects/ps-camera/gordon/panfish/p2
     gordon_shadow.q.myqsub=/home/churas/gordon/myqsub/myqsubstdin.sh
     gordon_shadow.q.getjobstatus=/home/churas/gordon/myqsub/get_job_status2.pl
     gordon_shadow.q.run.job.script=/home/churas/gordon/myqsub/run_jobs.pl
-    gordon_shadow.q.subvar.CAMERA_JAVA=/usr/java/latest/bin/java
-    gordon_shadow.q.subvar.CAMERA_SCRATCH_DIR=`/bin/ls /scratch/$USER/[0-9]* -d`
-
-Here is a breakdown of each property:
-
-**queue.list**
-    
+    gordon_shadow.q.subvar.PANFISH_SCRATCH_DIR=`/bin/ls /scratch/$USER/[0-9]* -d`
 
 
+The above properties can be broken down into two parts.  The first six properties 
+above are **global** properties and are used by panfish and line for submission and
+monitoring.  The other seven properties seen above are cluster specific and are repeated
+for each cluster.  The cluster specific properties will be prefixed with the queue matching
+the cluster the jobs should run on.  In the above case **gordon_shadow.q** is the shadow
+queue for the **Gordon** cluster.  Another way of saying this is the last seven properties
+will be in this format with **CLUSTER** to be replaced by the name of the shadow queue:
 
-Step by Step tasks in running a job in Panfish
-==============================================
+    # These properties are cluster specific and will need to
+    # be configured for each cluster
+    CLUSTER.host=
+    CLUSTER.basedir=
+    CLUSTER.myqsub=
+    CLUSTER.getjobstatus=
+    CLUSTER.run.job.script=
+    CLUSTER.subvar.PANFISH_SCRATCH_DIR=
+
+
+
+
+Here is a breakdown of each **global** property:
+
+* **queue.list**
+    This parameter lists all of the shadow queues configured for panfish.  The cast and land
+    commands can optionally have the clusters omitted in which case the data is pushed or pulled
+    from all of the clusters in this list.  The list should be comma delimited ideally with no spaces in between.
+
+* **qsub.path** 
+    Full path to qsub command on local system that lets Panfish submit the shadow jobs.
+
+* **stderr.path**
+    Directory to write the standard error stream for the shadow job.  This output needs to go somewhere
+    and is not relevant to the user so we have it written to a special side directory.
+
+* **stdout.path**
+    Directory to write the standard output stream for the shadow job.
+
+* **submit.dir**
+    Directory where job files created by the line shadow job are written to.  Under this directory is
+    a directory with the same name as the cluster queue (ie: gordon_shadow.q/ or codonis_shadow.q)  This property
+    is used by line and by Panfish.
+
+* **job.template.dir**
+    Directory where job template files for each cluster reside.  The template files are named with the
+    same name as the cluster queue (ie: gordon_shadow.q,codonis_shadow.q) For more information see
+    Job Template File section of this document.
+
+    Example template for gordon_shadow.q:
+
+      #!/bin/sh
+      #
+      #PBS -q normal
+      #PBS -m n
+      #PBS -A ddp140
+      #PBS -W umask=0022
+      #PBS -o @PANFISH_JOB_STDOUT_PATH@
+      #PBS -e @PANFISH_JOB_STDERR_PATH@
+      #PBS -V
+      #PBS -l nodes=1:ppn=16,walltime=12:00:00
+      #PBS -N @PANFISH_JOB_NAME@
+      #PBS -d @PANFISH_JOB_CWD@
+
+      /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
+
+Here is a breakdown of the **cluster** specific properties
+
+* **CLUSTER.host**
+    Host of remote cluster to submit jobs on and to copy data to/from.  This
+    should be of the form (user)@(host) ex:  bob@gordon.sdsc.edu
+
+* **CLUSTER.basedir**
+    Directory on remote cluster that is considered the base directory under which all
+    Panfish jobs will run.  For example, if this is set to /home/foo and a job is run which
+    has a path of /home/bob/j1.  The path on the remote cluster would be /home/foo/home/bob/j1.
+    This is possible because the job script should prefix all paths with $PANFISH_BASEDIR which 
+    will be set to this value.
+
+* **CLUSTER.myqsub**
+    Path to myqsub wrapper that handles in job submission as well as offers throttline capability
+    because some clusters cannot have more then a limited number of jobs submitted.
+
+* **CLUSTER.getjobstatus**
+    Path to qstat wrapper that lets caller get status of job.
+
+* **CLUSTER.run.job.script**
+    This script is part of myqsub and lets a set of serial jobs run on a single node in parallel.
+
+* **CLUSTER.subvar.PANFISH_SCRATCH_DIR**
+    The temp directory to use for individual jobs on the remote cluster.  Initially this will be
+    the only variable that is custom, but in the future any parameter can be set for a given
+    cluster by adding another parameter with this format:  CLUSTER.subvar.WHATEVERVARYOUWANT
+
+
+Step by step list of tasks to run a job in Panfish
+=============================================================
+
+cast side
+---------
 
 The first step is the creation of a script we will call foo.sh
 
@@ -260,8 +344,8 @@ local and remote clusters.  The user invokes the following:
     Your job-array 523.1-100:1 ("line") has been submitted 
     $
 
-The **cast** command starts and up parses command line arguments.  The first task
-for **cast** is to parse properties file.  **Cast** also examines **foo.sh** for any 
+The **cast** command starts and up parses command line arguments.  The next task
+for **cast** is to parse the **panfish.config** file.  **Cast** also examines **foo.sh** for any 
 directives.  The directives are defined by **#$PANFISH** prefix.  **Cast** sees 
 the **-dir** directive telling it that data needs to be pushed to the remote 
 clusters.  Going through the cluster list passed in via **-q** flag **cast** invokes an 
@@ -296,11 +380,18 @@ for information about that cluster.
                        should have this as a prefix so files get written correctly on the remote hosts.
 
 
- The **line** program generates a file placing it in the submit directory of the
-queue matching **$QUEUE.** The submit directory is obtained The file is named **JOB_ID.SGE_TASK_ID.job** where JOB_ID is the SGE job id and SGE_TASK_ID
-is the SGE_TASK_ID of the job.  Inside the file is the following line:
+ The **line** program generates a file placing it under in a **queue** directory under the **submit** directory.
+The **queue** directory which is set by the **$QUEUE** environment variable.  This variable is set by Grid
+Engine to let the running program know what queue is is running under.  The **submit** directory is from
+the **panfish.config** file.  The file written is named in this format:  **JOB_ID.SGE_TASK_ID.job** where JOB_ID is the SGE job id and SGE_TASK_ID
+is the SGE_TASK_ID of the job.  Inside the file the following is written:
 
     (CURRENT WORKING DIRECTORY)ENDCURRENTDIRexport PANFISH_BASEDIR=\"$PANFISH_BASEDIR\";export SGE_TASK_ID=\"$SGE_TASK_ID\";\$PANFISH_BASEDIR/$CLUSTER_CMD $* > \$PANFISH_BASEDIR/$STDOUTFILE 2> \$PANFISH_BASEDIR/$STDERRFILE"
+
+**Definition of the above variables which are denoted by ()**
+
+* (CURRENT WORKING DIRECTORY)
+    This is the current working directory which is basically the directory the user was located at when they invoked **cast**.
 
 After writing out the above data to the job file **line** simply waits until that file has the suffix **.failed** or **.done**
 exiting with 0 exit code unless **.failed** is the suffix in which case a 1 is returned.  **Line** also watches for a **USR2** signal
@@ -309,10 +400,65 @@ standard out file:
 
     Caught USR2 signal...informing children...exiting...
 
-In addition this text is written to standard out file with a **.killed** suffix:
+In addition a file with the name set to:  **JOB_ID.SGE_TASK_ID.job.killed** to the same **queue**
+directory the job was submitted to is created.  This is to let **Panfish** know the shadow job was deleted.  In
+this file the following text is written:
 
     Killed by signal
 
 **Line** then exits with code **100**
+
+Panfish side
+------------
+
+The **Panfish** daemon monitors the cluster/queue directories under the **submit** directory.  The queues to watch
+are denoted by the **queue** property.  Panfish has several responsibilities and they are broken into the following
+phases; batching of jobs, upload of batched jobs, submission of jobs, and monitoring of running jobs.  The next
+sections go into further detail on each of these steps.  All communication between the **line** jobs and **Panfish**
+is done through the files put in **queue** directories under the **submit** directory.  **line** watches for certain
+file name suffixes to appear to know job state.  At the same time the contents of these files contain information used
+by **Panfish** to assist in running the job on the remote cluster.  
+
+Base File name structure:
+
+ **JOB_ID.SGE_TASK_ID.job**
+
+* **JOB_ID** is the Grid Engine job id given to the **line** job when it is submitted to the local cluster
+
+* **SGE_TASK_ID** is the Grid Engine array job id given to the **line** job when it is submitted to the cluster (it maybe unset)
+
+The above file will have the following suffixes that will occur to a job file in this order. 
+In addition, the contents of the file will change:
+
+* **.job**
+  The job has been put in the directory by **line** and **Panfish** needs to start processing on it.
+
+* **.batched**
+  **Panfish** has batched this job with other jobs from the same directory in the **batching of jobs** phase.
+  Within the job file a new line is added with this prefix **BATCHEDJOB:::** to the right of this
+  keyword the path to the batched job file is written.
+  
+    Example:  BATCHEDJOB:::/home/foo/j1/gordon_shadow.q/fish.1.8
+
+* **.batchedandchummed**
+  **Panfish** has uploaded the batched jobs to the remote cluster in the **upload of batched jobs**
+
+* **.submitted**
+  **Panfish** has submitted the job on the remote cluster in the **submission of jobs** phase.
+
+* **.running**
+  **Panfish** has updated status to running in the **monitoring of running jobs** phase.
+
+* **.done**
+  **Panfish** has updated status to done in the **monitoring of running jobs** phase
+
+**Special case**
+
+* **.failed**
+  **Panfish** has failed the job, this can occur in any of the phases.
+
+
+
+
 
 
