@@ -1,6 +1,6 @@
 
 Panfish Technical Specification
-================================
+===============================
 
 By Christopher Churas
 
@@ -22,7 +22,7 @@ Requirements
 * Must support Sun Grid Engine/Grid Engine or OpenPBS/Torque on remote clusters.
 
 * Only access to the remote clusters will be through ssh.  This requirement is here
-  because most XSEDE resources only offer an ssh account and some storage on the 
+	because most XSEDE resources only offer an ssh account and some storage on the 
   remote host.  They then instruct the user to follow this flow:
   
     Upload data ---> Run job ---> Download data ---> repeat if needed.
@@ -33,15 +33,18 @@ Requirements
 How Panfish Works
 =================
 
-Panfish takes a script based commandline job and handles invocation as well
-as assists in the serialization and deserialization of data to remote clusters.
+Panfish takes a script based commandline job and runs that job on a local or remote
+cluster.  In addition, Panfish also assists in the serialization and deserialization
+of data on those clusters.
 
 Panfish is not a batch processing scheduler on its own, it can be thought of as
 a wrapper on top of Sun Grid Engine that handles the logistics of ferrying jobs
-to/from remote clusters.  
+to/from remote clusters.    
 
 The benefit of a wrapper is most jobs that work in Sun Grid Engine could in 
-theory be run through Panfish with only minimal changes.
+theory be run through Panfish with only minimal changes.  Panfish also benefits from
+not having to reinvent the wheel when deciding what job to run, that task is left
+to Sun Grid Engine.
 
 In a normal scenario the user does the following:
 
@@ -139,12 +142,12 @@ Diagram of flow
      ||                       ||                         ||                                 ||
      ||                       ||                         ||                                 \/
      ||                       ||                         ||                          [batches up jobs]
-     ||                       ||                         ||                                 ||
-     ||                       ||                         ||                                 \/
-     ||                       ||                         ||                 [sends job files to remote clusters]
-     ||                       ||                         ||                                 ||
-     ||                       ||                         ||                                 \/ 
-     ||                       ||                         ||                  [Submits jobs on remote clusters]
+     ||     --------------    ||                         ||                                 ||
+     ||    | User is      |   ||                         ||                                 \/
+     ||    | calling      |   ||                         ||                 [sends job files to remote clusters]
+     ||    | qstat        |   ||                         ||                                 ||
+     ||    | periodically |   ||                         ||                                 \/ 
+     ||     --------------    ||                         ||                  [Submits jobs on remote clusters]
      ||                       ||                         ||                                 ||
      ||                       ||                         ||                                 \/
      ||                       ||                         ||  <--------------[Updates job status upon completion]
@@ -189,14 +192,18 @@ System side Programs
                           appropriate cluster.  The daemon also watches for job
                           completion on the clusters and updates job files status.
                           
+* **line**                Shadow job that generates a job file and puts it into the
+                          submit directory for the appropriate cluster.  The
+                          program then watches for the suffix on that job file to 
+                          change to either **.failed**, denoting failure, or **.done**
+                          denoting successful completion.
 
 
 
 
 
-
-panfish.config
---------------
+Panfish.config
+==============
 
 Panfish relies on a configuration file to define information about the remote 
 clusters.  That file is named **panfish.config** and is located in the same 
@@ -315,11 +322,27 @@ Here is a breakdown of the **cluster** specific properties
     cluster by adding another parameter with this format:  CLUSTER.subvar.WHATEVERVARYOUWANT
 
 
-Step by step list of tasks to run a job in Panfish
-=============================================================
+Cast
+====
 
-cast side
----------
+This section describes how **Cast** works at a technical level with the intention that a developer
+can take this document and understand the algorithm enough to implement it.  In the FunctionalSpec.md
+is a description of the command line parameters.  
+
+The **Cast** command is responsible for submission of a shadow job to the local Grid Engine.  The shadow
+job is named **line** and it requires the following parameters:
+    
+    line <stdout path> <stderr path> <script to run> (arguments for script)
+
+**cast** needs to invoke this qsub:
+
+    qsub -t X -e <shadow out dir>$JOB_ID.$TASK_ID.err -o <shadow out dir>.$JOB_ID.$TASK_ID.out line <stdout path> <stderr path> <script to run> (arguments for script)
+
+
+
+
+
+
 
 The first step is the creation of a script we will call foo.sh
 
@@ -386,12 +409,18 @@ Engine to let the running program know what queue is is running under.  The **su
 the **panfish.config** file.  The file written is named in this format:  **JOB_ID.SGE_TASK_ID.job** where JOB_ID is the SGE job id and SGE_TASK_ID
 is the SGE_TASK_ID of the job.  Inside the file the following is written:
 
-    (CURRENT WORKING DIRECTORY)ENDCURRENTDIRexport PANFISH_BASEDIR=\"$PANFISH_BASEDIR\";export SGE_TASK_ID=\"$SGE_TASK_ID\";\$PANFISH_BASEDIR/$CLUSTER_CMD $* > \$PANFISH_BASEDIR/$STDOUTFILE 2> \$PANFISH_BASEDIR/$STDERRFILE"
+    current.working.dir=(CURRENT WORKING DIRECTORY)
+    command.to.run=export PANFISH_BASEDIR="/some/path";export SGE_TASK_ID="12";$PANFISH_BASEDIR/$CLUSTER_CMD $* > $PANFISH_BASEDIR/$STDOUTFILE 2> $PANFISH_BASEDIR/$STDERRFILE
 
 **Definition of the above variables which are denoted by ()**
 
-* (CURRENT WORKING DIRECTORY)
-    This is the current working directory which is basically the directory the user was located at when they invoked **cast**.
+* current.working.dir
+    Value of this property is the current working directory set to the directory from which **cast** was invoked.
+
+* command.to.run
+    Actual command to run.  The export calls assume a bash shell and set values that can be used by the script.  The
+    value set in **PANFISH_BASEDIR** is the **basedir** value for the queue/cluster the **line** job is run under.  The
+    **SGE_TASK_ID** is set to the task id given to the **line** job.  
 
 After writing out the above data to the job file **line** simply waits until that file has the suffix **.failed** or **.done**
 exiting with 0 exit code unless **.failed** is the suffix in which case a 1 is returned.  **Line** also watches for a **USR2** signal
@@ -438,7 +467,7 @@ In addition, the contents of the file will change:
   Within the job file a new line is added with this prefix **BATCHEDJOB:::** to the right of this
   keyword the path to the batched job file is written.
   
-    Example:  BATCHEDJOB:::/home/foo/j1/gordon_shadow.q/fish.1.8
+    Example:  BATCHEDJOB:::/home/foo/j1/gordon_shadow.q/fish.1.8.commands
 
 * **.batchedandchummed**
   **Panfish** has uploaded the batched jobs to the remote cluster in the **upload of batched jobs**
