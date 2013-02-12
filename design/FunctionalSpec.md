@@ -56,7 +56,7 @@ Torque.  Since CAMERA currently submits jobs to the in house compute cluster usi
 Grid Engine, Panfish looked to be a good fit.
 
 The Blast Workflows use Grid Engine to run thousands of jobs coded in small shell
-scripts.  These jobs are submitted with Grid Engines **qsub** call and monitored
+scripts.  These jobs are submitted with Grid Engine's **qsub** call and monitored
 for completion by **qstat**.  
 
 Once initial configuration of Panfish to remote clusters was complete, CAMERA 
@@ -70,7 +70,7 @@ as determined with standard Grid Engine **qstat** call.
 Beauford is a bioinformatics developer in a small lab.  Catching a glimpse of Beauford
 would not lend one to think of him in the software field.  His six foot four
 frame complete hands like gorillas, and a beard that would put the Brawny man to shame
-leads one to believe his chosen profession in one of many physical activities.  
+leads one to believe his chosen profession to be one serious physical activity.  
 The picnic table colored flannels he religiously wears further biases one beliefs.  
 However unexpected the career choice, here is Beauford and he is tasked with 
 developing and running the processing pipelines for his lab.  Students, 
@@ -81,28 +81,28 @@ Beauford has a small 8 node compute cluster which he meticulously maintains.  Th
 cluster is running Centos 6 and Grid Engine to run the jobs for the lab.  
 
 On an unusually quiet Tuesday, his PI, Dr. Howard McBain, stops by.  Dr. McBain a
-man of booming voice and fiery eyes, but oddly equipped with a most compassionate
-demeanor.  Dr. McBain tells Beauford that he needs an alignment run on a truly massive
-dataset.  A dataset that would take months to run on the little cluster.  Dr. McBain
-already aware of the limitations tells Beauford that he has aquired an allocation
-on an XSEDE super computer and that some of the work can be run there.  Beauford stares
-back at Dr. McBain in silence pondering his options.  Beauford knows he could just
-take his scripts and programs, figure out the XSEDE cluster, and make adjustments to run
-the jobs there copying the data back upon completion.  But Beauford remembers seeing
-a link on CAMERA about Panfish, a small tool that lets Grid Engine jobs run on remote
-clusters.  He tells Dr. McBain he will start at once on the work and update him on 
-progress. 
+man of booming voice and fiery eyes, but at the same time somehow equipped with a 
+most compassionate demeanor.  Dr. McBain tells Beauford that he needs an alignment 
+run on a truly massive dataset.  A dataset that would take months to run on the 
+little cluster.  Dr. McBain already aware of the limitations tells Beauford that he 
+has aquired an allocation on an XSEDE super computer and that some of the work can 
+be run there.  Beauford stares back at Dr. McBain in silence pondering his options.  
+Beauford knows he could just take his scripts and programs, figure out the XSEDE 
+cluster, and make adjustments to run the jobs there copying the data back upon 
+completion.  But Beauford remembers seeing a link on CAMERA about Panfish, a 
+small tool that lets Grid Engine jobs run on remote clusters.  He tells Dr. McBain 
+he will start at once on the work and update him on progress. 
 
 Beauford, downloads Panfish and installs it on the cluster.  Panfish is a simple Perl
 application with no dependencies and installation is a cinch.  Beauford follows the
 setup documentation, by first setting up ssh keys to the XSEDE cluster and verifying
 nodes that will be submitting jobs can connect to that cluster.  Once that is verified
-Beauford copies up the **myqsub** script and sets up a cron to run **myqsub_submitter**
-once a minute.  Beauford then runs a test job through **myqsub** and verifies it works
+Beauford copies up the **psub** script and sets up a cron to run **psub_submitter**
+once a minute.  Beauford then runs a test job through **psub** and verifies it works
 on XSEDE.  After that Beauford adjusts the Panfish configuration file and template file
-for the cluster he will be running on.  These configuration files just need information 
-the destination host and paths to run on the remote host as well as location of **myqsub**
-Once that is complete he sets up shadow queues on his local Grid Engine, one for his local
+for the cluster he will be running on.  These configuration files just need information on
+the destination host and paths to run on the remote host as well as location of **psub**.
+Once that is complete, he sets up shadow queues on his local Grid Engine, one for his local
 cluster and one for the XSEDE cluster.  He then submits using **cast** a test job which he
 monitors via **qstat**  Once the job completes he invokes **land** and verifies he has all
 the data.  Seeing things working satisfactorily, he modifies his old code base prefixing
@@ -136,7 +136,8 @@ This version will **NOT** support the following features
 * If a job on a remote node fails, there will be no restart.  In this version wait until all jobs complete,
   **land** the results and resubmit if necessary.  
 
-* Panfish will be built to support Sun Grid Engine 6.1 and 6.2.  Other versions are not supported.
+* Panfish will be built to support Sun Grid Engine 6.1 and 6.2 on the local cluster.  
+  Other versions are not supported.
 
 * Panfish will only support SGE 6.1/6.2 and OpenPBS/Torque on the remote clusters.
 
@@ -214,12 +215,14 @@ version these arguments will be supported:
 * **-q**  Lets caller specify queues.  These queues should be the **shadow** queues configured for
           Panfish.
 
+* **-N**  Sets job name same as **qsub**.
+
 The above options should also be definable as directives within the script to be submitted using the
 format #$PANFISH (flag) convention similar to the one used by Grid Engine. 
 
 In addition, to the above commands the following Panfish specific options will also be supported:
 
-* **-dir** Lets caller specify directory to be uploaded to remote cluster
+* **-dir** Lets caller specify directory to be uploaded to remote cluster.
 
 The **Cast** program will first upload any data to the remote cluster and then submit the job to
 the local Grid Engine.  The output of **Cast** upon success will be the same output from **qsub**
@@ -278,7 +281,7 @@ Where XX is size of data to retreive.  YYY is the cluster data is pulled
 from and ZZ is the transfer rate calculated by taking XX bytes divided
 by the time to transfer.
 
-If there is an error the message with be prefixed with **ERROR:** in a separate
+If there is an error the message with be prefixed with **ERROR** in a separate
 line along with the issue seen and the application will exit with a non-zero 
 exit code.
 
@@ -292,13 +295,103 @@ $
 Example of failed invocation:
 $ land /foo/blah
 Downloading...XXX bytes from gordon_shadow...Error
-Error:  Unable to download from gordon_shadow
+ERROR:  Unable to download from gordon_shadow
 $
 
 Example of invalid path invocation:
 $ land /foo/blah
-Error: /foo/blah does not exist on gordon_shadow
+ERROR: /foo/blah does not exist on gordon_shadow
 $
 
+psub
+----
 
+This program resides on the remote cluster and is responsible for submitting jobs
+to that cluster.
+
+Command line:
+
+     psub [command -- command args | - ]
+
+**command**    Command to submit to batch processing system for cluster.  The
+               **command args** are arguments to pass to the **comand**.  If **-**
+               is passed in as the first argument then **psub** will read from
+               standard in and submit one job for each line of input.
+
+The **psub** command returns a job id.  This can be passed to **pstat** to 
+get current status of job.  
+
+Format of output (kept close to **qsub** format)
+
+     Your job ###.# ("(COMMAND)") has been submitted
+
+Where **###.#** is the job id and **(COMMAND)** is the command with path
+stripped off and arguments omitted. 
+
+Example invocation passing job as arguments:
+
+    $ psub /home/jonny/foo/job1/481.1.psub blah
+    Your job 481.1 ("481.1.psub") has been submitted
+    $
+
+Example invocation passing command via standard in:
+
+    $ echo -e "/h/482.5.psub\\n/h/499.6.psub" | psub -
+    Your job 482.5 ("482.5.psub") has been submitted
+    Your job 499.6 ("499.6.psub") has been submitted
+    $
+
+In the above example two commands are passed in via separate lines to standard
+in and **psub** outputs to job files matching the job files.
+
+Any errors should have ERROR:  prefixed and a non zero exit code.
+
+
+
+pstat
+-----
+
+This program resides on the remote cluster and is responsible for returning
+status of jobs submitted via **psub**
+
+Command line:
+
+     pstat [ psub job id | - ]
+
+**psub job id**    Should be a job id output from **psub** OR
+                     **-** which tells **pstat** to read from standard in.
+
+Output will be in this format:
+
+    ###.#:::(STATUS)
+
+Where **###.#** is the job id from **psub** and **(STATUS)** is the status
+of the job which can be one of the following:
+
+**NOTFOUND**      Job not found.
+
+**QUEUED**        Job is queued.
+
+**RUNNING**       Job is running.
+
+**FAILED**        Job failed.
+
+**COMPLETED**     Job completed.
+
+
+Example invocation passing **psub job file** as an argument:
+
+     $ pstat 499.6
+     499.6:::COMPLETED
+     $
+
+Example invocation passing **psub job files** via standard in:
+
+     $ echo "482.5\\n499.6\\n435.4" | pstat -
+     482.5:::RUNNING
+     499.6:::COMPLETED
+     435.4:::FAILED
+     $
+ 
+Any errors should have ERROR:  prefixed and a non zero exit code.
 
