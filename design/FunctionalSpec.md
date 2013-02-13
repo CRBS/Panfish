@@ -143,11 +143,47 @@ This version will **NOT** support the following features
 
 * **Cast** will NOT support all argument options of **qsub** only the subset listed below.
 
+Panfish Initialization Flowchart
+================================
 
-Panfish Flowchart
-=================
 
-**User**
+    ------------------------------
+   |                              |
+   | User installs panfish        |
+   | $ perl Makefile.pl           |
+   | $ make;make test             |
+   | $ make install               |
+   |                              |
+    ------------------------------
+                  ||
+                 _||_
+                \    /
+                 \  /
+                  \/ 
+    ------------------------------
+   |                              |
+   |  User runs panfish_setup     |
+   |  Answers questions and sets  |
+   |  up ssh keys to all hosts.   |
+   |                              |
+    ------------------------------            
+                  ||
+                 _||_
+                \    /
+                 \  /
+                  \/
+    ------------------------------
+   |                              |
+   | User runs panfish_test to    |
+   | verify correct installation  |
+   |                              |
+    ------------------------------
+
+
+
+Panfish User Flowchart
+======================
+
 
      ------------------------------
     |                              |
@@ -196,6 +232,45 @@ Panfish consists of several command line programs that are invoked by the user.
 All command line programs will have a help page available with -h|-help flag 
 and a more detailed help page with -man flag.  In addition invoking man on any 
 of the commands should kick out the same documentaion as the -man flag.  
+
+
+Panfish_setup
+-------------
+
+Command line program invoked by the user.  The purpose of this program is to assist the user in
+setting up Panfish to work with remote clusters.  
+
+     panfish_setup (options)
+
+**(options)**
+
+* **--addcluster <cluster name | [ file ] >**
+
+This parameter lets a caller add a cluster.  The user can either pass in a name which will
+cause the program to run in an interactive mode asking lots of questions necessary to enable
+the cluster, OR the user can pass in a file with the configuration information.  
+Part of this process uploads binaries and sets up directories on that remote cluster.
+
+* **--updatecluster <cluster name | [ file ] >**
+
+Updates an existing cluster.
+
+
+* **--removecluster <cluster name>**
+
+Removes the cluster.
+
+* **--disablecluster <cluster name>**
+
+Disables the cluster.
+
+* **--listcluster (optional name)**
+
+Lists the current clusters and brief information if (optional name) is omitted
+otherwise in depth information on specified cluster is output.
+
+
+
 
 Cast
 ----
