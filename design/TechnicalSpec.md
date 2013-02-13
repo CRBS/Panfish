@@ -120,9 +120,32 @@ Now **Panfish** can run the job under an alternate path.
 
 Here is a more in depth diagram denoting the flow of a job through **Panfish**
 
+Diagram of Panfish setup
+------------------------
+    User ---> [ Sets up password ssh on remote clusters]
+     ||
+     ||  ---> [invokes] ----> panfish_remote_installer
+     ||                                  ||
+     ||                                  \/
+     ||                     [asks users questions on clusters] 
+     ||                                  ||
+     ||                                  \/
+     ||  <------- [creates config and uploads/configs remote clusters]
+     \/
+    User ---> [invokes] ----> panfish_test
+     ||                           ||
+     ||                           \/
+     ||                [creates test job submits] ---> [invokes] ----> Cast/qstat/land
+     ||                           ||                                         ||
+     ||                           ||                                         \/
+     ||                           ||  <------------------------------- [ runs test job]
+     ||                           \/
+     \/	 <------------[checks success and returns]                                                       
+    Done
 
-Diagram of flow
----------------
+
+Diagram of job flow
+-------------------
 
     User ---> [invokes] ----> Cast
      ||                        ||
@@ -176,8 +199,6 @@ User Programs and Configuration files
                           **land**  This file contains information about the remote clusters
                           as well as the submit directory where the shadow jobs put their
                           job files that are picked up by server side of Panfish.
-                       
-
 
 System side Programs
 --------------------
@@ -192,14 +213,21 @@ System side Programs
                           change to either **.failed**, denoting failure, or **.done**
                           denoting successful completion.
 
-* **psub**                Submits command to **psub_mitter** which submits the
+* **panfishsubmit**    Submits command to **panfishsubmitd** which submits the
                           job to the remote cluster.  Outputs a job file which 
                           can be used to monitor command status.
              
 
-* **pstat**               Takes a **psub** job file and returns status of the job.
+* **panfishstat**         Takes a **panfishsubmitter** job file and returns status of the job.
 
-* **psub_mitter**         Daemon that submits **psub** jobs to remote cluster.
+* **panfishsubmitd**      Daemon on remote cluster that submits **panfishsubmitd** jobs.
+
+* **psubmitter.config**   Configuration file used by **panfishstat,panfishsubmitter, and panfishsubmitd** and
+                          is located in the same directory as those programs on the
+                          remote clusters.  This file contains information used to run
+                          jobs on those remote clusters.  
+
+* **panfishrunner**      Runs serial jobs in parallel on a cluster node.
 
 Panfish.config
 ==============
@@ -222,9 +250,9 @@ format as shown with a real configuration below:
     # be configured for each cluster
     gordon_shadow.q.host=churas@gordon.sdsc.edu
     gordon_shadow.q.basedir=/projects/ps-camera/gordon/panfish/p2
-    gordon_shadow.q.psub=/home/churas/gordon/psub/psub
-    gordon_shadow.q.pstat=/home/churas/gordon/psub/pstat
-    gordon_shadow.q.run.job.script=/home/churas/gordon/psub/run_jobs
+    gordon_shadow.q.panfishsubmitter=/home/churas/gordon/panfish/panfishsubmitter
+    gordon_shadow.q.pstat=/home/churas/gordon/panfish/panfishstat
+    gordon_shadow.q.run.job.script=/home/churas/gordon/panfish/panfishjobrunner
     gordon_shadow.q.scratch=`/bin/ls /scratch/$USER/[0-9]* -d`
     gordon_shadow.q.line.wait=60
     gordon_shadow.q.land.max.retries=10
@@ -245,7 +273,7 @@ will be in this format with **QUEUE** to be replaced by the name of the shadow q
     # be configured for each queue
     QUEUE.host=
     QUEUE.basedir=
-    QUEUE.psub=
+    QUEUE.panfishsubmitter=
     QUEUE.pstat=
     QUEUE.run.job.script=
     QUEUE.scratch=
@@ -319,9 +347,10 @@ Here is a breakdown of the **queue** specific properties
     This is possible because the job script should prefix all paths with $PANFISH_BASEDIR which 
     will be set to this value.
 
-* **QUEUE.psub**
-    Path to **psub** wrapper that handles in job submission as well as offers throttline capability
-    because some clusters cannot have more then a limited number of jobs submitted.
+* **QUEUE.panfishsubmitter**
+    Path to **panfishsubmitter** wrapper that handles in job submission as well 
+    as offers throttline capability because some clusters cannot have more then 
+    a limited number of jobs submitted.
 
 * **QUEUE.pstat**
     Path to **pstat** wrapper that lets caller get status of job.
@@ -811,14 +840,17 @@ and with no other setting each job gets only 1 core.
 psub
 ====
 
-This program writes the command given to it to a file with a unique name to the
-directory monitored by **psub_mitter** daemon.  The directory is set by **<panfish.config::[QUEUE].psub.dir>>**
+psub [command -- command args | - ]
 
-These job files known as **psub job files** will have names in this format:
+This program writes the **command** given to it to a file with the same name as the job file (ending .psub removed) to
+a directory monitored by **psubmitter** daemon.  The directory is set by 
+**<panfishsubmit.config::panfishsubmit.dir>>/<panfishsubmit.config::psub.submitted.dir>**
+
+
+These job files known as **psub job files**.
   
-    (command file).job
 
-Inside the file is this content:
+Inside the **psub job file** is this content:
 
     current.working.dir=(CURRENT WORKING DIR)
     command.to.run=(COMMAND AND ARGUMENTS)
@@ -831,34 +863,210 @@ then **psub** should read from standard in and consider each line a new job file
 Output should be as follows:
 
      $ psub (command file)
-     (command file).job
+     (command filename only)
      $
 
 For invocation with **-** flag read from standard in and output as follows:
 
      $ echo -e "(command1)\\n(command2)" | psub -
-     (command1).job
-     (command2).job
+     (command1 filename only)
+     (command2 filename only)
      $
 
-If **(command).job** already exists in the **<panfish.config::[QUEUE].psub.dir>>**
+If **(command)** already exists in the **<psubmitter.config::psub.dir>>**
 consider this an error and exit with non zero exit code. 
 
 In batch mode first command to fail should cause whole command to fail.
 
 
 
-pstat
+panfishstat
 =====
 
+This program takes a **panfishsubmitter job id** output from **panfishsubmit** and returns the job's
+status by looking in the **<psubmitter.config::panfishsubmitter.dir>** for the job
+file and based on the directory it resides in is the state returned.
+
+panfishstat [ panfishsubmitter job id | - ]
+
+**panfishsubmitter job id    **    Should be a job id output from **panfishsubmitter** OR
+                             **-** which tells **pstat** to read from standard in.
+
+Output will be in this format:
+
+    ###.#:::(STATUS)
+
+Where **###.#** is the job id from **psub** and **(STATUS)** is the status
+of the job which can be one of the following:
+
+**notfound**      Job not found.
+
+**queued**        Job is queued.
+
+**submitted**     Job is submitted to **panfishsubmitter**
+
+**running**       Job is running.
+
+**failed**        Job failed.
+
+**completed**     Job completed.
+
+
+Example invocation passing **psub job file** as an argument:
+
+     $ pstat 499.6
+     499.6:::completed
+     $
+
+Example invocation passing **psub job files** via standard in:
+
+     $ echo "482.5\\n499.6\\n435.4" | pstat -
+     482.5:::running
+     499.6:::done
+     435.4:::failed
+     $
+
+Any errors should have ERROR:  prefixed and a non zero exit code.
+
+The **panfish submit directory** looks like this:
+
+    .
+    ..
+    submitted/
+    queued/
+    running/
+    completed/
+    failed/
+
+**panfishstat** should return the name of the directory as the state of the job. 
+
+
+panfishsubmitd
+================
+
+This is a program run as a cron once a minute or so on the remote cluster
+and it watches the **<panfishsubmitter.config::panfishsubmitter.dir>** sub directories
+for jobs, submitting them to the batch processing system for the cluster as
+well as updating status of all other job files found in any state other then
+**completed** and **failed**
+
+The program should verify only one instance of itself is running by creating
+a pid file and verifying the pid within is its own otherwise it should exit.
+
+After verifying it is the only instance running it should get a current list
+of running jobs on the cluster.  This can be done with **qstat** this list should
+also be used to count the number of running/queued jobs the current user has.
+
+Next under each of the following directories:
+     queued/
+     running/
+     
+Look at all job files and build a hash of **job_id** => file.name and use
+the output of **qstat** to move the job files to appropriate file if state
+changed.  
+
+Example PBS output from qstat:
+     $ qstat
+     Job id                    Name             User            Time Use S Queue
+     ------------------------- ---------------- --------------- -------- - -----
+     550174.gordon-fe2         ...DFT.gordonjob kmorgan                0 Q normal         
+     550179.gordon-fe2         ...32x16_hop1.sh syazaki                0 E normal         
+     550186.gordon-fe2         STDIN            sinkovit        00:00:02 R normal         
+     550188.gordon-fe2         run              nukenk          00:00:00 C normal         
+     $
+
+I think that is all the possible states above.
+
+Example SGE output from qstat:
+
+     $ qstat -u "*"
+     job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID 
+     -----------------------------------------------------------------------------------------------------------------
+     1016023 0.52489 gaussian1  bonbon       dr    02/09/2013 09:18:50 gpu@c300-214.ls4.tacc.utexas.e    12        
+     1017660 0.52514 hadgem.a1b khayhoe      r     02/11/2013 12:02:50 normal@c316-305.ls4.tacc.utexa   468        
+     1012888 0.50180 bliss_job  melrom       Eqw   02/07/2013 20:10:21                                   12
+     1023673 0.00000 oases_merg benni        hqw   02/12/2013 17:09:52                                   12        
+     1023686 0.00000 PLTAD_II_R kv147        qw    02/12/2013 17:13:16                                   12        
+
+The states can also be **s, or S and possibly sql, and have a t in it too**
+
+
+Now if a job has completed **C** or no longer exists in the list, be sure to check 
+standard error and standard output files exist on the filesystem and both have a filesize
+greater then 0, if not something failed so put the job file in the failed directory.
+
+The standard error and standard output files can be found by reading directives in in **psub** file in 
+command submitted.  If not there don't do the check.
+
+
+In addition, look in the standard error file and any output outside ^real or ^user ^sys is a failure.
+
+Once this is completed now look at **<psubmitter.config::max.num.jobs>** and if current
+running jobs is above this threshold then exit logging:
+
+     (seconds since epoch) DEBUG # jobs running exceeding <psubmitter.config::max.num.jobs> threshold. exiting..
+
+If below threshold look in **submitted** directory for any job files.
+Sort the job files oldest to newest and in a loop open each job file
+using the current working directory and command to submit the job using
+**qsub** or whatever the scheduler uses.  Set the job name to the name
+of the job file prefixing it with a x if necessary.
+Upon submission take job id and append this line to the job file:
+
+     job.id=(ID of job from qsub)
+
+After adjusting the file move it to **queued** folder or **failed** if there was a problem.
+
+
+**PROBLEM:  what if a job already has job.id file as in case of being killed mid submit?**
+
+Be sure to sleep in between submits **<panfishsubmitter.config::submit.sleep>** 
+
+Once this is all done. exit...
 
 
 
+panfishrunner
+=============
 
-psub_mitter
-===========
+This program is a helper program to run batched serial jobs on a compute node.  
+
+Command line:
+
+     panfishrunner (options) <file with list of programs to run. 1 per line>
+
+(options)
+
+     For now no options, but we may want to add a feature where the caller can
+     say run only 12 jobs concurrently and start new ones from the file as others
+     finish.  This would let us run really fast serial jobs more efficiently.  
 
 
+This program should read the file given to it and invoke each command in parallel and
+wait for the commands to exit.  If any commands exit, this command should exit with non zero
+exit code and log an error to standard error with format:
 
- 
+    ERROR: (command) : Non-zero exit code: #
 
+Otherwise write to standard out when a parallel job starts and when it finishes along with 
+any other pertinent information.  
+
+panfishsubmitter.config
+=======================
+
+This configuration file will reside in the same directory as the **panfishsubmitter**, **panfishstat**, and
+**panfishsubmitter** binaries and will contain the following fields:
+
+     panfishsubmitter.dir=Directory where job files will be put by psub
+
+     max.num.jobs=Maximum # of jobs to submit to batch processing system 
+
+     submit.sleep=Wait time in seconds between submission of jobs to batch processing system
+
+     # Used to let all commands know what folders are what states.
+     submitted.job.dir=submitted
+     queued.job.dir=queued
+     running.job.dir=running
+     completed.job.dir=completed
+     failed.job.dir=failed
+   
