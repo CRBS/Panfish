@@ -124,10 +124,10 @@ Diagram of Panfish setup
 ------------------------
     User ---> [ Sets up password ssh on remote clusters]
      ||
-     ||  ---> [invokes] ----> panfish_remote_installer
+     ||  ---> [invokes] ----------> panfish_setup
      ||                                  ||
      ||                                  \/
-     ||                     [asks users questions on clusters] 
+     ||                   [asks users questions on clusters] 
      ||                                  ||
      ||                                  \/
      ||  <------- [creates config and uploads/configs remote clusters]
@@ -194,6 +194,11 @@ User Programs and Configuration files
 
 * **land**                Command to retreive data from remote clusters.  Should be
                           invoked after all jobs submitted by **cast** have completed.
+
+* **panfish_setup**       Assists in configuration of Panfish.
+
+* **panfish_test**        Tool to test Panfish and verify working configuration.
+
        
 * **panfish.config**      Configuration file located in the same directory as **cast** and
                           **land**  This file contains information about the remote clusters
@@ -218,11 +223,11 @@ System side Programs
                           can be used to monitor command status.
              
 
-* **panfishstat**         Takes a **panfishsubmitter** job file and returns status of the job.
+* **panfishstat**         Takes a **panfishsubmit** job file and returns status of the job.
 
 * **panfishsubmitd**      Daemon on remote cluster that submits **panfishsubmitd** jobs.
 
-* **psubmitter.config**   Configuration file used by **panfishstat,panfishsubmitter, and panfishsubmitd** and
+* **psubmitter.config**   Configuration file used by **panfishstat,panfishsubmit, and panfishsubmitd** and
                           is located in the same directory as those programs on the
                           remote clusters.  This file contains information used to run
                           jobs on those remote clusters.  
@@ -250,8 +255,8 @@ format as shown with a real configuration below:
     # be configured for each cluster
     gordon_shadow.q.host=churas@gordon.sdsc.edu
     gordon_shadow.q.basedir=/projects/ps-camera/gordon/panfish/p2
-    gordon_shadow.q.panfishsubmitter=/home/churas/gordon/panfish/panfishsubmitter
-    gordon_shadow.q.pstat=/home/churas/gordon/panfish/panfishstat
+    gordon_shadow.q.panfishsubmit=/home/churas/gordon/panfish/panfishsubmit
+    gordon_shadow.q.panfishstat=/home/churas/gordon/panfish/panfishstat
     gordon_shadow.q.run.job.script=/home/churas/gordon/panfish/panfishjobrunner
     gordon_shadow.q.scratch=`/bin/ls /scratch/$USER/[0-9]* -d`
     gordon_shadow.q.line.wait=60
@@ -273,8 +278,8 @@ will be in this format with **QUEUE** to be replaced by the name of the shadow q
     # be configured for each queue
     QUEUE.host=
     QUEUE.basedir=
-    QUEUE.panfishsubmitter=
-    QUEUE.pstat=
+    QUEUE.panfishsubmit=
+    QUEUE.panfishstat=
     QUEUE.run.job.script=
     QUEUE.scratch=
     QUEUE.line.wait=
@@ -347,13 +352,13 @@ Here is a breakdown of the **queue** specific properties
     This is possible because the job script should prefix all paths with $PANFISH_BASEDIR which 
     will be set to this value.
 
-* **QUEUE.panfishsubmitter**
-    Path to **panfishsubmitter** wrapper that handles in job submission as well 
+* **QUEUE.panfishsubmit**
+    Path to **panfishsubmit** wrapper that handles in job submission as well 
     as offers throttline capability because some clusters cannot have more then 
     a limited number of jobs submitted.
 
-* **QUEUE.pstat**
-    Path to **pstat** wrapper that lets caller get status of job.
+* **QUEUE.panfishstat**
+    Path to **panfishstat** wrapper that lets caller get status of job.
 
 * **QUEUE.run.job.script**
     This script lets a set of serial jobs run on a single node in parallel.
@@ -623,8 +628,19 @@ Any errors should be logged as follows:
 with non zero exit code.
 
 
-Panfish side
+Panfish_setup
+=============
+
+This program helps the user add, configure, and remove clusters from Panfish.  This is
+done by adjusting **panfish.config** and **panfishsubmit.config** as well as uploading
+binaries and other data to remote clusters. 
+
+
+Panfish_test
 ============
+
+This program lets the user run a test to verify correct configuration of Panfish.  It can
+also be used as a "heartbeat" tool to verify correct operation of clusters.  
 
 Panfish
 =======
@@ -837,10 +853,10 @@ Example PSUB file for Grid Engine:
 In the above case the queue is set to **all.q** and runtime is set to 12 hours
 and with no other setting each job gets only 1 core.
 
-psub
-====
+panfishsubmit
+================
 
-psub [command -- command args | - ]
+panfishsubmit [command -- command args | - ]
 
 This program writes the **command** given to it to a file with the same name as the job file (ending .psub removed) to
 a directory monitored by **psubmitter** daemon.  The directory is set by 
@@ -881,15 +897,15 @@ In batch mode first command to fail should cause whole command to fail.
 
 
 panfishstat
-=====
+===========
 
-This program takes a **panfishsubmitter job id** output from **panfishsubmit** and returns the job's
-status by looking in the **<psubmitter.config::panfishsubmitter.dir>** for the job
+This program takes a **panfishsubmit job id** output from **panfishsubmit** and returns the job's
+status by looking in the **<panfishsubmit.config::panfishsubmit.dir>** for the job
 file and based on the directory it resides in is the state returned.
 
-panfishstat [ panfishsubmitter job id | - ]
+panfishstat [ panfishsubmit job id | - ]
 
-**panfishsubmitter job id    **    Should be a job id output from **panfishsubmitter** OR
+**panfishsubmit job id    **    Should be a job id output from **panfishsubmit** OR
                              **-** which tells **pstat** to read from standard in.
 
 Output will be in this format:
@@ -903,7 +919,7 @@ of the job which can be one of the following:
 
 **queued**        Job is queued.
 
-**submitted**     Job is submitted to **panfishsubmitter**
+**submitted**     Job is submitted to **panfishsubmitd**
 
 **running**       Job is running.
 
@@ -942,10 +958,10 @@ The **panfish submit directory** looks like this:
 
 
 panfishsubmitd
-================
+==============
 
 This is a program run as a cron once a minute or so on the remote cluster
-and it watches the **<panfishsubmitter.config::panfishsubmitter.dir>** sub directories
+and it watches the **<panfishsubmit.config::panfishsubmit.dir>** sub directories
 for jobs, submitting them to the batch processing system for the cluster as
 well as updating status of all other job files found in any state other then
 **completed** and **failed**
@@ -1020,7 +1036,7 @@ After adjusting the file move it to **queued** folder or **failed** if there was
 
 **PROBLEM:  what if a job already has job.id file as in case of being killed mid submit?**
 
-Be sure to sleep in between submits **<panfishsubmitter.config::submit.sleep>** 
+Be sure to sleep in between submits **<panfishsubmit.config::submit.sleep>** 
 
 Once this is all done. exit...
 
@@ -1051,13 +1067,13 @@ exit code and log an error to standard error with format:
 Otherwise write to standard out when a parallel job starts and when it finishes along with 
 any other pertinent information.  
 
-panfishsubmitter.config
+panfishsubmit.config
 =======================
 
-This configuration file will reside in the same directory as the **panfishsubmitter**, **panfishstat**, and
-**panfishsubmitter** binaries and will contain the following fields:
+This configuration file will reside in the same directory as the **panfishsubmit**, **panfishstat**, and
+**panfishsubmit** binaries and will contain the following fields:
 
-     panfishsubmitter.dir=Directory where job files will be put by psub
+     panfishsubmit.dir=Directory where job files will be put by psub
 
      max.num.jobs=Maximum # of jobs to submit to batch processing system 
 
@@ -1069,4 +1085,5 @@ This configuration file will reside in the same directory as the **panfishsubmit
      running.job.dir=running
      completed.job.dir=completed
      failed.job.dir=failed
-   
+  
+
