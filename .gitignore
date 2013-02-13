@@ -1,2 +1,7 @@
 p2/out
 p2/shadow
+Makefile
+Makefile.old
+blib/
+*.swp
+pm_to_blib
