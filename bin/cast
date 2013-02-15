@@ -1,40 +1,111 @@
 #!/usr/bin/perl
 
+
+
+
+use FindBin qw($Bin);
+
+#these allow this script to work when installed in alternate path
+use lib "$Bin/../lib";
+use lib "$Bin/../lib/perl5/site_perl";
+use lib "$Bin/../lib/perl5";
+
+use Getopt::Long;
+use Pod::Usage;
+
+
+use Panfish::ForkExecutor;
+use Panfish::PanfishConfig;
+use Panfish::Logger;
+use Panfish::FileReaderWriterImpl;
+use Panfish::PanfishConfigFactory;
+
+use Panfish::ForkExecutor;
+
+
+
 if (@ARGV == 0){
-  print STDERR "$0 (qsub arguments and script to invoke remotely)\n";
-  print STDERR "This program is a wrapper for qsub to run jobs\n";
-  print STDERR "on multiple cluster using Panfish multicluster job submitter\n";
-  exit(1);
+  pod2usage(2);
 }
 
 
-$newArgList = "";
-#extract stderr and stdout file paths and build a new argument list
-for ($x = 0; $x < @ARGV;$x++){
-  if ($ARGV[$x] eq "-e"){
-    $stderr = $ARGV[++$x];
-  }elsif ($ARGV[$x] eq "-o"){
-    $stdout = $ARGV[++$x];
-  }
-  elsif ($x+1 >= @ARGV) {
-    $lastArg = $ARGV[$x];
-  }
-  else {
-    $newArgList .=" $ARGV[$x]";
-  }
+my $cmdLineParseResult = GetOptions ("q=s"    => \$qArgValue,
+                                     "t=s"      => \$tArgValue,
+                                     "e=s"    => \$eArgValue,
+                                     "o=s"    => \$oArgValue,
+                                     "dir=s"    => \$dirArgValue,
+                                     "help|?" => \$helpArg,
+                                     "man"    => \$manArg) or pod2usage(2);
+
+
+if ($helpArg){
+  pod2usage(1);
 }
-#escape any $
+
+if ($manArg){
+  pod2usage(-exitstatus => 0, -verbose => 2);
+}
+
+if (@ARGV < 1){
+  pod2usage(2);
+}
+
+my $command = "";
+ 
+for (my $x = 0; $x < @ARGV; $x++){
+   $command .= " $ARGV[$x]";  
+}
+
+my $stderr = undef;
+
+my $stdout = undef;
+
+if (defined($eArgValue)){
+   $stderr = $eArgValue;
+}
+else {
+   # parse standard error from job file otherwise
+   # use a default
+}
+
+if (defined($oArgValue)){
+   $stdout = $oArgValue;
+}
+else {
+  # parse standard out from job file otherwise
+  # use a default
+}
+
+my $logger = Panfish::Logger->new();
+my $reader = Panfish::FileReaderWriterImpl->new($logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+
+my $config = $configFactory->getPanfishConfig();
+
+print "Okay: ".$config->getLineCommand()."\n";
+
+
+my $exec = Panfish::ForkExecutor->new();
+
+
+
+
+# escape any $ for TASK_ID and JOB_ID
+# also change TASK_ID to SGE_TASK_ID
 $stderr=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
 $stderr=~s/\$JOB_ID/\\\$JOB_ID/g;
 $stdout=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
 $stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
-#print "STDERR: $stderr\n";
-#print "STDOUT: $stdout\n";
-#print "new arg list: $newArgList\n";
 
-$cmd = "qsub $newArgList -e /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.err -o /home/churas/src/panfish/p2/out/\\\$JOB_ID.\\\$TASK_ID.out /home/churas/src/panfish/p2/line $stdout $stderr $lastArg";
-#print "Running $cmd\n";
-$OUTPUT = `$cmd 2>&1`;
+
+
+$cmd = $config->getQsubPath()." $newArgList -e ".
+       $config->getLineStandardErrorPath()."/\\\$JOB_ID.\\\$TASK_ID.err -o ".
+       $config->getLineStandardOutPath()."/\\\$JOB_ID.\\\$TASK_ID.out ".
+       $config->getLineCommand()." $stdout $stderr $command";
+
+print "Running $cmd\n";
+#$OUTPUT = `$cmd 2>&1`;
 
 $exitcode = $?;
 
