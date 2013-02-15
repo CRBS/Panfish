@@ -78,6 +78,6 @@ sub executeCommand {
 __END__
 
 =head1 AUTHOR
-   Executor is written by Chris Churas E<lt>churas@ncmir.ucsd.eduE<gt>
+   Executor is written by Christopher Churas E<lt>churas@ncmir.ucsd.eduE<gt>
 
 =cut
