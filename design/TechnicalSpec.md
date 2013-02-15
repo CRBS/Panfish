@@ -246,8 +246,8 @@ format as shown with a real configuration below:
 
     queue.list=gordon_shadow.q,codonis_shadow.q,trestles_shadow.q,lonestar_shadow.q
     qsub.path=/opt/gridengine/ge6.2u4/bin/lx24-amd64/qsub
-    stderr.path=/home/churas/src/panfish/p2/out
-    stdout.path=/home/churas/src/panfish/p2/out
+    line.stderr.path=/home/churas/src/panfish/p2/out
+    line.stdout.path=/home/churas/src/panfish/p2/out
     submit.dir=/home/churas/src/panfish/p2/shadow
     job.template.dir=/home/churas/src/panfish/p2/templates
 
@@ -303,12 +303,12 @@ Here is a breakdown of each **global** property:
     Full path to **qsub** command on local system that lets **Panfish** submit 
     the shadow jobs.
 
-* **stderr.path**
+* **line.stderr.path**
     Directory to write the standard error stream for the shadow job.  This 
     output needs to go somewhere and is not relevant to the user so we have it 
     written to a special side directory.
 
-* **stdout.path**
+* **line.stdout.path**
     Directory to write the standard output stream for the shadow job.
 
 * **submit.dir**
