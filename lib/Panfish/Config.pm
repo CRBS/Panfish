@@ -123,7 +123,7 @@ __END__
 
 =head1 AUTHOR
 
-   Panfish::Config is written by Christopher Churas<lt>churas@ncmir.ucsd.edu<gt>.
+Panfish::Config is written by Christopher Churas<churas@ncmir.ucsd.edu>
 
 =cut
 
