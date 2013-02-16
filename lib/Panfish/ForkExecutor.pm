@@ -283,7 +283,6 @@ sub killChildren {
 __END__
 
 =head1 AUTHOR
-   Panfish::ForkExecutor is written by 
-   Chris Churas E<lt>churas@ncmir.ucsd.eduE<gt>
+Panfish::ForkExecutor is written by Christopher Churas <churas@ncmir.ucsd.edu>
 
 =cut
