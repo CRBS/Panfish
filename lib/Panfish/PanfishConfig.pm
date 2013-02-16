@@ -119,13 +119,42 @@ sub getLineStandardOutPath {
     return $self->{Config}->getParameterValue($self->{LINE_STDOUT_PATH});
 }
 
+=head3 getSubmitDir
+
+Gets the Submit directory or the directory where files representing Panfish
+jobs are stored
+
+my $c->getSubmitDir
+
+=cut
+
+sub getSubmitDir {
+    my $self = shift;
+    if (!defined($self->{Config})){
+        return undef;
+    }
+
+    return $self->{Config}->getParameterValue($self->{SUBMIT_DIR});
+}
+
+
+sub getAllSetValues {
+    my $self = shift;
+
+    if (!defined($self->{Config})){
+        return undef;
+    }
+
+    return $self->{Config}->getAllSetValues();
+}
+
 1;
 
 __END__
 
 =head1 AUTHOR
 
-   Panfish::PanfishConfig is written by Christopher Churas<lt>churas@ncmir.ucsd.edu<gt>.
+Panfish::PanfishConfig is written by Christopher Churas<lt>churas@ncmir.ucsd.edu<gt>.
 
 =cut
 
