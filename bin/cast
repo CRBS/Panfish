@@ -1,8 +1,6 @@
 #!/usr/bin/perl
 
 
-
-
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
@@ -12,7 +10,6 @@ use lib "$Bin/../lib/perl5";
 
 use Getopt::Long;
 use Pod::Usage;
-
 
 use Panfish::ForkExecutor;
 use Panfish::PanfishConfig;
@@ -29,13 +26,14 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("q=s"    => \$qArgValue,
+my $cmdLineParseResult = GetOptions ("q=s"      => \$qArgValue,
                                      "t=s"      => \$tArgValue,
-                                     "e=s"    => \$eArgValue,
-                                     "o=s"    => \$oArgValue,
+                                     "e=s"      => \$eArgValue,
+                                     "o=s"      => \$oArgValue,
                                      "dir=s"    => \$dirArgValue,
-                                     "help|?" => \$helpArg,
-                                     "man"    => \$manArg) or pod2usage(2);
+                                     "verbose+" => \$verboseArg,
+                                     "help|?"   => \$helpArg,
+                                     "man"      => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -56,39 +54,39 @@ for (my $x = 0; $x < @ARGV; $x++){
    $command .= " $ARGV[$x]";  
 }
 
-my $stderr = undef;
+my $stderr = "";
 
-my $stdout = undef;
+my $stdout = "";
 
 if (defined($eArgValue)){
-   $stderr = $eArgValue;
-}
-else {
-   # parse standard error from job file otherwise
-   # use a default
+   $stderr = " -e $eArgValue";
 }
 
 if (defined($oArgValue)){
-   $stdout = $oArgValue;
-}
-else {
-  # parse standard out from job file otherwise
-  # use a default
+   $stdout = " -o $oArgValue";
 }
 
 my $logger = Panfish::Logger->new();
+
+if (!defined($verboseArg)){
+  $logger->setLevel("ERROR");
+}
+else {
+  if ($verboseArg == 1){
+    $logger->setLevel("WARN");
+  } elsif ($verboseArg == 2){
+    $logger->setLevel("INFO");
+  } elsif ($verboseArg == 3){
+    $logger->setLevel("DEBUG");
+  }
+}
+
+
+
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
-
 my $config = $configFactory->getPanfishConfig();
-
-print "Okay: ".$config->getLineCommand()."\n";
-
-
 my $exec = Panfish::ForkExecutor->new();
-
-
-
 
 # escape any $ for TASK_ID and JOB_ID
 # also change TASK_ID to SGE_TASK_ID
@@ -98,19 +96,35 @@ $stdout=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
 $stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
 
 
+my $newArgList = "-b y -cwd";
+# lets build a new argument list for the qsub call
+if (defined($tArgValue)){
+    $newArgList .= " -t $tArgValue";
+}
+
+if (defined($qArgValue)){
+    $newArgList .= " -q $qArgValue";
+}
+
+my $dir = "";
+if (defined($dirArgValue)){
+   $dir = " -dir $dirArgValue";
+}
 
 $cmd = $config->getQsubPath()." $newArgList -e ".
        $config->getLineStandardErrorPath()."/\\\$JOB_ID.\\\$TASK_ID.err -o ".
        $config->getLineStandardOutPath()."/\\\$JOB_ID.\\\$TASK_ID.out ".
-       $config->getLineCommand()." $stdout $stderr $command";
+       $config->getLineCommand()."$stdout$stderr$dir $command --verbose --verbose --verbose";
 
-print "Running $cmd\n";
-#$OUTPUT = `$cmd 2>&1`;
+$logger->info("Running command: $cmd");
 
-$exitcode = $?;
+my $exitCode = $exec->executeCommand($cmd,30);
 
-print "$OUTPUT\n";
-exit($exitcode);
+
+
+print $exec->getOutput();
+$logger->info("Exit Code:  ".$exec->getExitCode());
+exit($exitCode);
 1;
 
 __END__
@@ -121,7 +135,7 @@ cast - Submit a job to Panfish Multicluster Grid Engine Wrapper
 
 =head1 SYNOPSIS
 
-cast [ B<options> ] [ B<command> | -- B<command_args> ]
+cast [ B<options> ] [ B<command> ]
 
 =head1 DESCRIPTION
 
@@ -129,13 +143,12 @@ B<Cast> submits jobs to Panfish Multicluster Grid Engine
 Wrapper which allows a script based serial B<command> 
 to be run on a remote cluster. 
 
-B<Cast> does this by first pushing data specified by directives in the 
-B<command> script to the remote clusters followed by a submission of a 
-shadow job to the local Grid Engine.  Once started, the shadow job 
-then handles running and monitoring of the actual B<command> on the 
-remote cluster.  Upon B<command> completion the shadow job exits.  The 
-caller of B<Cast> can monitor the status of their job by using B<qstat> 
-on the id of the shadow jobs output from the B<Cast> call.
+B<Cast> does this by a submission of a shadow job to the local Grid Engine.  
+Once started, the shadow job then handles running and monitoring of the 
+actual B<command> on the remote cluster.  Upon B<command> completion the 
+shadow job exits.  The caller of B<cast> can monitor the status of their 
+job by using B<qstat> on the id of the shadow jobs output from the 
+B<cast> call.
 
 B<NOTE:>  It is the responsibility of the caller to invoke B<land> to 
 retrieve the data from the remote cluster once the job completes.
@@ -189,11 +202,21 @@ the B<#$PANFISH> directive.
 Defines directory to upload to remote clusters.  B<Cast> will upload the contents of
 this directory to all remote clusters in B<-q> queue list when set.  If not set no
 upload operation is performed.  This value can also be set within the B<command> using
-the B<#$PANFISH> directive.  NOTE:  This is not an option in B<qsub>.
+the B<#$PANFISH> directive.  
+
+NOTE:  This is not an option in B<qsub>.
+
+=item B<--verbose>
+
+Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
+verbosity.  The maximum is 3.
+
+NOTE:  This is not an option in B<qsub>.
+
 
 =item B<command>
 
-The job to run.  This B<command> must be a script file and must meet the following conditions:
+The job to run.  This B<command> must be a script file, its the last argument and must meet the following conditions:
 
 =over 12
 
@@ -265,7 +288,7 @@ listed above.
 
 =head1 AUTHOR
 
-more stuff to look at
+Christopher Churas <churas@ncmir.ucsd.edu>
 
 =head1 REPORTING BUGS
 
