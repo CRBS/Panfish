@@ -61,7 +61,11 @@ In a normal scenario the user does the following:
     Done
 
 With **Panfish** the user does the following:
-
+    User ----> [invokes] ----> chum
+     ||                         ||
+     ||                         \/
+     ||  <--------------- [transfers data]
+     \/
     User ----> [invokes] ----> cast
      ||                         ||
      ||                         \/
@@ -78,17 +82,18 @@ With **Panfish** the user does the following:
     Done <-------- [data retreived from clusters]
 
 
-The way it works is invocation of **cast** by a user submits a shadow job 
-to the local queuing system.  As part of the submission is a list of valid
-shadow queues which correspond to remote clusters the job can run
-under.  The user is given the id of the shadow job by the **cast** command.  
-The user then simply waits for those jobs to complete through calls to **qstat**
+The user first uploads data for the job by calling **chum**  The user
+then calls **cast** which submits a shadow job to the local queuing system.  
+As part of the submission, is a list of valid shadow queues which 
+correspond to remote clusters the job can run under.  The user is given 
+the id of the shadow job by the **cast** command.  The user then simply waits 
+for those jobs to complete through calls to **qstat**
 
 Grid Engine then schedules the shadow job to an available shadow queue.  
 Once the shadow job starts it informs **Panfish** that a job can be run on a 
-cluster as defined by the queue the shadow job was run under.  **Panfish** first
-optionally uploads data, runs the job on the remote cluster, and informs the shadow job 
-when the real job completes.  
+cluster as defined by the queue the shadow job was run under.  **Panfish** runs 
+the job on the remote cluster, and informs the shadow job when the real 
+job completes.  
 
 Upon detecting all jobs have completed, the user invokes **land** to retreive
 data from all the clusters.
@@ -146,7 +151,11 @@ Diagram of Panfish setup
 
 Diagram of job flow
 -------------------
-
+    User ---> [invokes] ----> Chum
+     ||                        ||
+     ||                        \/
+     ||  <------ [uploads data to remote clusters]
+     \/                        
     User ---> [invokes] ----> Cast
      ||                        ||
      ||                        \/
@@ -189,6 +198,9 @@ From the user perspective Panfish is composed of the following programs:
 User Programs and Configuration files
 -------------------------------------
 
+* **chum**                Command to upload data to remote clusters.  This command
+                          is complemented by **land** which retreives the data.  
+
 * **cast**                Drop in replacement for **qsub**  This command is responsible
                           for submitting a shadow job to the local queueing system.
 
@@ -218,7 +230,7 @@ System side Programs
                           change to either **.failed**, denoting failure, or **.done**
                           denoting successful completion.
 
-* **panfishsubmit**    Submits command to **panfishsubmitd** which submits the
+* **panfishsubmit**       Submits command to **panfishsubmitd** which submits the
                           job to the remote cluster.  Outputs a job file which 
                           can be used to monitor command status.
              
@@ -232,7 +244,7 @@ System side Programs
                           remote clusters.  This file contains information used to run
                           jobs on those remote clusters.  
 
-* **panfishrunner**      Runs serial jobs in parallel on a cluster node.
+* **panfishrunner**       Runs serial jobs in parallel on a cluster node.
 
 Panfish.config
 ==============
@@ -246,6 +258,7 @@ format as shown with a real configuration below:
 
     queue.list=gordon_shadow.q,codonis_shadow.q,trestles_shadow.q,lonestar_shadow.q
     qsub.path=/opt/gridengine/ge6.2u4/bin/lx24-amd64/qsub
+    line.sleep.time=1
     line.stderr.path=/home/churas/src/panfish/p2/out
     line.stdout.path=/home/churas/src/panfish/p2/out
     submit.dir=/home/churas/src/panfish/p2/shadow
@@ -302,6 +315,12 @@ Here is a breakdown of each **global** property:
 * **qsub.path** 
     Full path to **qsub** command on local system that lets **Panfish** submit 
     the shadow jobs.
+
+* **line.sleep.time**
+    Time in seconds the line command should wait between checks on actual job.
+    Might want to set this on a per cluster basis cause some clusters are slow
+    and others are fast.
+
 
 * **line.stderr.path**
     Directory to write the standard error stream for the shadow job.  This 
@@ -419,12 +438,11 @@ passed to **qsub**.
 
 
 The **<script to run>** should have all paths prefixed with **$PANFISH_BASEDIR**  Here is an example script
-where there are three directives (directives are denoted by starting with #$PANFISH) **-dir, -e, and -o**  
+where there are two directives (directives are denoted by starting with #$PANFISH) **-e and -o**  
 The directives should **NOT** have the **$PANFISH_BASEDIR** prefix since these paths are only used in the local
 system.  
 
     #!/bin/bash
-    #$PANFISH -dir /home/foo/job
     #$PANFISH -e /home/foo/job/err/$TASK_ID.err
     #$PANFISH -o /home/foo/job/out/$TASK_ID.out
 
@@ -675,34 +693,36 @@ Base File name structure:
 
 * **SGE_TASK_ID** is the Grid Engine array job id given to the **line** job when it is submitted to the cluster (it maybe unset)
 
-The above file will have the following suffixes that will occur to a job file in this order. 
-In addition, the contents of the file will change:
+The subdirectory in which the above job file is placed defines the state of the job.  Under each
+**submit** directory the following directories need to exist:
 
-* **.job**
-  The job has been put in the directory by **line** and **Panfish** needs to start processing on it.
 
-* **.batched**
+* **submitted**
+  Job has been submitted by **line** command which was submitted by **cast** command.
+
+
+* **batched**
   **Panfish** has batched this job with other jobs from the same directory in the **batching of jobs** phase.
-  Within the job file a new line is added with this prefix **BATCHEDJOB:::** to the right of this
+  Within the job file a new line is added with this prefix **batched.job=** to the right of this
   keyword the path to the batched job file is written.
   
-    Example:  BATCHEDJOB:::/home/foo/j1/gordon_shadow.q/fish.1.8.commands
+    Example:  batched.job=/home/foo/j1/gordon_shadow.q/fish.1.8.commands
 
-* **.batchedandchummed**
+* **batchedandchummed**
   **Panfish** has uploaded the batched jobs to the remote cluster in the **upload of batched jobs**
 
-* **.submitted**
-  **Panfish** has submitted the job on the remote cluster in the **submission of jobs** phase.
+* **queued**
+  **Panfish** has submitted the jobs to the remote clusters, but they have not started running.
 
-* **.running**
+* **running**
   **Panfish** has updated status to running in the **monitoring of running jobs** phase.
 
-* **.done**
-  **Panfish** has updated status to done in the **monitoring of running jobs** phase
+* **done**
+  **Panfish** has updated status to done in the **monitoring of running jobs** phase.
 
 **Special case**
 
-* **.failed**
+* **failed**
   **Panfish** has failed the job, this can occur in any of the phases.
 
 
@@ -712,20 +732,20 @@ program, but could easily be split up.  In the next sections the main pieces of
 the application will be described.  
 
 
-Going from .job to .batched
----------------------------
+Going from submitted to batched
+-------------------------------
 
 This is the initial phase of the job and **Panfish**'s job is to look for a 
-list of **.job** files within a given **QUEUE** directory that share the 
-same **JOB_ID**.  These **.job** files are sorted by **SGE_TASK_ID** in 
+list of files within a given **QUEUE/submitted** directory that share the 
+same **JOB_ID**.  These files are sorted by **SGE_TASK_ID** in 
 ascending order.  
-   These **.job** files are then put into batches based on number of cores each
-node has on the cluster corresponding to the QUEUE for the job.  Any extra job
+   These files are then put into batches based on number of cores each
+node has on the cluster corresponding to the **QUEUE** for the job.  Any extra job
 files are left unless the files are over X seconds old in which case they get
 their own batch.  
 
 Once the batches are figured out they are written to files known as **COMMAND** files with 
-the name:  **fish.$JOB_ID.(MIN SGE_TASK_ID).command** 
+the name:  **$JOB_ID.(MIN SGE_TASK_ID).command** 
 
 **$JOB_ID** is the id of the job and can be parsed from the **.job** file and
 **(MIN SGE_TASK_ID)** is the smallest **$SGE_TASK_ID** in the batch.  
@@ -751,48 +771,39 @@ This **.psub** file should be given execute permission.
 
 See **Job template files and directory** section for more information on template files.
 
-
-
-After writing the **PSUB** file the original **.job** file should have the following
+After writing the **.psub** file the original file should have the following
 line added:
 
     psub.file=(PATH TO PSUB file)
 
-and the **.job** file should have the suffix **.batched** appended.
+and the file should be moved to **QUEUE/batched** directory
 
-This completes this phase.
-
-
-Going from .batched to .batchedandchummed
------------------------------------------
+Going from batched to batchedandchummed
+---------------------------------------
 
 In this phase the batched jobs are uploaded to appropriate remote clusters.
 
-Step one in this phase is to find all the **.batched** files and get a unique list **current.working.dir**
-paths.  For each of these paths upload the **-dir** path if set otherwise just push up the **current.working.dir/QUEUE**
-directory.  Once uploaded the suffix of each **.batched** file should
-be switched to **.batchedandchummed**
+Step one in this phase is to find all the files in **QUEUE/batched** and get a unique list of 
+**current.working.dir** paths.  For each of these paths upload the 
+**current.working.dir/QUEUE** directory.  Once uploaded the suffix of each file should
+be moved to **QUEUE/batchedandchummed**
 
 
-
-Going from .batchedandchummed to .submitted
+Going from batchedandchummed to queued
 -------------------------------------------
 
-In this phase the jobs are submitted via **psub** on the remote cluster. 
+In this phase the jobs are queued up by **panfishsubmit** to the remote cluster.
 
-Step one in this phase is to look for all **.batchedandchummed** files to get a unique
-list of **psub.file** **PSUB** files.  These **PSUB** files should be prefixed with the remote
+Step one in this phase is to look for all files to get a unique
+list of **.psub** files.  These **.psub** file paths should be prefixed with the remote
 cluster **<panfish.config::[QUEUE].basedir>** and passed to standard in of 
-**<panfish.config::[QUEUE].psub>** command.  The output of this command will generate a new
-**MYQSUB** file path for each **QSUB** job file.  This path should be appended to the **.batchedandchummed**
-file with this key:
+**<panfish.config::[QUEUE].psub>** command.  **panfishsubmit** will output job ids that
+match the job file.  
 
-    psub.file=(MYQSUB)
-
-and the **.batchedandchummed** files should have their suffixes switched to **.submitted**
+and the files should be moved to **QUEUE/queued** directory. 
 
 
-Going from .submitted to .running to .done or .failed
+Going from queued/running to failed or done
 ---------------------------------
 
 In this phase the jobs are on the remote cluster and just need to get their status.
@@ -879,14 +890,14 @@ then **psub** should read from standard in and consider each line a new job file
 Output should be as follows:
 
      $ psub (command file)
-     (command filename only)
+     (command filename only .psub suffix removed)
      $
 
 For invocation with **-** flag read from standard in and output as follows:
 
      $ echo -e "(command1)\\n(command2)" | psub -
-     (command1 filename only)
-     (command2 filename only)
+     (command1 filename only .psub suffix removed)
+     (command2 filename only .psub suffix removed)
      $
 
 If **(command)** already exists in the **<psubmitter.config::psub.dir>>**
@@ -925,13 +936,13 @@ of the job which can be one of the following:
 
 **failed**        Job failed.
 
-**completed**     Job completed.
+**done**          Job done.
 
 
 Example invocation passing **psub job file** as an argument:
 
      $ pstat 499.6
-     499.6:::completed
+     499.6:::done
      $
 
 Example invocation passing **psub job files** via standard in:
@@ -1068,7 +1079,7 @@ Otherwise write to standard out when a parallel job starts and when it finishes 
 any other pertinent information.  
 
 panfishsubmit.config
-=======================
+====================
 
 This configuration file will reside in the same directory as the **panfishsubmit**, **panfishstat**, and
 **panfishsubmit** binaries and will contain the following fields:
