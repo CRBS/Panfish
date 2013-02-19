@@ -24,6 +24,13 @@ use Panfish::JobDatabase;
 
 use Panfish::ForkExecutor;
 
+my $SIGTERMCALLED = 0;
+my $SIGUSR1CALLED = 0;
+
+#catch the term signal and set a variable which will cause code to
+#leave while loop gracefully
+$SIG{TERM} = sub { $SIGTERMCALLED = 0; print stderr "Received TERM signal\n";};
+$SIG{USR1} = sub { $SIGUSR1CALLED = 0; print stderr "Received USR1 signal\n";};
 
 
 if (@ARGV == 0){
@@ -119,31 +126,87 @@ if (defined($res)){
 }
 
 #
+my $sleepTime = $config->getLineSleepTime();
+
+
 
 # Wait for the above file to move into done or failed directory
-$job = $jobDb->getJobByQueueAndId($queue,$jobId,$taskId);
-if (!defined($job)){
-  $logger->error("Unable to find job : $queue,$jobid,$taskid");
-  exit(1);
-}
+$job = getJob($jobDb,$sleepTime,$logger,$queue,$jobId,$taskId);
+$logger->debug("Before loop");
+
 while ($job->getState() ne $JOBSTATE->DONE() &&
        $job->getState() ne $JOBSTATE->FAILED()){
-       $logger->debug("Sleeping 1 cause job state is: ".$job->getState()." and not either ".$JOBSTATE->DONE()." or ".$JOBSTATE->FAILED());
-       sleep 1;
-       $job = $jobDb->getJobByQueueAndId($queue,$jobId,$taskId);
-       if (!defined($job)){
-           $logger->error("Unable to find job : $queue,$jobId,$taskId");
-           exit(1);
-       }
-      
+       
+    $logger->debug("in while loop");
+    handleSignal($logger);
+
+    $logger->debug("Sleeping $sleepTime seconds cause job state is: ".
+                   $job->getState()." and not either ".$JOBSTATE->DONE().
+                   " or ".$JOBSTATE->FAILED());
+
+    sleep $sleepTime;
+
+    handleSignal($logger);
+
+    $job = getJob($jobDb,$sleepTime,$logger,$queue,$jobId,$taskId);
 }
 
+$logger->info("Real job exited in state... ".$job->getState());
+
+#if state
+if ($job->getState() eq $JOBSTATE->FAILED()){
+   $logger->error("Job exited in failed state");
+   exit(4);
+}
+
+exit(0);
 
 
 # If we get a signal catch it and exit, but first notifiy Panfish by dropping a file
 # in the deleted folder
 
 # exit
+
+#
+# uses the JobDatabase to get the job kick.
+# 
+#
+sub getJob {
+   my $jobDb = shift;
+   my $sleepTime = shift;
+   my $logger = shift;
+   my $queue = shift;
+   my $jobId = shift;
+   my $taskId = shift;
+
+   my $job = $jobDb->getJobByQueueAndId($queue,$jobId,$taskId);
+   if (!defined($job)){
+
+       $logger->warn("Unable to find job : $queue,$jobId,$taskId.  Sleeping $sleepTime seconds before trying again");
+
+       $job = $jobDb->getJobByQueueAndId($queue,$jobId,$taskId);
+
+       if (!defined($job)){
+           $logger->fatal("Unable to find job : $queue,$jobId,$taskId  : Exiting");
+           exit(1);
+       }    
+   }
+   return $job;
+}
+
+
+sub handleSignal {
+    my $logger = shift;
+
+    if ($SIGTERMCALLED == 1){
+       $logger->fatal("TERM signal received.  Exiting...");
+       exit(2);
+    }
+    if ($SIGUSR1CALLED == 1){
+       $logger->fatal("USR1 signal received.  Exiting...");
+       exit(3);
+    }
+}
 
 
 
