@@ -26,6 +26,7 @@ sub new {
      Config           => shift,
      QSUB_PATH        => "qsub.path",
      QUEUE_LIST       => "queue.list",
+     LINE_SLEEP_TIME  => "line.sleep.time",
      LINE_STDERR_PATH => "line.stderr.path",
      LINE_STDOUT_PATH => "line.stdout.path",
      SUBMIT_DIR       => "submit.dir",
@@ -118,6 +119,23 @@ sub getLineStandardOutPath {
 
     return $self->{Config}->getParameterValue($self->{LINE_STDOUT_PATH});
 }
+
+=head3 getLineSleepTime
+
+Gets the time in seconds the Line program should
+wait between checks on the real job
+
+=cut
+
+sub getLineSleepTime {
+    my $self = shift;
+    if (!defined($self->{Config})){
+        return undef;
+    }
+
+    return $self->{Config}->getParameterValue($self->{LINE_SLEEP_TIME});
+}
+
 
 =head3 getSubmitDir
 
