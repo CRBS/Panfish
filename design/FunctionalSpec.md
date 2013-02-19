@@ -197,6 +197,18 @@ Panfish User Flowchart
                   \/
      ------------------------------
     |                              |
+    | User invokes **chum** on dir |
+    | to transfer data to remote   |
+    | clusters                     |
+    |                              |
+     ------------------------------
+                  ||
+                 _||_
+                \    /
+                 \  /
+                  \/
+     ------------------------------
+    |                              |
     | User invokes **cast** on job |
     | which submits shadow job and |
     | returns Grid Engine job id   | 
@@ -269,7 +281,37 @@ Disables the cluster.
 Lists the current clusters and brief information if (optional name) is omitted
 otherwise in depth information on specified cluster is output.
 
+Chum
+----
 
+Command line program invoked by the user to upload directory to remote clusters that is needed
+by the job submitted by the **cast** command below.  
+
+Command Line:
+
+    chum (options) <directory>
+
+Uploads the **<directory>** to remote cluster specified in options 
+or to all clusters listed in the configuration if this option is omitted.
+
+**(options)**
+
+**--cluster**   Comma delimited list of clusters to upload to.  If this is omitted
+                  all clusters in configuration file will be used.
+
+* **--retry**     Tries to upload multiple times before failing. Default is 3.
+
+* **--timeout**   Timeout for retry in seconds.  Default is 30 seconds.
+
+* **--dry-run**   Don't do the transfer just say what will be pushed.
+
+
+Output should look like this:
+
+Uploading... XX bytes to YYY...Complete Rate:  ZZ mb/sec.
+Uploading... XX bytes to YYY...Complete Rate:  ZZ mb/sec.
+
+With zero exit code upon success or an helpful message on failure
 
 
 Cast
@@ -323,26 +365,20 @@ Land
 Command line program invoked by the user to retreive completed job data on remote clusters.  
 This program has the following command line:
 
-**land (options) <directory path> <optional cluster>**
+**land (options) <directory path>**
 
 * **<directory path>**   is the path on the local filesystem to pull down on the remote clusters
 
-* **<optional cluster>** is the cluster named the same name as the shadow queue to retreive data
-                         from.  If this parameter is omitted, then the command is invoked on 
-                         every cluster the job was run on.  
-
 **(options)**
 
-As of this writing there are no options, but there surely will be.  Need to decide if 
-any of these are necessary.
+* **--cluster**   Comma delimited list of clusters to upload to.  If this is omitted
+                  all clusters in configuration file will be used.
 
-Some options to consider:
+* **--retry**     Tries to download multiple times before failing. Default is 3.
 
-* -retry   Tries to download multiple times before failing.
+* **--timeout**   Timeout for retry in seconds.  Default is 30 seconds.
 
-* -retryTimeout  Timeout for retry.
-
-* --dry-run  Don't do the transfer just say what will be pulled?  
+* **--dry-run**   Don't do the transfer just say what will be pulled.
 
 
 Upon success zero exit code will be output.
