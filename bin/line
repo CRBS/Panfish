@@ -26,11 +26,13 @@ use Panfish::ForkExecutor;
 
 my $SIGTERMCALLED = 0;
 my $SIGUSR1CALLED = 0;
+my $SIGUSR2CALLED = 0;
 
 #catch the term signal and set a variable which will cause code to
 #leave while loop gracefully
-$SIG{TERM} = sub { $SIGTERMCALLED = 0; print stderr "Received TERM signal\n";};
-$SIG{USR1} = sub { $SIGUSR1CALLED = 0; print stderr "Received USR1 signal\n";};
+$SIG{TERM} = sub { $SIGTERMCALLED = 1; print stderr "Received TERM signal\n";};
+$SIG{USR1} = sub { $SIGUSR1CALLED = 1; print stderr "Received USR1 signal\n";};
+$SIG{USR2} = sub { $SIGUSR2CALLED = 1; print stderr "Received USR2 signal\n";};
 
 
 if (@ARGV == 0){
@@ -103,13 +105,25 @@ my $jobId = $ENV{"JOB_ID"};
 my $taskId = $ENV{"SGE_TASK_ID"};
 my $jobName = $ENV{"JOB_NAME"};
 
+if (!defined($taskId)){
+   $taskId = $ENV{"GE_TASK_ID"};
+}
 
 
 $logger->debug("*********Panfish.config******\n".$config->getAllSetValues().
                "\n***************");
 
 $logger->info("JobName:  $jobName");
-$logger->info("Job.Task:  $jobId.$taskId");
+
+if (!defined($taskId) ||
+   $taskId eq "undefined"){
+   $logger->info("Job:  $jobId");
+   $taskId = undef;
+}
+else {
+   $logger->info("Job.Task:  $jobId.$taskId");
+}
+
 $logger->info("Queue:  $queue");
 
 
@@ -156,7 +170,7 @@ $logger->info("Real job exited in state... ".$job->getState());
 #if state
 if ($job->getState() eq $JOBSTATE->FAILED()){
    $logger->error("Job exited in failed state");
-   exit(4);
+   exit(1);
 }
 
 exit(0);
@@ -188,7 +202,7 @@ sub getJob {
 
        if (!defined($job)){
            $logger->fatal("Unable to find job : $queue,$jobId,$taskId  : Exiting");
-           exit(1);
+           exit(2);
        }    
    }
    return $job;
@@ -200,12 +214,18 @@ sub handleSignal {
 
     if ($SIGTERMCALLED == 1){
        $logger->fatal("TERM signal received.  Exiting...");
-       exit(2);
+       exit(50);
     }
     if ($SIGUSR1CALLED == 1){
        $logger->fatal("USR1 signal received.  Exiting...");
-       exit(3);
+       exit(51);
     }
+
+    if ($SIGUSR2CALLED == 1){
+       $logger->fatal("USR2 signal received.  Exiting...");
+       exit(52);
+    }
+
 }
 
 
@@ -292,16 +312,6 @@ the B<#$PANFISH> directive.
 Defines path of standard output stream.  See B<-e> description for allowed 
 variables in B<path>  This value can also be set within the B<command> using
 the B<#$PANFISH> directive.
-
-
-=item B<-dir path>
-
-Defines directory to upload to remote clusters.  B<Cast> will upload the contents of
-this directory to all remote clusters in B<-q> queue list when set.  If not set no
-upload operation is performed.  This value can also be set within the B<command> using
-the B<#$PANFISH> directive.  
-
-NOTE:  This is not an option in B<qsub>.
 
 =item B<--verbose>
 
