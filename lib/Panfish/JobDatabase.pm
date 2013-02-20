@@ -10,6 +10,7 @@ use Panfish::FileReaderWriter;
 use Panfish::Logger;
 use Panfish::ConfigFromFileFactory;
 use Panfish::Config;
+use Panfish::JobState;
 
 =head1 SYNOPSIS
    
@@ -39,8 +40,12 @@ sub new {
      FileReaderWriter => shift,
      SubmitDir        => shift,
      Logger           => shift,
-     FileUtil  => undef,
-     ConfigFactory => undef
+     FileUtil         => undef,
+     ConfigFactory    => undef,
+     JOB_NAME_KEY     => "job.name",
+     COMMAND_KEY      => "command.to.run",
+     CURRENT_DIR_KEY  => "current.working.dir",     
+     JobState         => Panfish::JobState->new()
    };
    $self->{FileUtil} = Panfish::FileUtil->new($self->{Logger});
    $self->{ConfigFactory} = Panfish::ConfigFromFileFactory->new($self->{FileReaderWriter},$self->{Logger});
@@ -90,9 +95,9 @@ sub insert {
      return $res;
    }
 
-   $self->{FileReaderWriter}->write("current.working.dir=".$job->getCurrentWorkingDir()."\n");
-   $self->{FileReaderWriter}->write("job.name=".$job->getJobName."\n");
-   $self->{FileReaderWriter}->write("command=".$job->getCommand."\n");
+   $self->{FileReaderWriter}->write($self->{CURRENT_DIR_KEY}."=".$job->getCurrentWorkingDir()."\n");
+   $self->{FileReaderWriter}->write($self->{JOB_NAME_KEY}."=".$job->getJobName()."\n");
+   $self->{FileReaderWriter}->write($self->{COMMAND_KEY}."=".$job->getCommand()."\n");
    $self->{FileReaderWriter}->close();
 
    return undef;
@@ -157,8 +162,8 @@ sub getJobByQueueAndId {
    my $searchDir = $self->{SubmitDir}."/".$queue;
    if (defined($self->{Logger})){
       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
-   }
-
+   } 
+   
    my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName);
    if (!defined($jobFile)){
      return undef;
@@ -179,12 +184,12 @@ sub getJobByQueueAndId {
      return undef;
    }
 
-   return Panfish::Job->new($queue,$jobId,$taskId,$config->getParameterValue("job.name"),
-                            $config->getParameterValue("current.working.dir"),
-                            $config->getParameterValue("command.to.run"),$state);
+   return Panfish::Job->new($queue,$jobId,$taskId,$config->getParameterValue($self->{JOB_NAME_KEY}),
+                            $config->getParameterValue($self->{CURRENT_DIR_KEY}),
+                            $config->getParameterValue($self->{COMMAND_KEY}),$state);
 }
 
-1;
+
 
 
 =head3 delete
@@ -200,6 +205,55 @@ sub delete {
    my $taskid = shift;
    return "not implemented";
 }
+
+
+=head3 kill
+
+Kills the job.  This tells everyone that the job processing
+should be killed and no further work is to be done on the job.
+
+=cut
+
+sub kill {
+    my $self = shift;
+    my $job = shift;
+
+    if (!defined($self->{FileReaderWriter})){
+        return "FileReaderWriter not defined";
+    }
+
+    if (!defined($self->{SubmitDir})){
+        return "SubmitDir not set";
+    }
+
+    if (!defined($job)){
+        return "Job passed in is undefined";
+    }
+
+    
+    my $outFile = $self->{SubmitDir}."/".$job->getQueue()."/".
+                  $self->{JobState}->KILL()."/".
+                  $job->getJobId().$self->_getTaskSuffix($job->getTaskId());
+
+    if (defined($self->{Logger})){
+        $self->{Logger}->debug("Attempting to kill job by writing to file: $outFile");
+    }
+
+
+   my $res = $self->{FileReaderWriter}->openFile(">$outFile");
+   if (defined($res)){
+     return $res;
+   }
+
+   $self->{FileReaderWriter}->write($self->{CURRENT_DIR_KEY}."=".$job->getCurrentWorkingDir()."\n");
+   $self->{FileReaderWriter}->write($self->{JOB_NAME_KEY}."=".$job->getJobName()."\n");
+   $self->{FileReaderWriter}->write($self->{COMMAND_KEY}."=".$job->getCommand()."\n");
+   $self->{FileReaderWriter}->close();
+
+   return undef;
+}
+
+1;
 
 __END__
 
