@@ -14,16 +14,42 @@ use Panfish::ForkExecutor;
 sub new {
     my $class = shift;
     my $self = {
-	OUT => undef,
-	OutputTime => 1,
-    Level => "DEBUG",
-    NotificationLevel   => "ERROR,FATAL",
-    NotificationSubject => "Panfish Log Message",
-    Email               => undef,
-	LogFile => undef
+        OUT                 => undef,
+	OutputTime          => 1,
+        DEBUG               => "DEBUG",
+        WARN                => "WARN",
+        ERROR               => "ERROR",
+        FATAL               => "FATAL",
+        Level               => undef,
+        NotificationLevel   => undef,
+        NotificationSubject => "Panfish Log Message",
+        Email               => undef,
+	LogFile             => undef
     };
+    $self->{Level} = $self->{DEBUG};
+    $self->{NotificationLevel} = $self->{ERROR}.",".$self->{FATAL};
 
     return bless ($self,$class);
+}
+
+sub setLevelBasedOnVerbosity {
+    my $self = shift;
+    my $verbosity = shift;
+    if (!defined($verbosity)){
+        $self->setLevel($self->{ERROR});
+    }
+    else {
+
+        if ($verbosity == 1){
+            $self->setLevel($self->{WARN});
+        } elsif ($verbosity == 2){
+            $self->setLevel($self->{INFO});
+        } elsif ($verbosity == 3){
+            $self->setLevel($self->{DEBUG});
+    }
+}
+
+
 }
 
 sub setNotificationSubject {
