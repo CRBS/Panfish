@@ -10,15 +10,15 @@ use warnings;
 
 =head1 DESCRIPTION
 
-This object represents state of a Job.
+Object represents an enumeration of job states.
 
 =head1 METHODS
 
 =head3 new
 
-Creates new instance of Job object
+Creates new instance of JobState object
 
-my $job = Panfish::Job->new()
+my $job = Panfish::JobState->new()
 
 =cut
 
@@ -31,7 +31,8 @@ sub new {
      BATCHEDANDCHUMMED => "batchedandchummed",
      RUNNING           => "running",
      DONE              => "done",
-     FAILED            => "failed"
+     FAILED            => "failed",
+     KILL              => "kill"
    };
 
 
@@ -116,6 +117,19 @@ sub FAILED {
    my $self = shift;
    return $self->{FAILED};
 }
+
+=head3 KILLED
+
+Gets String representing kill
+
+=cut
+
+sub KILL {
+   my $self = shift;
+   return $self->{KILL};
+}
+
+
 
 1;
 
