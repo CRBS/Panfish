@@ -17,7 +17,8 @@ use Panfish::Config;
 
 =head1 DESCRIPTION
 
-Database for Jobs
+Database for Jobs using files in the filesystem as the storage
+medium.
 
 =head1 METHODS
 
@@ -25,7 +26,10 @@ Database for Jobs
 
 Creates new instance of JobDatabase
 
-my $job = Panfish::Job->new()
+my $logger = Panfish::Logger->new();
+my $readerWriter =  Panfish::FileReaderWriterImpl->new($logger);
+
+my $jobDb = Panfish::JobDatabase->new($readerWriter,"/home/foo",$logger);
 
 =cut
 
@@ -49,7 +53,10 @@ sub new {
 
 =head3 insert
 
-Adds a new job to the database
+Adds a new job to the database returning undef upon success otherwise
+a string with the error upon failure.
+
+$jobDb->insert($job);
 
 =cut
 
@@ -71,7 +78,7 @@ sub insert {
 
    my $outFile = $self->{SubmitDir}."/".$job->getQueue()."/".
                  $job->getState()."/".
-                 $job->getJobId().".".$job->getTaskId().".job";
+                 $job->getJobId().$self->_getTaskSuffix($job->getTaskId());
 
    if (defined($self->{Logger})){
      $self->{Logger}->debug("Attempting to insert job by writing to file: $outFile");
@@ -92,6 +99,26 @@ sub insert {
 }
 
 
+
+#
+# Internal method that creates taskSuffix
+# which is .# if the taskid is set otherwise
+# an empty string is returned
+#
+sub _getTaskSuffix {
+    my $self = shift;
+    my $taskId = shift;
+    my $taskSuffix = "";
+
+   #only append task id if its set
+   if (defined($taskId) &&
+       $taskId ne ""){
+       $taskSuffix = ".".$taskId;
+   }
+   return $taskSuffix;
+}
+
+
 =head3 update
 
 Updates the job in the database
@@ -101,23 +128,32 @@ Updates the job in the database
 sub update {
    my $self = shift;
    my $job = shift;
+   return "not implemented yet";
 
 }
 
 =head3 getJob
 
-Gets a job from the database if any exist.
+Gets a job from the database if any exist.  This is done
+by searching the submit directory (set in the constructor) for
+any files matching $JOBID.$TASKID.  When found the job object is
+constructed by reading the contents of the file and looking at
+which sub directory the file resides in.  This sub directory denotes
+the state of the job.
+
+my $job = $jobDb->getJobByQueueAndId("gordon_shadow.q","123",1");
+
 
 =cut
 
 sub getJobByQueueAndId {
    my $self = shift;
    my $queue = shift;
-   my $jobid = shift;
-   my $taskid = shift;
+   my $jobId = shift;
+   my $taskId = shift;
 
 
-   my $jobFileName = "$jobid.$taskid.job";
+   my $jobFileName = "$jobId".$self->_getTaskSuffix($taskId);
    my $searchDir = $self->{SubmitDir}."/".$queue;
    if (defined($self->{Logger})){
       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
@@ -130,7 +166,8 @@ sub getJobByQueueAndId {
 
    my $state = $jobFile;
    $state =~s/^$self->{SubmitDir}\/$queue\///;
-   $state =~s/\/$jobid\..*//;
+  
+   $state =~s/\/$jobFileName//;
    
    if (defined($self->{Logger})){
       $self->{Logger}->debug("Job State is: $state");
@@ -142,7 +179,7 @@ sub getJobByQueueAndId {
      return undef;
    }
 
-   return Panfish::Job->new($queue,$jobid,$taskid,$config->getParameterValue("job.name"),
+   return Panfish::Job->new($queue,$jobId,$taskId,$config->getParameterValue("job.name"),
                             $config->getParameterValue("current.working.dir"),
                             $config->getParameterValue("command.to.run"),$state);
 }
@@ -161,8 +198,7 @@ sub delete {
    my $queue = shift;
    my $jobid = shift;
    my $taskid = shift;
-
-
+   return "not implemented";
 }
 
 __END__
