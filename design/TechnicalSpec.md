@@ -481,12 +481,12 @@ The arguments for this command can be seen in the **Cast** documentation, but it
 
     line <stdout path> <stderr path> <script to run> (arguments for script)
 
-The **Line** program generates a job file and waits for the suffix on that job file to switch to
-**.done** or **.failed** 
+The **Line** program generates a job file and watches for this file to end up in a **done** or **failed**
+directory which lets the program know the job has finished or failed.
 
 The file will be named written in the path below with the following format:
 
-**submit.dir/$QUEUE/$JOB_ID.$TASK_ID.job**
+**submit.dir/$QUEUE/submitted/$JOB_ID.$TASK_ID**
 
 The **submit.dir** is from the **panfish.config** file and the variables **$QUEUE, $JOB_ID, and $TASK_ID** 
 are set by Grid Engine and define the queue the job is running under and its job id and task id.  
@@ -496,11 +496,11 @@ Example files where **submit.dir** = /home/foo and $QUEUE = lion_shadow
 
 Job id is 456 and task id is 1:
 
-* **/home/foo/lion_shadow/456.1.job**
+* **/home/foo/lion_shadow/submitted/456.1**
 
 Job id is 5555 and task id is not set:
 
-* **/home/foo/lion_shadow/5555..job
+* **/home/foo/lion_shadow/submitted/5555
 
 In the job file the following data will be written by the **line** command:
 
@@ -560,11 +560,9 @@ In the above case **/home/foo/job1** is the directory on the local system where 
 within that directory named **runjob.sh** the path **/projects/foo** is the base directory on the remote cluster.  The job
 will now be run under **/projects/foo/home/foo/job1** on that cluster.  
 
-The **line** program should write out the file first without a .job suffix and then rename it.  This
-will minimize race conditions between the **Panfish** daemon and **line**  
 
 The **line** program should now sit in a wait loop waiting **panfish.config::[QUEUE].linewait** seconds
-before checking if file now has **.failed** or **.done** status.  
+before checking if file has moved to **done** or **failed** directory. 
 
 Outputs
 -------
@@ -599,7 +597,7 @@ Land
 This program lets caller retreive data from remote clusters via rsync call.  
 The command line parameters are in this format:
 
-    line (options) (directory path) (optional queue/cluster)
+    line (options) (directory path)
     
 The **line** program is given a directory path and possibly a queue/cluster.  With this information
 **line** will retreive the directory passed in from all remote clusters, in order seen in queue.list
