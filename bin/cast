@@ -17,10 +17,6 @@ use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
 
-use Panfish::ForkExecutor;
-
-
-
 if (@ARGV == 0){
   pod2usage(2);
 }
@@ -68,20 +64,9 @@ if (defined($oArgValue)){
 
 my $logger = Panfish::Logger->new();
 
-if (!defined($verboseArg)){
-  $logger->setLevel("ERROR");
-}
-else {
-  if ($verboseArg == 1){
-    $logger->setLevel("WARN");
-  } elsif ($verboseArg == 2){
-    $logger->setLevel("INFO");
-  } elsif ($verboseArg == 3){
-    $logger->setLevel("DEBUG");
-  }
-}
-
-
+# sets the logging level based on number of times verbose flag 
+# was passed into command
+$logger->setLevelBasedOnVerbosity($verboseArg);
 
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
@@ -108,9 +93,15 @@ else {
     $taskIdOutVar = ".out";
 }
 
-if (defined($qArgValue)){
-    $newArgList .= " -q $qArgValue";
+# verify the list of queues specified is valid
+#
+my ($error,$cList) = $config->getCommaDelimitedClusterList($qArgValue);
+$logger->debug("Cluster list: $cList");
+if (defined($error)){
+    $logger->fatal("Invalid queue/cluster list set via -q flag : $error");
+    exit(1);
 }
+$newArgList .= " -q ".$cList;
 
 my $dir = "";
 if (defined($dirArgValue)){
