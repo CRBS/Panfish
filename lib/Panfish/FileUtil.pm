@@ -59,7 +59,6 @@ sub findFile {
       }
       return undef;
    }
-
    
    my $dh;
 
@@ -77,14 +76,8 @@ sub findFile {
         next;
       }
 
-      if (defined($self->{Logger})){
-         $self->{Logger}->debug("\tExamining file: $f");
-      }       
       if ($f eq $file){
         closedir($dh);
-        if (defined($self->{Logger})){
-           $self->{Logger}->debug("\t\tFound Match");
-        } 
         return $dir."/".$file;
       }
       if (-d $dir."/".$f){
