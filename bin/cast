@@ -96,10 +96,16 @@ $stdout=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
 $stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
 
 
-my $newArgList = "-b y -cwd";
+my $newArgList = "-b y -cwd -notify";
 # lets build a new argument list for the qsub call
 if (defined($tArgValue)){
     $newArgList .= " -t $tArgValue";
+    $taskIdErrVar = ".\\\$TASK_ID.err";
+    $taskIdOutVar = ".\\\$TASK_ID.out";
+}
+else {
+    $taskIdErrVar = ".err";
+    $taskIdOutVar = ".out";
 }
 
 if (defined($qArgValue)){
@@ -111,9 +117,11 @@ if (defined($dirArgValue)){
    $dir = " -dir $dirArgValue";
 }
 
+my $taskId = "";
+
 $cmd = $config->getQsubPath()." $newArgList -e ".
-       $config->getLineStandardErrorPath()."/\\\$JOB_ID.\\\$TASK_ID.err -o ".
-       $config->getLineStandardOutPath()."/\\\$JOB_ID.\\\$TASK_ID.out ".
+       $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
+       $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
        $config->getLineCommand()."$stdout$stderr$dir $command --verbose --verbose --verbose";
 
 $logger->info("Running command: $cmd");
