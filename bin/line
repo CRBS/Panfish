@@ -152,7 +152,7 @@ while ($job->getState() ne $JOBSTATE->DONE() &&
        $job->getState() ne $JOBSTATE->FAILED()){
        
     $logger->debug("in while loop");
-    handleSignal($logger);
+    handleSignal($jobDb,$job,$logger);
 
     $logger->debug("Sleeping $sleepTime seconds cause job state is: ".
                    $job->getState()." and not either ".$JOBSTATE->DONE().
@@ -160,7 +160,7 @@ while ($job->getState() ne $JOBSTATE->DONE() &&
 
     sleep $sleepTime;
 
-    handleSignal($logger);
+    handleSignal($jobDb,$job,$logger);
 
     $job = getJob($jobDb,$sleepTime,$logger,$queue,$jobId,$taskId);
 }
@@ -210,22 +210,20 @@ sub getJob {
 
 
 sub handleSignal {
+    my $jobDb = shift;
+    my $job = shift;
     my $logger = shift;
 
-    if ($SIGTERMCALLED == 1){
-       $logger->fatal("TERM signal received.  Exiting...");
+    if ($SIGTERMCALLED == 1 ||
+        $SIGUSR1CALLED == 1 ||
+        $SIGUSR2CALLED == 1){
+       $logger->fatal("Signal received.  Killing job and exiting...");
+       my $res = $jobDb->kill($job);
+       if (defined($res)){
+          $logger->error("There was a problem trying to kill real job : $res");
+       }
        exit(50);
     }
-    if ($SIGUSR1CALLED == 1){
-       $logger->fatal("USR1 signal received.  Exiting...");
-       exit(51);
-    }
-
-    if ($SIGUSR2CALLED == 1){
-       $logger->fatal("USR2 signal received.  Exiting...");
-       exit(52);
-    }
-
 }
 
 
