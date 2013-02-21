@@ -25,7 +25,7 @@ sub new {
    my $self = {
      Config           => shift,
      QSUB_PATH        => "qsub.path",
-     QUEUE_LIST       => "queue.list",
+     CLUSTER_LIST     => "cluster.list",
      LINE_SLEEP_TIME  => "line.sleep.time",
      LINE_STDERR_PATH => "line.stderr.path",
      LINE_STDOUT_PATH => "line.stdout.path",
@@ -67,15 +67,91 @@ sub getQsubPath {
     return $self->{Config}->getParameterValue($self->{QSUB_PATH});
 }
 
+=head3 getCommaDelimitedClusterList
 
-sub getQueueList {
+Gets a comma delimited list of clusters from the configuration filtered by
+the list of clusters passed in to this method.  If the cluster list passed in
+has invalid values then an error is returned otherwise $error below is set to undef.
+
+my ($error,$cList) = $config->getCommaDelimitedClusterList();
+
+or
+
+my ($error,$cList) = $config->getCommaDelimitedClusterList("lion_shadow.q,pokey_shadow.q");
+
+=cut
+
+sub getCommaDelimitedClusterList {
     my $self = shift;
+    my $clusterList = shift;
 
-    if (!defined($self->{Config})){
-        return undef;
+    my ($error,@cArray) = $self->getClusterListAsArray($clusterList);
+    
+    if (defined($error)){
+       return ($error,undef);
     }
 
-    return $self->{Config}->getParameterValue($self->{QUEUE_LIST});
+    my $cList = "";
+    for (my $x = 0; $x < @cArray; $x++){
+        if ($cList eq ""){
+            $cList = "$cArray[$x]";
+        }
+        else{
+            $cList .= ",$cArray[$x]";
+        }
+    }
+    return (undef,$cList);
+}
+
+=head3 getClusterListAsArray
+
+Gets array of clusters from the configuration filtered by
+the list of clusters passed in to this method.  If the cluster list passed in
+has invalid values then an error is returned otherwise $error below is set to undef.
+
+my ($error,$cArray) = $config->getCommaDelimitedClusterList();
+
+or
+
+my ($error,@cArray) = $config->getCommaDelimitedClusterList("lion_shadow.q,pokey_shadow.q");
+
+=cut
+
+sub getClusterListAsArray {
+    my $self = shift;
+    my $clusterList = shift;
+
+    if (!defined($self->{Config})){
+        return ("panfish.config was not set",undef);
+    }
+
+    my @cArray = split(",",$self->{Config}->getParameterValue($self->{CLUSTER_LIST}));
+
+    if (!defined($clusterList)){
+        return (undef,@cArray);
+    }
+
+    # a cluster list was defined so we need to verify all entries in 
+    # that list exist in configuration otherwise we have a problem.
+    my %cHash;
+
+    for (my $x = 0 ; $x < @cArray; $x++){
+       $cHash{$cArray[$x]} = 1;
+    }
+
+    my @cArrayFromParam = split(",",$clusterList);
+
+    my @finalArray;
+    my $cnt = 0;
+    for (my $x = 0; $x < @cArrayFromParam; $x++){
+        if (defined($cHash{$cArrayFromParam[$x]})){
+            $finalArray[$cnt++] = $cArray[$x];
+        }
+        else {
+           return ("$cArrayFromParam[$x] is not a valid cluster",undef);
+        }
+    }
+    return (undef,@finalArray);
 }
 
 =head3 getLineCommand
