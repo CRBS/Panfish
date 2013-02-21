@@ -1,0 +1,165 @@
+#!/usr/bin/perl
+
+
+use FindBin qw($Bin);
+
+#these allow this script to work when installed in alternate path
+use lib "$Bin/../lib";
+use lib "$Bin/../lib/perl5/site_perl";
+use lib "$Bin/../lib/perl5";
+
+use Getopt::Long;
+use Pod::Usage;
+
+use Panfish::ForkExecutor;
+use Panfish::PanfishConfig;
+use Panfish::Logger;
+use Panfish::PanfishConfigFactory;
+use Panfish::FileReaderWriterImpl;
+
+if (@ARGV == 0){
+  pod2usage(2);
+}
+
+
+my $cmdLineParseResult = GetOptions ("directory=s"  => \$directoryArgValue,
+                                     "cluster=s"    => \$clusterArgValue,
+                                     "retry=i"      => \$retryArgValue,
+                                     "timeout=i"    => \$timeOutArgValue,
+                                     "dry-run"      => \$dryRunArg,
+                                     "verbose+"     => \$verboseArg,
+                                     "help|?"       => \$helpArg,
+                                     "man"          => \$manArg) or pod2usage(2);
+
+
+if ($helpArg){
+  pod2usage(1);
+}
+
+if ($manArg){
+  pod2usage(-exitstatus => 0, -verbose => 2);
+}
+
+if (!defined($directoryArgValue) ||
+    ! -d $directoryArgValue){
+
+   pod2usage(-message => "\nValid directory must be set via the --directory flag\n",
+             -verbose => 1,
+             -exitval => 2);
+
+}
+
+
+my $logger = Panfish::Logger->new();
+
+# sets the logging level based on number of times verbose flag 
+# was passed into command
+$logger->setLevelBasedOnVerbosity($verboseArg);
+
+my $reader = Panfish::FileReaderWriterImpl->new($logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $config = $configFactory->getPanfishConfig();
+my $exec = Panfish::ForkExecutor->new();
+
+my @clusterList = $config->getClusterList($clusterArgValue);
+
+for (my $x = 0; $x < @clusterList ; $x++){
+#   $res = $uploader->upload($directoryArgValue,$cluster[$x]);
+#   if (defined($res)){
+#      $logger->fatal("Unable to upload $directoryArgValue to $cluster[$x]");
+#      exit(2);
+#   }
+}
+
+exit(0);
+1;
+
+__END__
+
+=head1 NAME
+
+chum - Uploads directory to remote clusters
+
+=head1 SYNOPSIS
+
+chum [ B<options> ] 
+
+=head1 DESCRIPTION
+
+B<Chum> uploads a directory to remote clusters 
+
+B<Chum> does this utilizing B<rynsc> to push the data to clusters
+specified by the user or to call clusters configured in B<panfish.config>
+file.
+
+=head1 OPTIONS
+
+
+=over 4
+
+=item B<--directory path>
+
+Defines the directory to upload.  Any symbolic links in this directory will be ignored.
+
+=item B<--cluster cluster_list,..>
+
+Defines the list of clusters (comma delimited) that the directory should be uploaded to.
+If this argument is omitted then all clusters listed in B<panfish.config::queue.list> will
+be used.  
+
+=item B<--retry count>
+
+Defines the number of times to retry the transfer per cluster before failing. Default is 3.
+
+
+=item B<--timeout seconds>
+
+Defines timeout in seconds this program should wait before attempting a retry if a transfer failed.
+Default is 30 seconds.
+
+=item B<--dry-run>
+
+If set, the program will NOT transfer any data, instead the program will merely state what it 
+would transfer.
+
+=item B<--verbose>
+
+Verbose mode.  Causes B<chum> to print debugging messages.  Multiple B<--verbose> options increase
+verbosity.  The maximum is 3.
+
+=head1 EXIT STATUS
+
+=over
+
+=item 0     Operation was successful.
+
+=item >0    Error.
+
+=back
+
+=head1 EXAMPLES
+
+=head1 FILES
+
+ hello
+
+=head1 AUTHOR
+
+Christopher Churas <churas@ncmir.ucsd.edu>
+
+=head1 REPORTING BUGS
+
+bugs
+
+
+=head1 COPYRIGHT
+
+blah blah
+
+=head1 SEE ALSO
+
+more blah
+
+
+
+=cut
