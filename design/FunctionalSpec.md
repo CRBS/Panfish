@@ -289,14 +289,16 @@ by the job submitted by the **cast** command below.
 
 Command Line:
 
-    chum (options) <directory>
+    chum (options)
 
-Uploads the **<directory>** to remote cluster specified in options 
+Uploads a directory to remote cluster specified in options 
 or to all clusters listed in the configuration if this option is omitted.
 
 **(options)**
 
-**--cluster**   Comma delimited list of clusters to upload to.  If this is omitted
+**--directory**   **REQUIRED** Directory to upload.
+
+**--cluster**     Comma delimited list of clusters to upload to.  If this is omitted
                   all clusters in configuration file will be used.
 
 * **--retry**     Tries to upload multiple times before failing. Default is 3.
@@ -365,11 +367,13 @@ Land
 Command line program invoked by the user to retreive completed job data on remote clusters.  
 This program has the following command line:
 
-**land (options) <directory path>**
-
-* **<directory path>**   is the path on the local filesystem to pull down on the remote clusters
+    land (options)
 
 **(options)**
+
+
+* **--directory** **REQUIRED** Path to the directory on the local filesystem that
+                  should be downloaded from the remote clusters.
 
 * **--cluster**   Comma delimited list of clusters to upload to.  If this is omitted
                   all clusters in configuration file will be used.
