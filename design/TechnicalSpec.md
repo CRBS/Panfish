@@ -256,7 +256,7 @@ directory as the binaries (cast, land, panfish).
 In the configuration file is the following properties in a **key=value** 
 format as shown with a real configuration below:
 
-    queue.list=gordon_shadow.q,codonis_shadow.q,trestles_shadow.q,lonestar_shadow.q
+    cluster.list=gordon_shadow.q,codonis_shadow.q,trestles_shadow.q,lonestar_shadow.q
     qsub.path=/opt/gridengine/ge6.2u4/bin/lx24-amd64/qsub
     line.sleep.time=1
     line.stderr.path=/home/churas/src/panfish/p2/out
@@ -285,28 +285,28 @@ monitoring.  The other seven properties seen above are cluster specific and are 
 for each cluster.  The cluster specific properties will be prefixed with the queue matching
 the cluster the jobs should run on.  In the above case **gordon_shadow.q** is the shadow
 queue for the **Gordon** cluster.  Another way of saying this is the last seven properties
-will be in this format with **QUEUE** to be replaced by the name of the shadow queue:
+will be in this format with **CLUSTER** to be replaced by the name of the shadow queue:
 
     # These properties are queue specific and will need to
     # be configured for each queue
-    QUEUE.host=
-    QUEUE.basedir=
-    QUEUE.panfishsubmit=
-    QUEUE.panfishstat=
-    QUEUE.run.job.script=
-    QUEUE.scratch=
-    QUEUE.line.wait=
-    QUEUE.land.max.retries=
-    QUEUE.land.wait=
-    QUEUE.land.rsync.timeout=180
-    QUEUE.land.rsync.contimeout=100
+    CLUSTER.host=
+    CLUSTER.basedir=
+    CLUSTER.panfishsubmit=
+    CLUSTER.panfishstat=
+    CLUSTER.run.job.script=
+    CLUSTER.scratch=
+    CLUSTER.line.wait=
+    CLUSTER.land.max.retries=
+    CLUSTER.land.wait=
+    CLUSTER.land.rsync.timeout=180
+    CLUSTER.land.rsync.contimeout=100
 
 
 
 Here is a breakdown of each **global** property:
 
-* **queue.list**
-    This parameter lists all of the shadow queues configured for panfish.  The 
+* **cluster.list**
+    This parameter lists all of the clusters/queues configured for panfish.  The 
     **cast** and **land** commands can optionally have the clusters omitted in 
     which case the data is pushed or pulled from all of the clusters in this 
     list.  The list should be comma delimited ideally with no spaces in 
@@ -360,44 +360,44 @@ Here is a breakdown of each **global** property:
 
 Here is a breakdown of the **queue** specific properties
 
-* **QUEUE.host**
+* **CLUSTER.host**
     Host of remote cluster to submit jobs on and to copy data to/from.  This
     should be of the form (user)@(host) ex:  bob@gordon.sdsc.edu
 
-* **QUEUE.basedir**
+* **CLUSTER.basedir**
     Directory on remote cluster that is considered the base directory under which all
     Panfish jobs will run.  For example, if this is set to /home/foo and a job is run which
     has a path of /home/bob/j1.  The path on the remote cluster would be /home/foo/home/bob/j1.
     This is possible because the job script should prefix all paths with $PANFISH_BASEDIR which 
     will be set to this value.
 
-* **QUEUE.panfishsubmit**
+* **CLUSTER.panfishsubmit**
     Path to **panfishsubmit** wrapper that handles in job submission as well 
     as offers throttline capability because some clusters cannot have more then 
     a limited number of jobs submitted.
 
-* **QUEUE.panfishstat**
+* **CLUSTER.panfishstat**
     Path to **panfishstat** wrapper that lets caller get status of job.
 
-* **QUEUE.run.job.script**
+* **CLUSTER.run.job.script**
     This script lets a set of serial jobs run on a single node in parallel.
 
-* **QUEUE.scratch**
+* **CLUSTER.scratch**
     The temp directory to use for individual jobs on the remote cluster corresponding to the queue.
 
-* **QUEUE.line.wait**
+* **CLUSTER.line.wait**
     Tells **line** command number of seconds to wait before checking if the job file has been renamed.
 
-* **QUEUE.land.max.retries**
+* **CLUSTER.land.max.retries**
     Number of retries **land** command should make when attempting a retreival of data.
 
-* **QUEUE.land.wait**
+* **CLUSTER.land.wait**
     Number of seconds **land** command should wait between transfer retries.
 
-* **QUEUE.land.rsync.timeout**
+* **CLUSTER.land.rsync.timeout**
     Sets the rsync IO timeout in seconds. (--timeout)
 
-* **QUEUE.land.rsync.contimeout**
+* **CLUSTER.land.rsync.contimeout**
     Sets the rsync connection timeout in seconds. (--contimeout)
 
 Cast
@@ -420,7 +420,7 @@ The shadow job is named **line** and it requires the following parameters:
 
 **cast** needs to invoke this qsub:
 
-    qsub -t X -e <shadow stderr path>$JOB_ID.$TASK_ID.err -o <shadow stdout path>.$JOB_ID.$TASK_ID.out line <stdout path> <stderr path> <script to run> (arguments for script)
+    qsub -notify -b y -cwd -t X -e <shadow stderr path>$JOB_ID.$TASK_ID.err -o <shadow stdout path>.$JOB_ID.$TASK_ID.out line <stdout path> <stderr path> <script to run> (arguments for script)
 
 The **<shadow stderr path>** and **<shadow stdout path>** are obtained from **panfish.config** by parsing
 **stderr.path** and **stdout.path** properties.  The **<stdout path>** and **<stderr path>** are parameters
@@ -469,8 +469,6 @@ Where **(MESSAGE)** is a human readable form of the message.
 
 If any error is encountered a non-zero exit code should be returned.
 
-
-
 Line
 ====
 
@@ -490,6 +488,8 @@ The file will be named written in the path below with the following format:
 
 The **submit.dir** is from the **panfish.config** file and the variables **$QUEUE, $JOB_ID, and $TASK_ID** 
 are set by Grid Engine and define the queue the job is running under and its job id and task id.  
+If $TASK_ID is NOT set which is possible if the user submitted a single job then the **.$TASK_ID** 
+from the job file name.
 
 Example files where **submit.dir** = /home/foo and $QUEUE = lion_shadow
 
@@ -522,7 +522,7 @@ set by Grid Engine. ex:  /home/foo/job1
 
 ** This is the command to run on the remote cluster.  The command needs to be formatted in the following
 way:
-  export PANFISH_SCRATCH="<panfish.config::[QUEUE].scratch>";export PANFISH_BASEDIR="<panfish.config::[QUEUE].basedir>";export JOB_ID="<$JOB_ID>";export SGE_TASK_ID="<$TASK_ID>";$PANFISH_BASEDIR/<script to run> (arguments for script) > $PANFISH_BASEDIR/<stdout path> 2> $PANFISH_BASEDIR/<stderr path>
+  export PANFISH_SCRATCH="<panfish.config::[CLUSTER].scratch>";export PANFISH_BASEDIR="<panfish.config::[CLUSTER].basedir>";export JOB_ID="<$JOB_ID>";export SGE_TASK_ID="<$TASK_ID>";$PANFISH_BASEDIR/<script to run> (arguments for script) > $PANFISH_BASEDIR/<stdout path> 2> $PANFISH_BASEDIR/<stderr path>
 
 Basically what is happening is we are generating a job where **PANFISH_BASEDIR**, **PANFISH_SCRATCH**, 
 **PANFISH_JOB_ID**, and **PANFISH_TASK_ID** variables are set to correct values.  In addition, 
@@ -531,8 +531,8 @@ on remote clusters by the **Panfish** daemon.
 
 Here is a breakdown of the variables in the line above which are denoted by **<>**
 
-<panfish.config::[QUEUE].basedir>
-  This is the basedir parameter from the **panfish.config** where QUEUE is set to $QUEUE variable in the **line** command.
+<panfish.config::[CLUSTER].basedir>
+  This is the basedir parameter from the **panfish.config** where CLUSTER is set to $QUEUE variable in the **line** command.
   For instance, if the **line** job ended up in **foo.q** then $QUEUE would be set to **foo.q** and the **line** program
   should look for **foo.q.basedir** in the **panfish.config**
 
@@ -561,8 +561,14 @@ within that directory named **runjob.sh** the path **/projects/foo** is the base
 will now be run under **/projects/foo/home/foo/job1** on that cluster.  
 
 
-The **line** program should now sit in a wait loop waiting **panfish.config::[QUEUE].linewait** seconds
-before checking if file has moved to **done** or **failed** directory. 
+The **line** program should now sit in a wait loop waiting **panfish.config::[CLUSTER].linewait** seconds
+before checking if file has moved to **done** or **failed** directory.   **line** should also watch
+for USR1, USR2, and TERM signals and if received the program should write out the job file to
+
+    <panfish.config::submit.dir>/$QUEUE/kill
+
+before exiting with 50 as an exit code and a log message to standard error and out.  The above
+lets **Panfish** know that the real job should be killed.
 
 Outputs
 -------
@@ -597,16 +603,16 @@ Land
 This program lets caller retreive data from remote clusters via rsync call.  
 The command line parameters are in this format:
 
-    line (options) (directory path)
+    land (options) (directory path)
     
-The **line** program is given a directory path and possibly a queue/cluster.  With this information
+The **land** program is given a directory path and possibly a queue/cluster.  With this information
 **line** will retreive the directory passed in from all remote clusters, in order seen in queue.list
 parameter in **panfish.config** or from just the cluster specified.  This is done by using rsync
 and the basedir for the corresponding cluster in the config is prefixed to the path on the remote side. 
 
 
-**Line** should have logic to retry if a rsync call fails.  <panfish.config::[QUEUE].land.max.retries> and
-<panfish.config::[QUEUE].land.wait> should be used by the **line** command to determine
+**Line** should have logic to retry if a rsync call fails.  <panfish.config::[CLUSTER].land.max.retries> and
+<panfish.config::[CLUSTER].land.wait> should be used by the **line** command to determine
 number of retries and delay to wait between those retries.  Although these values can be overridden via
 command line options **--retry** and **--retryTimeout**  Don't forget there is also a **--dry-run** flag
 to not perform the transfer just talk about it.  
@@ -615,8 +621,8 @@ Base rsync call:
     rsync -rtpz --stats --timeout=X --contimeout=Y -e ssh
 
 The arguments above: **-rtpz** denotes recursive, compressed transfer preserving time stamps and permissions.
-The X should be pulled from <panfish.config::[QUEUE].land.rsync.timeout> and
-Y should be pulled from <panfish.config::[QUEUE].land.rsync.contimeout>.
+The X should be pulled from <panfish.config::[CLUSTER].land.rsync.timeout> and
+Y should be pulled from <panfish.config::[CLUSTER].land.rsync.contimeout>.
 
 Before doing the transfer perform a calculation of data to download.  One easy way to do this, but
 with some risk is the **du** command on the directory to download.  After calculating data to transfer
@@ -734,11 +740,11 @@ Going from submitted to batched
 -------------------------------
 
 This is the initial phase of the job and **Panfish**'s job is to look for a 
-list of files within a given **QUEUE/submitted** directory that share the 
+list of files within a given **CLUSTER/submitted** directory that share the 
 same **JOB_ID**.  These files are sorted by **SGE_TASK_ID** in 
 ascending order.  
    These files are then put into batches based on number of cores each
-node has on the cluster corresponding to the **QUEUE** for the job.  Any extra job
+node has on the cluster corresponding to the **CLUSTER** for the job.  Any extra job
 files are left unless the files are over X seconds old in which case they get
 their own batch.  
 
@@ -749,19 +755,19 @@ the name:  **$JOB_ID.(MIN SGE_TASK_ID).command**
 **(MIN SGE_TASK_ID)** is the smallest **$SGE_TASK_ID** in the batch.  
 
 The **COMMAND** file is written to:
-**current.working.dir/QUEUE** directory.  **Panfish** will need to create this **QUEUE** directory
+**current.working.dir/CLUSTER** directory.  **Panfish** will need to create this **CLUSTER** directory
 if it does not exist.  
 
 Another file that is actually submitted to the remote clusters queueing system.  This file for
 a lack of a better name is known as **PSUB** file and is created by using the template file
-corresponding to the **QUEUE** the job files ended up in.  This template file needs the following
+corresponding to the **CLUSTER** the job files ended up in.  This template file needs the following
 tokens replaced:
 
-    @PANFISH_JOB_STDOUT_PATH@     -- Set to current.working.dir/QUEUE/JOBFILE.stdout
-    @PANFISH_JOB_STDERR_PATH@     -- Set to current.working.dir/QUEUE/JOBFILE.stderr
+    @PANFISH_JOB_STDOUT_PATH@     -- Set to current.working.dir/CLUSTER/JOBFILE.stdout
+    @PANFISH_JOB_STDERR_PATH@     -- Set to current.working.dir/CLUSTER/JOBFILE.stderr
     @PANFISH_JOB_NAME@            -- Set to job.name in job file submitted by line command.
-    @PANFISH_JOB_CWD@             -- Set to QUEUE.basedir/current.working.dir
-    @PANFISH_RUN_JOB_SCRIPT@      -- Set to <panfish.config::[QUEUE].run.job.script>
+    @PANFISH_JOB_CWD@             -- Set to CLUSTER.basedir/current.working.dir
+    @PANFISH_RUN_JOB_SCRIPT@      -- Set to <panfish.config::[CLUSTER].run.job.script>
     @PANFISH_JOB_FILE@            -- Set to fish.$JOB_ID.(MIN SGE_TASK_ID).command file path
 
 This file is given the same name as the **COMMAND** file, but with **.psub** added as suffix. 
@@ -774,17 +780,17 @@ line added:
 
     psub.file=(PATH TO PSUB file)
 
-and the file should be moved to **QUEUE/batched** directory
+and the file should be moved to **CLUSTER/batched** directory
 
 Going from batched to batchedandchummed
 ---------------------------------------
 
 In this phase the batched jobs are uploaded to appropriate remote clusters.
 
-Step one in this phase is to find all the files in **QUEUE/batched** and get a unique list of 
+Step one in this phase is to find all the files in **CLUSTER/batched** and get a unique list of 
 **current.working.dir** paths.  For each of these paths upload the 
-**current.working.dir/QUEUE** directory.  Once uploaded the suffix of each file should
-be moved to **QUEUE/batchedandchummed**
+**current.working.dir/CLUSTER** directory.  Once uploaded the suffix of each file should
+be moved to **CLUSTER/batchedandchummed**
 
 
 Going from batchedandchummed to queued
@@ -794,11 +800,11 @@ In this phase the jobs are queued up by **panfishsubmit** to the remote cluster.
 
 Step one in this phase is to look for all files to get a unique
 list of **.psub** files.  These **.psub** file paths should be prefixed with the remote
-cluster **<panfish.config::[QUEUE].basedir>** and passed to standard in of 
-**<panfish.config::[QUEUE].psub>** command.  **panfishsubmit** will output job ids that
+cluster **<panfish.config::[CLUSTER].basedir>** and passed to standard in of 
+**<panfish.config::[CLUSTER].psub>** command.  **panfishsubmit** will output job ids that
 match the job file.  
 
-and the files should be moved to **QUEUE/queued** directory. 
+and the files should be moved to **CLUSTER/queued** directory. 
 
 
 Going from queued/running to failed or done
@@ -807,7 +813,7 @@ Going from queued/running to failed or done
 In this phase the jobs are on the remote cluster and just need to get their status.
 
 In this phase look for all **.submitted** and **.running** files and extract all
-the **psub.file** file paths to get a unique list.  Invoke **<panfish.config::[QUEUE].pstat>**
+the **psub.file** file paths to get a unique list.  Invoke **<panfish.config::[CLUSTER].pstat>**
 script passing these file paths to standard in.  The output will have status
 for each **psub.file**  Based on the status adjust the suffix
 for the **.job** files.
@@ -818,7 +824,7 @@ Job template Files and Directory
 
 Each remote cluster has a set of directives and configuration options
 that must be set.  To handle this mismatch there should be a template job
-file for each **QUEUE** in the **<panfish.config::job.template.dir>** which
+file for each **CLUSTER** in the **<panfish.config::job.template.dir>** which
 will set all the correct options for that cluster.  Below are a couple
 example template files:
 
