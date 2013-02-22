@@ -31,7 +31,9 @@ sub new {
      LINE_STDOUT_PATH => "line.stdout.path",
      SUBMIT_DIR       => "submit.dir",
      JOB_TEMPLATE_DIR => "job.template.dir",
-     LINE_COMMAND     => "line"
+     LINE_COMMAND     => "line",
+     BASEDIR          => "basedir",
+     HOST             => "host"
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -231,6 +233,50 @@ sub getSubmitDir {
     return $self->{Config}->getParameterValue($self->{SUBMIT_DIR});
 }
 
+
+=head3 getClusterBaseDir 
+
+Gets the base directory for the cluster specified.
+
+my $rdir = $c->getClusterBaseDir("gordon_shadow.q");
+
+=cut
+
+sub getClusterBaseDir {
+    my $self = shift;
+    my $cluster = shift;
+
+    if (!defined($self->{Config})){
+        return undef;
+    }
+    return $self->{Config}->getParameterValue($cluster.".".$self->{BASEDIR});
+}
+
+=head3 getClusterHost 
+
+Gets the host of the cluster specified.
+
+my $host = $c->getClusterHost("gordon_shadow.q");
+
+=cut
+
+sub getClusterHost {
+    my $self = shift;
+    my $cluster = shift;
+  
+    if (!defined($self->{Config})){
+        return undef;
+    }
+
+    return $self->{Config}->getParameterValue($cluster.".".$self->{HOST});
+}
+
+
+=head3 getAllSetValues
+
+Returns all the set values in this object
+
+=cut
 
 sub getAllSetValues {
     my $self = shift;
