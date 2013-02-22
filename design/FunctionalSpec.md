@@ -309,9 +309,11 @@ or to all clusters listed in the configuration if this option is omitted.
 
 
 Output should look like this:
+Examining YYY
+Found XX bytes in UU files
 
-Uploading... XX bytes to YYY...Complete Rate:  ZZ mb/sec.
-Uploading... XX bytes to YYY...Complete Rate:  ZZ mb/sec.
+Uploading... to YYY ... done.  Rate:  ZZ mb/sec.
+Uploading... to YYY ... done.  Rate:  ZZ mb/sec.
 
 With zero exit code upon success or an helpful message on failure
 
