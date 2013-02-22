@@ -19,7 +19,7 @@ MAX_RETRIES=10
 #Sleeptime between transfer retries in seconds
 RETRY_SLEEP=100
 
-PROP_FILE="`dirname $0`/panfish.properties"
+PROP_FILE="`dirname $0`/panfish.config"
 
 REMOTEBASEDIR=`egrep "^$CLUSTER.basedir" $PROP_FILE | sed "s/^.*= *//"`
 REMOTEHOST=`egrep "^$CLUSTER.host" $PROP_FILE | sed "s/^.*= *//"`
