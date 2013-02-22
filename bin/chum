@@ -12,10 +12,14 @@ use Getopt::Long;
 use Pod::Usage;
 
 use Panfish::ForkExecutor;
+use Panfish::SSHExecutor;
 use Panfish::PanfishConfig;
 use Panfish::Logger;
 use Panfish::PanfishConfigFactory;
 use Panfish::FileReaderWriterImpl;
+use Panfish::FileUtil;
+use Panfish::RsyncUploader;
+use Cwd;
 
 if (@ARGV == 0){
   pod2usage(2);
@@ -60,15 +64,64 @@ my $reader = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
+my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
+my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,$logger);
 
-my @clusterList = $config->getClusterList($clusterArgValue);
+my ($error,@clusterList) = $config->getClusterListAsArray($clusterArgValue);
+
+my $fUtil = Panfish::FileUtil->new($logger);
+
+# force auto flush for standard out
+local $| = 1;
+
+# if current dir is specified use it.
+if ($directoryArgValue eq "."){
+   $directoryArgValue = getcwd();  
+}
+
+# clean up the directory path
+$directoryArgValue = $fUtil->standardizePath($directoryArgValue);
+
+print "\nExamining ... $directoryArgValue";
+my $startTime = time();
+my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($directoryArgValue);
+
+my $duration = time() - $startTime;
+
+if (defined($error)){
+   print " ... failed.  Took $duration seconds.\n";
+   $logger->fatal("There was an error : $error");
+   exit(1);
+}
+
+print " ... done.  Took $duration seconds.\n";
+
+
+print "Found $sizeInBytes bytes in $numFiles files\n\n";
+
+$logger->info("Directory to upload: $directoryArgValue");
+$logger->info("# of Files:  $numFiles");
+$logger->info("# of Directories:  $numDirs");
+$logger->info("# of Symlinks:  $numSymLinks");
+$logger->info("Size in Bytes:  $sizeInBytes");
+
 
 for (my $x = 0; $x < @clusterList ; $x++){
-#   $res = $uploader->upload($directoryArgValue,$cluster[$x]);
-#   if (defined($res)){
-#      $logger->fatal("Unable to upload $directoryArgValue to $cluster[$x]");
-#      exit(2);
-#   }
+    print "Uploading to $clusterList[$x] ...";
+    $startTime = time();
+    $res = $uploader->upload($directoryArgValue,$clusterList[$x]);
+    if (defined($res)){
+       print "failed.\n";
+       $logger->fatal("Unable to upload $directoryArgValue to $clusterList[$x] : $res");
+       exit(2);
+    }
+    $duration = time() - $startTime;
+
+    if ($duration == 0){
+       $duration = 1;
+    }
+
+    printf(" done.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
 }
 
 exit(0);
