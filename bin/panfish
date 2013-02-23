@@ -1,0 +1,155 @@
+#!/usr/bin/perl
+
+
+use FindBin qw($Bin);
+
+#these allow this script to work when installed in alternate path
+use lib "$Bin/../lib";
+use lib "$Bin/../lib/perl5/site_perl";
+use lib "$Bin/../lib/perl5";
+
+use Getopt::Long;
+use Pod::Usage;
+
+use Panfish::ForkExecutor;
+use Panfish::PanfishConfig;
+use Panfish::Logger;
+use Panfish::FileReaderWriterImpl;
+use Panfish::PanfishConfigFactory;
+
+
+my $cmdLineParseResult = GetOptions ("daemon=s"      => \$daemonArgValue,
+                                     "log=s"      => \$logArgValue,
+                                     "verbose+" => \$verboseArg,
+                                     "help|?"   => \$helpArg,
+                                     "man"      => \$manArg) or pod2usage(2);
+
+
+if ($helpArg){
+  pod2usage(1);
+}
+
+if ($manArg){
+  pod2usage(-exitstatus => 0, -verbose => 2);
+}
+
+my $logger = Panfish::Logger->new();
+
+my $logFileHandle = undef;
+
+if (defined($logArgValue)){
+    open($logFileHandle,">$logArgValue") || die $!;
+    $logger->setOutput($logFileHandle);
+}
+
+# sets the logging level based on number of times verbose flag 
+# was passed into command
+$logger->setLevelBasedOnVerbosity($verboseArg);
+
+my $reader = Panfish::FileReaderWriterImpl->new($logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $config = $configFactory->getPanfishConfig();
+my $exec = Panfish::ForkExecutor->new();
+
+my ($error,@clusterList) = $config->getClusterListAsArray();
+
+if (defined($error)){
+   $logger->fatal("Problem getting cluster list : $error");
+   exit(1);
+}
+
+while(1 == 1){
+   for (my $x = 0; $x < @clusterList ; $x++){
+      $logger->debug("Checking $clusterList[$x] for anything to do");
+      # $check = $batcher->batchJobs($clusterList[$x]);
+      # fail if error
+
+      # $check = $batchedchummer->chumBatchedJobs($clusterList[$x]);
+      # fail if error
+
+      # $check = $queuer->$queueJobs($clusterList[$x]);
+      # fail if error
+
+      # $check = $watcher->updateJobsStatus($clusterList[$x]);
+      # fail if error
+      
+   }
+   $logger->debug("sleeping X seconds");
+   sleep 5;
+}
+
+
+$logger->info("Exit Code:  ".$exec->getExitCode());
+exit($exitCode);
+1;
+
+__END__
+
+=head1 NAME
+
+panfish - Panfish Multicluster Grid Engine Wrapper daemon
+
+=head1 SYNOPSIS
+
+panfish [ B<options> ]
+
+=head1 DESCRIPTION
+
+B<Panfish> runs jobs submitted by B<cast> on remote clusters letting
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--log path>
+
+Defines path to a file to write output to.
+
+=item B<--daemon>
+
+Defines if B<panfish> should be run as a daemon or not
+
+=item B<--verbose>
+
+Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
+verbosity.  The maximum is 3.
+
+NOTE:  This is not an option in B<qsub>.
+
+
+=head1 EXIT STATUS
+
+=over
+
+=item 0     Operation was successful.
+
+=item >0    Error.
+
+=back
+
+=head1 EXAMPLES
+
+=head1 FILES
+
+ hello
+
+=head1 AUTHOR
+
+Christopher Churas <churas@ncmir.ucsd.edu>
+
+=head1 REPORTING BUGS
+
+bugs
+
+
+=head1 COPYRIGHT
+
+blah blah
+
+=head1 SEE ALSO
+
+more blah
+
+
+
+=cut
