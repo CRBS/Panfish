@@ -14,31 +14,27 @@ Object represents an enumeration of job states.
 
 =head1 METHODS
 
-=head3 new
 
-Creates new instance of JobState object
+=head3 getAllStates 
 
-my $job = Panfish::JobState->new()
+Gets a list of all states except for KILL state and
+returns them as an array.  Should probably just generate
+this in the constructor....
 
 =cut
-
-sub new {
-   my $class = shift;
-   my $self = {
-     SUBMITTED         => "submitted",
-     QUEUED            => "queued",
-     BATCHED           => "batched",
-     BATCHEDANDCHUMMED => "batchedandchummed",
-     RUNNING           => "running",
-     DONE              => "done",
-     FAILED            => "failed",
-     KILL              => "kill"
-   };
-
-
-   my $blessedself = bless($self,$class);
-   return $blessedself;
+sub getAllStates {
+    my @stateArr;
+    my $cnt = 0;
+    $stateArr[$cnt++] = Panfish::JobState->SUBMITTED();
+    $stateArr[$cnt++] = Panfish::JobState->QUEUED();
+    $stateArr[$cnt++] = Panfish::JobState->BATCHED();
+    $stateArr[$cnt++] = Panfish::JobState->BATCHEDANDCHUMMED();
+    $stateArr[$cnt++] = Panfish::JobState->RUNNING();
+    $stateArr[$cnt++] = Panfish::JobState->DONE();
+    $stateArr[$cnt++] = Panfish::JobState->FAILED();
+    return @stateArr;
 }
+
 
 =head3 SUBMITTED
 
@@ -47,8 +43,7 @@ Gets String representing submitted state
 =cut
 
 sub SUBMITTED {
-   my $self = shift;
-   return $self->{SUBMITTED};
+   return "submitted";
 }
 
 =head3 QUEUED
@@ -58,8 +53,7 @@ Gets String representing queued state
 =cut
 
 sub QUEUED {
-   my $self = shift;
-   return $self->{QUEUED};
+   return "queued";
 }
 
 =head3 BATCHED
@@ -69,8 +63,7 @@ Gets String representing batched state
 =cut
 
 sub BATCHED {
-   my $self = shift;
-   return $self->{BATCHED};
+   return "batched";
 }
 
 
@@ -81,8 +74,7 @@ Gets String representing batched and chummed state
 =cut
 
 sub BATCHEDANDCHUMMED {
-   my $self = shift;
-   return $self->{BATCHEDANDCHUMMED};
+   return "batchedandchummed";
 }
 
 =head3 RUNNING
@@ -92,8 +84,7 @@ Gets String representing running state
 =cut
 
 sub RUNNING {
-   my $self = shift;
-   return $self->{RUNNING};
+   return "running";
 }
 
 =head3 DONE
@@ -103,8 +94,7 @@ Gets String representing done
 =cut
 
 sub DONE {
-   my $self = shift;
-   return $self->{DONE};
+   return "done";
 }
 
 =head3 FAILED
@@ -115,7 +105,7 @@ Gets String representing failed
 
 sub FAILED {
    my $self = shift;
-   return $self->{FAILED};
+   return "failed";
 }
 
 =head3 KILLED
@@ -125,8 +115,7 @@ Gets String representing kill
 =cut
 
 sub KILL {
-   my $self = shift;
-   return $self->{KILL};
+   return "kill";
 }
 
 
