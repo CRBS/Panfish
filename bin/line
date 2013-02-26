@@ -128,8 +128,8 @@ $logger->info("Queue:  $queue");
 
 
 # Write out the job file to the submit.dir/queue folder
-my $JOBSTATE = Panfish::JobState->new();
-my $job = Panfish::Job->new($queue,$jobId,$taskId,$jobName,getcwd(),$command,$JOBSTATE->SUBMITTED());
+
+my $job = Panfish::Job->new($queue,$jobId,$taskId,$jobName,getcwd(),$command,Panfish::JobState->SUBMITTED());
 my $jobDb = Panfish::JobDatabase->new($readerWriter,$config->getSubmitDir(),$logger);
 
 my $res = $jobDb->insert($job);
@@ -148,15 +148,15 @@ my $sleepTime = $config->getLineSleepTime();
 $job = getJob($jobDb,$sleepTime,$logger,$queue,$jobId,$taskId);
 $logger->debug("Before loop");
 
-while ($job->getState() ne $JOBSTATE->DONE() &&
-       $job->getState() ne $JOBSTATE->FAILED()){
+while ($job->getState() ne Panfish::JobState->DONE() &&
+       $job->getState() ne Panfish::JobState->FAILED()){
        
     $logger->debug("in while loop");
     handleSignal($jobDb,$job,$logger);
 
     $logger->debug("Sleeping $sleepTime seconds cause job state is: ".
-                   $job->getState()." and not either ".$JOBSTATE->DONE().
-                   " or ".$JOBSTATE->FAILED());
+                   $job->getState()." and not either ".Panfish::JobState->DONE().
+                   " or ".Panfish::JobState->FAILED());
 
     sleep $sleepTime;
 
@@ -168,7 +168,7 @@ while ($job->getState() ne $JOBSTATE->DONE() &&
 $logger->info("Real job exited in state... ".$job->getState());
 
 #if state
-if ($job->getState() eq $JOBSTATE->FAILED()){
+if ($job->getState() eq Panfish::JobState->FAILED()){
    $logger->error("Job exited in failed state");
    exit(1);
 }
