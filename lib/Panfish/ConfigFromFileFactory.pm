@@ -65,14 +65,23 @@ sub getConfig {
     my $trimParamName;
     my $val;
     my $config = undef;
+    my $equalIndex = -1;
     my $curLine = $self->{Reader}->read();
     while (defined($curLine)){
         chomp($curLine);
-        if ($curLine!~/^#/){
-            if ($curLine=~/^(.*)\s*=\s*(.*)$/){
-                $trimParamName = $1;
-                $val = $2;
-                $trimParamName=~s/\s+$//;
+        if ($curLine!~/^#/){ 
+
+            #see if the line at least matches .*=.*
+            if ($curLine=~/^.*\s*=\s*.*$/){
+                $equalIndex = index($curLine,"=");
+                
+                $trimParamName = substr($curLine,0,$equalIndex);
+                $trimParamName =~ s/^\s+//;
+                $trimParamName =~ s/\s+$//;
+                
+                $val = substr($curLine,$equalIndex+1);
+                $val =~ s/^\s+//;
+                $val =~ s/\s+$//;
 
                 if (!defined($config)){
                   $config = Panfish::Config->new();
