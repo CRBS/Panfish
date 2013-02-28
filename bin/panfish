@@ -55,7 +55,7 @@ my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $jobDb = Panfish::JobDatabase->new($reader,$config->getSubmitDir(),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
-my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$writer);
+my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer);
 
 my ($error,@clusterList) = $config->getClusterListAsArray();
 
