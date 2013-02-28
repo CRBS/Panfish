@@ -718,10 +718,13 @@ The subdirectory in which the above job file is placed defines the state of the 
 
 * **batched**
   **Panfish** has batched this job with other jobs from the same directory in the **batching of jobs** phase.
-  Within the job file a new line is added with this prefix **batched.job=** to the right of this
-  keyword the path to the batched job file is written.
+  Within the job file a new line is added with this prefix **commands.file=** to the right of this
+  keyword the path to the batched job file is written.  In addition the **psub** file should also
+  be added to the job file.
   
-    Example:  batched.job=/home/foo/j1/gordon_shadow.q/fish.1.8.commands
+    Example:  
+            commands.file=/home/foo/j1/gordon_shadow.q/1.8.commands
+            psub.file=/home/foo/j1/gordon_shadow.q/1.8.psub
 
 * **batchedandchummed**
   **Panfish** has uploaded the batched jobs to the remote cluster in the **upload of batched jobs**
