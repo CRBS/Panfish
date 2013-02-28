@@ -25,7 +25,7 @@ my $job = Panfish::Job->new()
 sub new {
    my $class = shift;
    my $self = {
-     Queue             => shift,
+     Cluster           => shift,
      JobId             => shift,
      TaskId            => shift,
      JobName           => shift,
@@ -33,10 +33,143 @@ sub new {
      Command           => shift,
      State             => shift,
      ModificationTime  => shift,
+     CommandsFile      => shift,
+     PsubFile          => shift
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
 }
+
+=head3 equals
+
+Compares job passed in with this job.
+Returns 1 if they are equal or 0 if they
+are not.  This code does not check if its
+ the same object being checked against itself.
+
+=cut
+
+sub equals {
+    my $self = shift;
+    my $job = shift;
+
+
+    my $equal = 1;
+    my $notEqual = 0;
+
+    if (!defined($job)){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getJobId(),$self->getJobId()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getTaskId(),$self->getTaskId()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getState(),$self->getState()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getCluster(),$self->getCluster()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getJobName(),$self->getJobName()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getCommand(),$self->getCommand()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getPsubFile(),$self->getPsubFile()) == 0){
+       return $notEqual;
+    }
+    
+    if ($self->_safeCompare($job->getCommandsFile(),$self->getCommandsFile()) == 0){
+       return $notEqual;
+    }
+
+    return $equal;
+}
+
+
+#
+# First checks that both values are defined
+# then does a string comparison.  
+# Returns 1 if they are equal.  Where equal
+# means both are undefined or both are defined
+# and have the same string value
+#
+sub _safeCompare {
+    my $self = shift;
+    my $valOne = shift;
+    my $valTwo = shift;
+
+    # both undefined we are the same
+    if (!defined($valOne) && !defined($valTwo)){
+       return 1;
+    }
+
+    if (!defined($valOne) || 
+        !defined($valTwo)){
+       return 0;
+    }
+    
+    if ($valOne eq $valTwo){
+       return 1;
+    }
+    return 0;
+}
+
+
+=head3 getPsubFile 
+
+Gets the psub file
+
+=cut
+
+sub getPsubFile {
+    my $self = shift;
+    return $self->{PsubFile};
+}
+
+=head3 setPsubFile
+
+Sets the psub file
+
+=cut
+
+sub setPsubFile {
+    my $self = shift;
+    $self->{PsubFile} = shift;
+}
+
+=head3 getCommandsFile 
+
+Gets the commands file that this job was put in
+
+=cut
+
+sub getCommandsFile {
+    my $self = shift;
+    return $self->{CommandsFile};
+}
+
+=head3 setCommandsFile
+
+Sets the Commands file that this job was put in
+
+=cut
+
+sub setCommandsFile{
+    my $self = shift;
+    $self->{CommandsFile} = shift;
+}
+
 
 =head3 getModificationTime 
 
@@ -49,13 +182,13 @@ sub getModificationTime {
     return $self->{ModificationTime};
 }
 
-=head3 getQueue 
+=head3 getCluster
 
 =cut
 
-sub getQueue {
+sub getCluster {
    my $self = shift;
-   return $self->{Queue};
+   return $self->{Cluster};
 }
 
 =head3 getJobId
