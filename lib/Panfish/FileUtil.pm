@@ -4,6 +4,9 @@ use strict;
 use English;
 use warnings;
 use File::stat;
+use File::Basename;
+use File::Copy;
+
 =head1 SYNOPSIS
    
   Panfish::FileUtil -- Set of File Utilities
@@ -31,6 +34,63 @@ sub new {
    return $blessedself;
 }
 
+=head3 deleteFile
+
+Deletes a file using unlink returning values from unlink
+which should be 1 for success otherwise 0 for failure.
+
+=cut
+
+sub deleteFile {
+    my $self = shift;
+    return unlink(shift);
+}
+
+=head3 copyFile
+
+Moves a file from a to b. Uses File::Copy copy method
+returns 1 on success or 0 upon failure
+
+=cut
+
+sub copyFile {
+    my $self = shift;
+    my $a = shift;
+    my $b = shift;
+    return copy($a,$b);
+}
+
+
+
+=head3 moveFile 
+
+Moves a file from a to b. Uses File::Copy move method
+returns 1 on success or 0 upon failure
+
+=cut
+
+sub moveFile {
+    my $self = shift;
+    my $a = shift;
+    my $b = shift;
+    return move($a,$b);
+
+}
+
+
+=head3 getDirname 
+
+Given a path to a file gets parent directory name
+This implementation utilizes dirname() from File::Basename
+module
+
+=cut
+
+sub getDirname {
+    my $self = shift;
+    my $file = shift;
+    return dirname($file);
+}
 
 =head3 getFilesInDirectory 
 
