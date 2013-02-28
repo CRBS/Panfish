@@ -11,7 +11,7 @@ use Panfish::Logger;
 use Panfish::ConfigFromFileFactory;
 use Panfish::Config;
 use Panfish::JobState;
-
+use Panfish::Job;
 =head1 SYNOPSIS
    
   Panfish::JobDatabase -- Database to store Jobs
@@ -44,8 +44,7 @@ sub new {
      ConfigFactory    => undef,
      JOB_NAME_KEY     => "job.name",
      COMMAND_KEY      => "command.to.run",
-     CURRENT_DIR_KEY  => "current.working.dir",     
-     JobState         => Panfish::JobState->new()
+     CURRENT_DIR_KEY  => "current.working.dir"
    };
    $self->{FileUtil} = Panfish::FileUtil->new($self->{Logger});
    $self->{ConfigFactory} = Panfish::ConfigFromFileFactory->new($self->{FileReaderWriter},$self->{Logger});
@@ -137,6 +136,47 @@ sub update {
 
 }
 
+=head3 getJobsByClusterAndState
+
+Gets array of jobs from database filtering by cluster and state.  If
+there was an error undef is returned otherwise an empty array.
+
+my @job = $jobDb->getJobByClusterAndState("gordon_shadow.q",$state->SUBMITTED());
+
+=cut
+
+sub getJobsByClusterAndState {
+    my $self = shift;
+    my $cluster = shift;
+    my $state = shift;
+
+    my $searchDir = $self->{SubmitDir}."/".$cluster."/".$state;
+    
+    my @files = $self->{FileUtil}->getFilesInDirectory($searchDir);
+    if (!@files){
+       return undef;
+    }
+    my $len = @files;
+
+    if (defined($self->{Logger})){
+        $self->{Logger}->debug("Found $len files in search of $searchDir");
+    }
+
+    my @jobArr;
+    my $curJob;
+    for (my $x = 0; $x < @files; $x++){
+       $curJob = $self->_getJobFromJobFile($files[$x],$cluster,$state);
+       if (!defined($curJob)){
+           if (defined($self->{Logger})){
+               $self->{Logger}->error("Problem creating job from $files[$x]");
+           }
+           return undef;
+       }
+       $jobArr[$x] = $curJob;
+    }
+    return @jobArr;
+}
+
 =head3 getJob
 
 Gets a job from the database if any exist.  This is done
@@ -146,20 +186,20 @@ constructed by reading the contents of the file and looking at
 which sub directory the file resides in.  This sub directory denotes
 the state of the job.
 
-my $job = $jobDb->getJobByQueueAndId("gordon_shadow.q","123",1");
+my $job = $jobDb->getJobByClusterAndId("gordon_shadow.q","123",1");
 
 
 =cut
 
-sub getJobByQueueAndId {
+sub getJobByClusterAndId {
    my $self = shift;
-   my $queue = shift;
+   my $cluster = shift;
    my $jobId = shift;
    my $taskId = shift;
 
 
    my $jobFileName = "$jobId".$self->_getTaskSuffix($taskId);
-   my $searchDir = $self->{SubmitDir}."/".$queue;
+   my $searchDir = $self->{SubmitDir}."/".$cluster;
    if (defined($self->{Logger})){
       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
    } 
@@ -169,27 +209,60 @@ sub getJobByQueueAndId {
      return undef;
    }
 
-   my $state = $jobFile;
-   $state =~s/^$self->{SubmitDir}\/$queue\///;
-  
-   $state =~s/\/$jobFileName//;
-   
-   if (defined($self->{Logger})){
-      $self->{Logger}->debug("Job State is: $state");
-   }
-  
-
-   my $config = $self->{ConfigFactory}->getConfig($jobFile);
-   if (!defined($config)){
-     return undef;
-   }
-
-   return Panfish::Job->new($queue,$jobId,$taskId,$config->getParameterValue($self->{JOB_NAME_KEY}),
-                            $config->getParameterValue($self->{CURRENT_DIR_KEY}),
-                            $config->getParameterValue($self->{COMMAND_KEY}),$state);
+   return $self->_getJobFromJobFile($jobFile,$cluster);
 }
 
 
+
+#
+# Gets a job object from a job file
+#
+sub _getJobFromJobFile {
+    my $self = shift;
+    my $jobFile = shift;
+    my $cluster = shift;
+    my $state = shift;
+    my $jobId = undef;
+    my $taskId = undef;
+
+    if (defined($self->{Logger})){
+        $self->{Logger}->debug("Examining job : $jobFile");
+    }
+
+    my $config = $self->{ConfigFactory}->getConfig($jobFile);
+    if (!defined($config)){
+        if (defined($self->{Logger})){
+            $self->{Logger}->error("Unable to load config for file $jobFile");
+        }
+        return undef;
+    }
+
+    if ($jobFile=~/^.*\/([0-9]+)$/){
+       $jobId = $1;
+    }
+    elsif ($jobFile=~/^.*\/([0-9]+)\.([0-9]+)$/){
+       $jobId = $1;
+       $taskId = $2;
+    }
+
+    if (!defined($state)){
+        $state = $jobFile;
+        $state =~s/^$self->{SubmitDir}\/$cluster\///;
+
+        $state =~s/\/.*$//;
+    }
+
+    if (defined($self->{Logger})){
+        $self->{Logger}->debug("Job State is: $state");
+        $self->{Logger}->debug("Job $jobId.$taskId in cluster $cluster");
+    }
+
+   return Panfish::Job->new($cluster,$jobId,$taskId,
+                            $config->getParameterValue($self->{JOB_NAME_KEY}),
+                            $config->getParameterValue($self->{CURRENT_DIR_KEY}),
+                            $config->getParameterValue($self->{COMMAND_KEY}),$state,
+                            $self->{FileUtil}->getModificationTimeOfFile($jobFile));
+}
 
 
 =head3 delete
@@ -200,7 +273,7 @@ Deletes the job
 
 sub delete {
    my $self = shift;
-   my $queue = shift;
+   my $cluster = shift;
    my $jobid = shift;
    my $taskid = shift;
    return "not implemented";
@@ -232,7 +305,7 @@ sub kill {
 
     
     my $outFile = $self->{SubmitDir}."/".$job->getQueue()."/".
-                  $self->{JobState}->KILL()."/".
+                  Panfish::JobState->KILL()."/".
                   $job->getJobId().$self->_getTaskSuffix($job->getTaskId());
 
     if (defined($self->{Logger})){
