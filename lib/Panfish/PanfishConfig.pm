@@ -35,6 +35,7 @@ sub new {
      BASEDIR          => "basedir",
      HOST             => "host",
      JOBS_PER_NODE    => "jobs.per.node",
+     RUN_JOB_SCRIPT   => "run.job.script",
      BATCHER_OVERRIDE => "job.batcher.override.timeout"
    };
    my $blessedself = bless($self,$class);
@@ -62,6 +63,18 @@ sub _getValueFromConfig {
 
     return $self->{Config}->getParameterValue($key);
 }
+
+=head3 getJobTemplateDir
+
+Gets the job template directory
+
+=cut
+
+sub getJobTemplateDir {
+    my $self = shift;
+    return $self->_getValueFromConfig($self->{JOB_TEMPLATE_DIR});
+}
+
 
 =head3 getJobsPerNode 
 
@@ -157,11 +170,7 @@ sub getClusterListAsArray {
     my $self = shift;
     my $clusterList = shift;
 
-    if (!defined($self->{Config})){
-        return ("panfish.config was not set",undef);
-    }
-
-    my @cArray = split(",",$self->{Config}->getParameterValue($self->{CLUSTER_LIST}));
+    my @cArray = split(",",$self->_getValueFromConfig($self->{CLUSTER_LIST}));
 
     if (!defined($clusterList)){
         return (undef,@cArray);
@@ -209,11 +218,8 @@ Gets the Standard error directory for line command
 
 sub getLineStandardErrorPath {
     my $self = shift;
-    if (!defined($self->{Config})){
-        return undef;
-    }
 
-    return $self->{Config}->getParameterValue($self->{LINE_STDERR_PATH});
+    return $self->_getValueFromConfig($self->{LINE_STDERR_PATH});
 }
 
 
@@ -225,11 +231,8 @@ Gets the Standard out directory for line command
 
 sub getLineStandardOutPath {
     my $self = shift;
-    if (!defined($self->{Config})){
-        return undef;
-    }
 
-    return $self->{Config}->getParameterValue($self->{LINE_STDOUT_PATH});
+    return $self->_getValueFromConfig($self->{LINE_STDOUT_PATH});
 }
 
 =head3 getLineSleepTime
@@ -241,11 +244,8 @@ wait between checks on the real job
 
 sub getLineSleepTime {
     my $self = shift;
-    if (!defined($self->{Config})){
-        return undef;
-    }
 
-    return $self->{Config}->getParameterValue($self->{LINE_SLEEP_TIME});
+    return $self->_getValueFromConfig($self->{LINE_SLEEP_TIME});
 }
 
 
@@ -260,11 +260,8 @@ my $c->getSubmitDir
 
 sub getSubmitDir {
     my $self = shift;
-    if (!defined($self->{Config})){
-        return undef;
-    }
 
-    return $self->{Config}->getParameterValue($self->{SUBMIT_DIR});
+    return $self->_getValueFromConfig($self->{SUBMIT_DIR});
 }
 
 
@@ -280,10 +277,20 @@ sub getClusterBaseDir {
     my $self = shift;
     my $cluster = shift;
 
-    if (!defined($self->{Config})){
-        return undef;
-    }
-    return $self->{Config}->getParameterValue($cluster.".".$self->{BASEDIR});
+    return $self->_getValueFromConfig($cluster.".".$self->{BASEDIR});
+}
+
+=head3 getClusterRunJobScript
+
+Gets the run job script for the cluster specified
+
+=cut
+
+sub getClusterRunJobScript {
+    my $self = shift;
+    my $cluster = shift;
+
+    return $self->_getValueFromConfig($cluster.".".$self->{RUN_JOB_SCRIPT});
 }
 
 =head3 getClusterHost 
@@ -297,12 +304,8 @@ my $host = $c->getClusterHost("gordon_shadow.q");
 sub getClusterHost {
     my $self = shift;
     my $cluster = shift;
-  
-    if (!defined($self->{Config})){
-        return undef;
-    }
 
-    return $self->{Config}->getParameterValue($cluster.".".$self->{HOST});
+    return $self->_getValueFromConfig($cluster.".".$self->{HOST});
 }
 
 
