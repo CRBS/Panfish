@@ -16,7 +16,9 @@ use Panfish::PanfishConfig;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
-
+use Panfish::JobDatabase;
+use Panfish::JobBatcher;
+use Panfish::FileUtil;
 
 my $cmdLineParseResult = GetOptions ("daemon=s"      => \$daemonArgValue,
                                      "log=s"      => \$logArgValue,
@@ -47,9 +49,13 @@ if (defined($logArgValue)){
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
+my $writer = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
+my $jobDb = Panfish::JobDatabase->new($reader,$config->getSubmitDir(),$logger);
+my $fUtil = Panfish::FileUtil->new($logger);
+my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$writer);
 
 my ($error,@clusterList) = $config->getClusterListAsArray();
 
@@ -61,8 +67,9 @@ if (defined($error)){
 while(1 == 1){
    for (my $x = 0; $x < @clusterList ; $x++){
       $logger->debug("Checking $clusterList[$x] for anything to do");
-      # $check = $batcher->batchJobs($clusterList[$x]);
-      # fail if error
+      $check = $batcher->batchJobs($clusterList[$x]);
+      
+      
 
       # $check = $batchedchummer->chumBatchedJobs($clusterList[$x]);
       # fail if error
