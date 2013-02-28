@@ -80,6 +80,11 @@ sub getParameterValue {
   my $self = shift;
   my $attribName = shift;
   my $attribDefault = shift;
+
+  if (!defined($attribName)){
+    return undef;
+  }
+
   my $res = $self->{Param}->{$attribName};
 
   #if value for attribName is undef then use the default value passed in by caller
