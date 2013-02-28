@@ -93,7 +93,7 @@ else {
     $stdout = "need something here";
 }
 
-my $command = shift @ARGV;
+my $rawCommand = shift @ARGV;
 
 my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
@@ -126,6 +126,10 @@ else {
 
 $logger->info("Queue:  $queue");
 
+my $command = "export PANFISH_BASEDIR=\"".$config->getClusterBaseDir($queue)."\";".
+              "export JOB_ID=\"".$jobId."\";export SGE_TASK_ID=\"".$taskId."\";".
+              "\$PANFISH_BASEDIR".$rawCommand." > \$PANFISH_BASEDIR$stdout 2> \$PANFISH_BASEDIR$stderr";
+                
 
 # Write out the job file to the submit.dir/queue folder
 
@@ -193,12 +197,12 @@ sub getJob {
    my $jobId = shift;
    my $taskId = shift;
 
-   my $job = $jobDb->getJobByQueueAndId($queue,$jobId,$taskId);
+   my $job = $jobDb->getJobByClusterAndId($queue,$jobId,$taskId);
    if (!defined($job)){
 
        $logger->warn("Unable to find job : $queue,$jobId,$taskId.  Sleeping $sleepTime seconds before trying again");
 
-       $job = $jobDb->getJobByQueueAndId($queue,$jobId,$taskId);
+       $job = $jobDb->getJobByClusterAndId($queue,$jobId,$taskId);
 
        if (!defined($job)){
            $logger->fatal("Unable to find job : $queue,$jobId,$taskId  : Exiting");
