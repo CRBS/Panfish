@@ -37,14 +37,16 @@ my $jobDb = Panfish::JobDatabase->new($readerWriter,"/home/foo",$logger);
 sub new {
    my $class = shift;
    my $self = {
-     FileReaderWriter => shift,
-     SubmitDir        => shift,
-     Logger           => shift,
-     FileUtil         => undef,
-     ConfigFactory    => undef,
-     JOB_NAME_KEY     => "job.name",
-     COMMAND_KEY      => "command.to.run",
-     CURRENT_DIR_KEY  => "current.working.dir"
+     FileReaderWriter  => shift,
+     SubmitDir         => shift,
+     Logger            => shift,
+     FileUtil          => undef,
+     ConfigFactory     => undef,
+     JOB_NAME_KEY      => "job.name",
+     COMMAND_KEY       => "command.to.run",
+     CURRENT_DIR_KEY   => "current.working.dir",
+     COMMANDS_FILE_KEY => "commands.file",
+     PSUB_FILE_KEY     => "psub.file"
    };
    $self->{FileUtil} = Panfish::FileUtil->new($self->{Logger});
    $self->{ConfigFactory} = Panfish::ConfigFromFileFactory->new($self->{FileReaderWriter},$self->{Logger});
@@ -80,7 +82,7 @@ sub insert {
      return "Job passed in is undefined";
    }
 
-   my $outFile = $self->{SubmitDir}."/".$job->getQueue()."/".
+   my $outFile = $self->{SubmitDir}."/".$job->getCluster()."/".
                  $job->getState()."/".
                  $job->getJobId().$self->_getTaskSuffix($job->getTaskId());
 
@@ -97,6 +99,14 @@ sub insert {
    $self->{FileReaderWriter}->write($self->{CURRENT_DIR_KEY}."=".$job->getCurrentWorkingDir()."\n");
    $self->{FileReaderWriter}->write($self->{JOB_NAME_KEY}."=".$job->getJobName()."\n");
    $self->{FileReaderWriter}->write($self->{COMMAND_KEY}."=".$job->getCommand()."\n");
+   if (defined($job->getCommandsFile())){
+       $self->{FileReaderWriter}->write($self->{COMMANDS_FILE_KEY}."=".$job->getCommandsFile()."\n");
+   }
+
+   if (defined($job->getPsubFile())){
+       $self->{FileReaderWriter}->write($self->{PSUB_FILE_KEY}."=".$job->getPsubFile()."\n");
+   }
+
    $self->{FileReaderWriter}->close();
 
    return undef;
@@ -132,9 +142,54 @@ Updates the job in the database
 sub update {
    my $self = shift;
    my $job = shift;
-   return "not implemented yet";
+   
+   if (!defined($job)){
+      return "job is undef";
+   }
 
+   # find job in system
+   my $oldJob = $self->getJobByClusterAndId($job->getCluster(),$job->getJobId(),$job->getTaskId());
+   my $res;
+   if (defined($oldJob)){
+   
+      # is the new job different? if no return
+      if ($job->equals($oldJob) == 1){
+         $self->{Logger}->("Jobs match");
+         return undef;
+      }
+   
+      $self->{Logger}->("Deleting old job");
+      # delete that job
+      $res =$self->delete($oldJob);
+
+      if (defined($res)){
+         return "Unable to delete old job $res";
+      }
+   }
+
+   # write out new job
+   return $self->insert($job);
 }
+
+sub updateArray {
+   my $self = shift;
+   my $jobArrayRef = shift;
+
+   if (!defined($jobArrayRef) || @{$jobArrayRef} <= 0){
+      return "no jobs to update";
+   }
+   my $res;
+   for (my $x = 0; $x < @{$jobArrayRef}; $x++){
+     $res = $self->update(${$jobArrayRef}[$x]);
+     if (defined($res)){
+         return $res;
+     }
+     
+   }
+
+   return "not implemented yet";
+}
+
 
 =head3 getJobsByClusterAndState
 
@@ -212,6 +267,35 @@ sub getJobByClusterAndId {
    return $self->_getJobFromJobFile($jobFile,$cluster);
 }
 
+=head3 getJobByClusterAndStateAndId
+
+Given cluster, state, and job id/task return the job.  
+In some implementations knowing the state will speed
+up the search.
+
+=cut
+
+sub getJobByClusterAndStateAndId {
+    my $self = shift;
+    my $cluster = shift;
+    my $state = shift;
+    my $jobId = shift;
+    my $taskId = shift;
+
+
+    my $jobFileName = "$jobId".$self->_getTaskSuffix($taskId);
+    my $searchDir = $self->{SubmitDir}."/".$cluster."/".$state;
+    if (defined($self->{Logger})){
+       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
+    }
+
+    my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName);
+    if (!defined($jobFile)){
+       return undef;
+    }
+
+    return $self->_getJobFromJobFile($jobFile,$cluster);
+}
 
 
 #
@@ -261,22 +345,39 @@ sub _getJobFromJobFile {
                             $config->getParameterValue($self->{JOB_NAME_KEY}),
                             $config->getParameterValue($self->{CURRENT_DIR_KEY}),
                             $config->getParameterValue($self->{COMMAND_KEY}),$state,
-                            $self->{FileUtil}->getModificationTimeOfFile($jobFile));
+                            $self->{FileUtil}->getModificationTimeOfFile($jobFile),
+                            $config->getParameterValue($self->{COMMANDS_FILE_KEY}),
+                            $config->getParameterValue($self->{PSUB_FILE_FILE_KEY}));
 }
 
 
 =head3 delete
 
-Deletes the job
+Deletes the job by physically removing it from the database.
+Returns undef for success otherwise a message upon failure.
+
+$job = Panfish::Job->new();
+$jobdb->delete($job);
 
 =cut
 
 sub delete {
    my $self = shift;
-   my $cluster = shift;
-   my $jobid = shift;
-   my $taskid = shift;
-   return "not implemented";
+   my $job = shift;
+   
+   if (!defined($job)){
+      return "No job passed in";
+   }
+  
+   my $res = $self->{FileUtil}->deleteFile($self->{SubmitDir}."/".
+                                           $job->getCluster()."/".
+                                           $job->getState()."/".
+                                           $job->getJobId().".".$job->getTaskId());
+
+   if ($res != 1){
+       return "Unable to delete job $!";
+   } 
+   return undef;
 }
 
 
@@ -304,7 +405,7 @@ sub kill {
     }
 
     
-    my $outFile = $self->{SubmitDir}."/".$job->getQueue()."/".
+    my $outFile = $self->{SubmitDir}."/".$job->getCluster()."/".
                   Panfish::JobState->KILL()."/".
                   $job->getJobId().$self->_getTaskSuffix($job->getTaskId());
 
