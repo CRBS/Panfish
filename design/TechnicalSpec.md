@@ -272,6 +272,7 @@ format as shown with a real configuration below:
     gordon_shadow.q.panfishstat=/home/churas/gordon/panfish/panfishstat
     gordon_shadow.q.run.job.script=/home/churas/gordon/panfish/panfishjobrunner
     gordon_shadow.q.scratch=`/bin/ls /scratch/$USER/[0-9]* -d`
+    gordon_shadow.q.jobs.per.node=16
     gordon_shadow.q.line.wait=60
     gordon_shadow.q.land.max.retries=10
     gordon_shadow.q.land.wait=100
@@ -295,6 +296,7 @@ will be in this format with **CLUSTER** to be replaced by the name of the shadow
     CLUSTER.panfishstat=
     CLUSTER.run.job.script=
     CLUSTER.scratch=
+    CLUSTER.jobs.per.node=
     CLUSTER.line.wait=
     CLUSTER.land.max.retries=
     CLUSTER.land.wait=
@@ -384,6 +386,15 @@ Here is a breakdown of the **queue** specific properties
 
 * **CLUSTER.scratch**
     The temp directory to use for individual jobs on the remote cluster corresponding to the queue.
+
+* **CLUSTER.jobs.per.node**
+    The number of serial jobs that can be batched onto one node. 
+
+* **CLUSTER.job.batcher.override.timeout
+    Number of seconds to wait before batching a set of jobs that are
+    less then **CLUSTER.jobs.per.node** for the cluster in question.  This
+    will result in a submission of a job that does not fully utilize the remote
+    compute node hence the delay. 
 
 * **CLUSTER.line.wait**
     Tells **line** command number of seconds to wait before checking if the job file has been renamed.
