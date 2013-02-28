@@ -31,10 +31,22 @@ sub new {
      JobName           => shift,
      CurrentWorkingDir => shift,
      Command           => shift,
-     State          => shift
+     State             => shift,
+     ModificationTime  => shift,
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
+}
+
+=head3 getModificationTime 
+
+Gets last time this object was modified
+
+=cut
+
+sub getModificationTime {
+    my $self = shift;
+    return $self->{ModificationTime};
 }
 
 =head3 getQueue 
