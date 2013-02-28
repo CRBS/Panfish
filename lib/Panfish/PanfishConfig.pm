@@ -33,7 +33,9 @@ sub new {
      JOB_TEMPLATE_DIR => "job.template.dir",
      LINE_COMMAND     => "line",
      BASEDIR          => "basedir",
-     HOST             => "host"
+     HOST             => "host",
+     JOBS_PER_NODE    => "jobs.per.node",
+     BATCHER_OVERRIDE => "job.batcher.override.timeout"
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -51,6 +53,42 @@ sub setConfig {
 }
 
 
+sub _getValueFromConfig {
+    my $self = shift;
+    my $key = shift; 
+    if (!defined($self->{Config})){
+        return undef;
+    }
+
+    return $self->{Config}->getParameterValue($key);
+}
+
+=head3 getJobsPerNode 
+
+Given a cluster this method gets the number of jobs that should
+be batched up per node
+
+=cut
+
+sub getJobsPerNode {
+    my $self = shift;
+    my $cluster =shift;
+    
+    return $self->_getValueFromConfig($cluster.".".$self->{JOBS_PER_NODE});
+}
+
+=head3 getJobBatcherOverrideTimeout 
+
+
+=cut
+
+sub getJobBatcherOverrideTimeout {
+    my $self = shift;
+    my $cluster = shift;
+
+    return $self->_getValueFromConfig($cluster.".".$self->{BATCHER_OVERRIDE});
+}
+
 =head3 getQsubPath
 
 Returns path to qsub program
@@ -62,11 +100,7 @@ my $val = $foo->getQsubPath();
 sub getQsubPath {
     my $self = shift;
 
-    if (!defined($self->{Config})){
-        return undef;
-    }
-
-    return $self->{Config}->getParameterValue($self->{QSUB_PATH});
+    return $self->_getValueFromConfig($self->{QSUB_PATH});
 }
 
 =head3 getCommaDelimitedClusterList
