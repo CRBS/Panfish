@@ -3,7 +3,7 @@ package Panfish::FileUtil;
 use strict;
 use English;
 use warnings;
-
+use File::stat;
 =head1 SYNOPSIS
    
   Panfish::FileUtil -- Set of File Utilities
@@ -29,6 +29,61 @@ sub new {
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
+}
+
+
+=head3 getFilesInDirectory 
+
+Given a directory this method returns all files in that
+directory with full paths prefixed.  If any subdirectories
+or symbolic links exist they are ignored.
+
+my @files = $f->getFilesInDirectory("/tmp");
+
+=cut
+sub getFilesInDirectory {
+    my $self = shift;
+    my $dir = shift;
+    if (!defined($dir)){
+        if (defined($self->{Logger})){
+            $self->{Logger}->error("Directory path to search not set");
+        }
+ 	return undef;
+    }
+
+    if (!opendir(SUBDIR,$dir)){
+        if (defined($self->{Logger})){
+            $self->{Logger}->error("Unable to open $dir : $!");
+        }
+        return undef;
+    }
+    my @files;
+    my $cnt = 0;
+    my $dirEnt = readdir(SUBDIR);
+    my $dirPath;
+    while(defined($dirEnt)){
+        $dirPath = $dir."/".$dirEnt;
+        if (-f $dirPath){
+            chomp($dirPath);
+            $files[$cnt++] = $dirPath;
+        }
+        $dirEnt = readdir(SUBDIR);
+    }
+    closedir(SUBDIR);
+    return @files;
+}
+
+=head3 getModificationTimeOfFile 
+
+Gets last modify time of file in seconds since epoch
+
+=cut
+
+sub getModificationTimeOfFile {
+    my $self = shift;
+    my $file = shift;
+    my $sb = stat($file);
+    return $sb->mtime;
 }
 
 
