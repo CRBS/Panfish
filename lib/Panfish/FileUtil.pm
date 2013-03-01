@@ -6,6 +6,7 @@ use warnings;
 use File::stat;
 use File::Basename;
 use File::Copy;
+use Panfish::Logger;
 
 =head1 SYNOPSIS
    
@@ -30,6 +31,11 @@ sub new {
    my $self = {
      Logger          => shift
    };
+
+   if (!defined($self->{Logger})){
+       $self->{Logger} = Panfish::Logger->new();
+   }
+
    my $blessedself = bless($self,$class);
    return $blessedself;
 }
@@ -124,16 +130,12 @@ sub getFilesInDirectory {
     my $self = shift;
     my $dir = shift;
     if (!defined($dir)){
-        if (defined($self->{Logger})){
-            $self->{Logger}->error("Directory path to search not set");
-        }
+        $self->{Logger}->error("Directory path to search not set");
  	return undef;
     }
 
     if (!opendir(SUBDIR,$dir)){
-        if (defined($self->{Logger})){
-            $self->{Logger}->error("Unable to open $dir : $!");
-        }
+        $self->{Logger}->error("Unable to open $dir : $!");
         return undef;
     }
     my @files;
@@ -161,16 +163,12 @@ sub getNumberFilesInDirectory {
     my $self = shift;
     my $dir = shift;
     if (!defined($dir)){
-        if (defined($self->{Logger})){
-            $self->{Logger}->error("Directory path to search not set");
-        }
+        $self->{Logger}->error("Directory path to search not set");
         return 0;
     }
 
     if (!opendir(SUBDIR,$dir)){
-        if (defined($self->{Logger})){
-            $self->{Logger}->error("Unable to open $dir : $!");
-        }
+        $self->{Logger}->error("Unable to open $dir : $!");
         return 0;
     }
     my $cnt = 0;
@@ -215,29 +213,28 @@ sub findFile {
    my $self = shift;
    my $dir = shift;
    my $file = shift;
-   
+   my $excludeDirName = shift;
+ 
+   if (!defined($excludeDirName)){
+       $excludeDirName = "";
+   } 
+
    if (!defined($dir)){
-      if (defined($self->{Logger})){
-         $self->{Logger}->debug("Dir is undefined");
-      }
+      $self->{Logger}->error("Dir is undefined");
+     
       return undef;
    }
    if (!defined($file)){
-      if (defined($self->{Logger})){
-         $self->{Logger}->debug("File is undefined");
-      }
+      $self->{Logger}->error("File is undefined");
       return undef;
    }
-   
+ 
    my $dh;
 
    if (!opendir($dh,$dir)){
+      $self->{Logger}->error("Unable to open directory $dir : $!");
       return "Unable to open directory $dir : $!";
    }
-   
-   if (defined($self->{Logger})){
-      $self->{Logger}->debug("Examining directory: $dir");
-   }   
 
    while (my $f = readdir($dh)){
       if ($f eq "." || 
@@ -249,10 +246,7 @@ sub findFile {
         closedir($dh);
         return $dir."/".$file;
       }
-      if (-d $dir."/".$f){
-         if (defined($self->{Logger})){
-            $self->{Logger}->debug("\t\t$f is a directory examining");
-         } 
+      if (-d $dir."/".$f && $f ne $excludeDirName){
          my $subDirFile = $self->findFile($dir."/".$f,$file);
          if (defined($subDirFile)){
            closedir($dh);
@@ -295,6 +289,7 @@ sub getDirectorySize {
     # this is a directory
     if (-d $path){
         if (!opendir(DIR,$path)){
+           $self->{Logger}->error("Unable to open $path : $!");
            return (0,0,0,0,"Unable to open $path : $!");
         }
         my @files = grep(!/^\.\.?$/, readdir(DIR));
