@@ -99,7 +99,11 @@ sub chumBatchedJobs {
         for (my $x = 0; $x < @{$jobHashByPsubDir->{$psubDir}}; $x++){
             ${$jobHashByPsubDir->{$psubDir}}[$x]->setState(Panfish::JobState->BATCHEDANDCHUMMED());
             $self->{JobDb}->update(${$jobHashByPsubDir->{$psubDir}}[$x]);
-        }  
+        } 
+        $self->{Logger}->info("Chummed ".
+                              @{$jobHashByPsubDir->{$psubDir}}.
+                              " batched jobs on $cluster for path ".
+                              $self->{FileUtil}->getDirname($psubDir)); 
     }
     return undef;
 }
