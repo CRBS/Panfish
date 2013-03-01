@@ -9,6 +9,8 @@ use lib "$Bin/../lib/perl5/site_perl";
 use lib "$Bin/../lib/perl5";
 
 use Cwd;
+use IO::Handle;
+
 
 use Getopt::Long;
 use Pod::Usage;
@@ -44,7 +46,6 @@ my $cmdLineParseResult = GetOptions ("e=s"      => \$eArgValue,
                                      "o=s"      => \$oArgValue,
                                      "dir=s"    => \$dirArgValue,
                                      "c=s"      => \$cArgValue,
-                                     "verbose+" => \$verboseArg,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
 
@@ -61,21 +62,12 @@ if (@ARGV < 1){
   pod2usage(2);
 }
 
+# force auto flush of stderr and standard out
+STDERR->autoflush(1);
+STDOUT->autoflush(1);
+
 
 my $logger = Panfish::Logger->new();
-
-if (!defined($verboseArg)){
-  $logger->setLevel("ERROR");
-}
-else {
-  if ($verboseArg == 1){
-    $logger->setLevel("WARN");
-  } elsif ($verboseArg == 2){
-    $logger->setLevel("INFO");
-  } elsif ($verboseArg == 3){
-    $logger->setLevel("DEBUG");
-  }
-}
 
 my $stderr = "";
 my $stdout = "";
@@ -98,6 +90,7 @@ my $rawCommand = shift @ARGV;
 my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
 my $config = $configFactory->getPanfishConfig();
+$logger->setLevelBasedOnVerbosity($config->getLineVerbosity());
 
 # Find the queue we are running under as well as job and task id
 my $queue = $ENV{"QUEUE"};
@@ -109,22 +102,18 @@ if (!defined($taskId)){
    $taskId = $ENV{"GE_TASK_ID"};
 }
 
-
-$logger->debug("*********Panfish.config******\n".$config->getAllSetValues().
-               "\n***************");
-
-$logger->info("JobName:  $jobName");
-
+my $jobIdWithTaskID = "";
 if (!defined($taskId) ||
    $taskId eq "undefined"){
-   $logger->info("Job:  $jobId");
+   $jobIdWithTaskId = $jobId;
    $taskId = undef;
 }
 else {
-   $logger->info("Job.Task:  $jobId.$taskId");
+   $jobIdWithTaskId = $jobId.".".$taskId;
 }
+   
+$logger->info("Job: ($jobIdWithTaskId) JobName: ($jobName) Cluster: ($queue)");
 
-$logger->info("Queue:  $queue");
 
 my $command = "export PANFISH_BASEDIR=\"".$config->getClusterBaseDir($queue)."\";".
               "export JOB_ID=\"".$jobId."\";export SGE_TASK_ID=\"".$taskId."\";".
@@ -150,17 +139,22 @@ my $sleepTime = $config->getLineSleepTime();
 
 # Wait for the above file to move into done or failed directory
 $job = getJob($jobDb,$sleepTime,$logger,$queue,$jobId,$taskId);
-$logger->debug("Before loop");
+
+my $lastState = Panfish::JobState->UNKNOWN();
 
 while ($job->getState() ne Panfish::JobState->DONE() &&
        $job->getState() ne Panfish::JobState->FAILED()){
        
-    $logger->debug("in while loop");
     handleSignal($jobDb,$job,$logger);
 
-    $logger->debug("Sleeping $sleepTime seconds cause job state is: ".
-                   $job->getState()." and not either ".Panfish::JobState->DONE().
-                   " or ".Panfish::JobState->FAILED());
+    # append to log at info level when the job changes states
+    if ($lastState ne $job->getState()){
+        $logger->info("Job has switched state from $lastState to ".$job->getState());
+        $lastState = $job->getState();
+    }
+
+    # in debug mode log every check
+    $logger->debug("Sleeping $sleepTime seconds cause job state is: ".$job->getState());
 
     sleep $sleepTime;
 
@@ -200,7 +194,8 @@ sub getJob {
    my $job = $jobDb->getJobByClusterAndId($queue,$jobId,$taskId);
    if (!defined($job)){
 
-       $logger->warn("Unable to find job : $queue,$jobId,$taskId.  Sleeping $sleepTime seconds before trying again");
+       $logger->warn("Unable to find job : $queue,$jobId,$taskId.".
+                     "  Sleeping $sleepTime seconds before trying again cause this could just be a temporary problem");
 
        $job = $jobDb->getJobByClusterAndId($queue,$jobId,$taskId);
 
