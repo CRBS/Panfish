@@ -17,6 +17,7 @@ sub new {
         OUT                 => undef,
 	OutputTime          => 1,
         DEBUG               => "DEBUG",
+        INFO                => "INFO",
         WARN                => "WARN",
         ERROR               => "ERROR",
         FATAL               => "FATAL",
@@ -26,26 +27,25 @@ sub new {
         Email               => undef,
 	LogFile             => undef
     };
-    $self->{Level} = $self->{DEBUG};
+    $self->{Level} = $self->{ERROR}.",".$self->{FATAL};
     $self->{NotificationLevel} = $self->{ERROR}.",".$self->{FATAL};
-
     return bless ($self,$class);
 }
 
 sub setLevelBasedOnVerbosity {
     my $self = shift;
     my $verbosity = shift;
-    if (!defined($verbosity)){
-        $self->setLevel($self->{ERROR});
-    }
-    else {
 
+    # set default to ERROR level
+    $self->setLevel($self->{ERROR}.".".$self->{FATAL});
+
+    if (defined($verbosity)){
         if ($verbosity == 1){
-            $self->setLevel($self->{WARN});
+            $self->setLevel($self->getLevel().",".$self->{WARN}.",");
         } elsif ($verbosity == 2){
-            $self->setLevel($self->{INFO});
-        } elsif ($verbosity == 3){
-            $self->setLevel($self->{DEBUG});
+            $self->setLevel($self->getLevel().",".$self->{INFO}.",");
+        } elsif ($verbosity >= 3){
+            $self->setLevel($self->getLevel().",".$self->{DEBUG}.",");
     }
 }
 
@@ -83,6 +83,11 @@ sub getNotificationLevel {
 }
 
 
+
+sub getLevel {
+   my $self = shift;
+   return $self->{Level};
+}
 
 
 #
@@ -198,25 +203,9 @@ sub _logmessage {
     my $level = shift;
     my $message = shift;
 
-    if (defined($self->{Level})){
-        if ($self->{Level} eq "INFO" &&
-            $level eq "DEBUG"){
-            return;
-        }
-        if ($self->{Level} eq "WARN" && 
-            ($level eq "DEBUG" || $level eq "INFO")){
-            return;
-        }
-        if ($self->{Level} eq "ERROR" && 
-            ($level eq "DEBUG" || $level eq "INFO" ||
-              $level eq "WARN")){
-            return;
-        }
-        if ($self->{Level} eq "FATAL" &&
-            ($level eq "DEBUG" || $level eq "INFO" ||
-              $level eq "WARN"  || $level eq "ERROR")){
-            return;
-        }
+    if (defined($self->{Level}) &&
+        $self->{Level}!~/$level/){
+        return;
     }
 
     if (!defined($message)){
