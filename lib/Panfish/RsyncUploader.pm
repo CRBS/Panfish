@@ -35,7 +35,7 @@ sub new {
      Logger          => shift,
      ConnectTimeOut  => 360,
      RetryCount      => 10,
-     RetrySleep      => 100,
+     RetrySleep      => 10,
      TimeOut         => 180
    };
    my $blessedself = bless($self,$class);
@@ -72,16 +72,30 @@ sub upload {
     if ($checkExit != 0){
         return "Unable to create $remoteParentDir on $cluster";
     }
+    my $tryCount = 1;
+    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh $dirToUpload ".$self->{Config}->getClusterHost($cluster).":$remoteParentDir";
+    $self->{Logger}->debug("Running $cmd");
+    while ($tryCount <= $self->{RetryCount}){
+       
+        if ($tryCount > 1){
+            $self->{Logger}->debug("Sleeping ".$self->{RetrySleep});
+            sleep $self->{RetrySleep};
+        }
+        
+        # okay lets try the upload now 
+        $checkExit = $self->{Executor}->executeCommand($cmd);
 
-    # okay lets try the upload now
-     
-    $checkExit = $self->{Executor}->executeCommand("/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh $dirToUpload ".$self->{Config}->getClusterHost($cluster).":$remoteParentDir");
-
-    if ($checkExit != 0){
-       return "Error uploading : ".$self->{Executor}->getOutput();
+  
+        if ($checkExit == 0){
+            return undef;
+        }
+        $self->{Logger}->error("Try # $tryCount received error when attempting upload : ".
+                               $self->{Executor}->getOutput());
+        
+        $tryCount++;
     }
 
-    return undef;
+    return "Unable to upload after ".$self->{RetryCount}. " tries.  Giving up";
 }
 
 1;
