@@ -34,6 +34,25 @@ sub new {
    return $blessedself;
 }
 
+=head3 makePathUserGroupExecutable 
+
+In effect makes whatever path passed in user rwx and group
+rx and only readable for everyone else.
+Ex:
+
+-rwxr-xr--
+
+=cut
+
+sub makePathUserGroupExecutableAndReadable {
+    my $self = shift;
+    my $path = shift;
+
+    return chmod(0755,$path);
+}
+
+
+
 =head3 deleteFile
 
 Deletes a file using unlink returning values from unlink
