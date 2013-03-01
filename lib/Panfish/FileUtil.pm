@@ -152,6 +152,41 @@ sub getFilesInDirectory {
     return @files;
 }
 
+=head3 getNumberFilesInDirectory
+
+Gets number of files in a directory passed in.
+
+=cut
+sub getNumberFilesInDirectory {
+    my $self = shift;
+    my $dir = shift;
+    if (!defined($dir)){
+        if (defined($self->{Logger})){
+            $self->{Logger}->error("Directory path to search not set");
+        }
+        return 0;
+    }
+
+    if (!opendir(SUBDIR,$dir)){
+        if (defined($self->{Logger})){
+            $self->{Logger}->error("Unable to open $dir : $!");
+        }
+        return 0;
+    }
+    my $cnt = 0;
+    my $dirEnt = readdir(SUBDIR);
+    my $dirPath;
+    while(defined($dirEnt)){
+        $dirPath = $dir."/".$dirEnt;
+        if (-f $dirPath){
+            $cnt++;
+        }
+        $dirEnt = readdir(SUBDIR);
+    }
+    closedir(SUBDIR);
+    return $cnt;
+}
+
 =head3 getModificationTimeOfFile 
 
 Gets last modify time of file in seconds since epoch
