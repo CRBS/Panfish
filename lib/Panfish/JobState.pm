@@ -17,8 +17,8 @@ Object represents an enumeration of job states.
 
 =head3 getAllStates 
 
-Gets a list of all states except for KILL state and
-returns them as an array.  Should probably just generate
+Gets a list of all states except for KILL and UNKNOWN state 
+and returns them as an array.  Should probably just generate
 this in the constructor....
 
 =cut
@@ -35,6 +35,16 @@ sub getAllStates {
     return @stateArr;
 }
 
+
+=head3 UNKNOWN
+
+Gets String representing unknown state
+
+=cut
+
+sub UNKNOWN {
+   return "unknown";
+}
 
 =head3 SUBMITTED
 
