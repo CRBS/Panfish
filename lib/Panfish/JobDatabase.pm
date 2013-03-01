@@ -184,7 +184,7 @@ sub update {
    
       # is the new job different? if no return
       if ($job->equals($oldJob) == 1){
-         $self->{Logger}->("Jobs match");
+         $self->{Logger}->debug("Jobs match");
          return undef;
       }
    
@@ -289,7 +289,7 @@ sub getJobByClusterAndId {
       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
    } 
    
-   my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName);
+   my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName,Panfish::JobState->KILL());
    if (!defined($jobFile)){
      return undef;
    }
@@ -319,7 +319,7 @@ sub getJobByClusterAndStateAndId {
        $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
     }
 
-    my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName);
+    my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName,Panfish::JobState->KILL());
     if (!defined($jobFile)){
        return undef;
     }
@@ -339,9 +339,6 @@ sub _getJobFromJobFile {
     my $jobId = undef;
     my $taskId = undef;
 
-    if (defined($self->{Logger})){
-        $self->{Logger}->debug("Examining job : $jobFile");
-    }
 
     my $config = $self->{ConfigFactory}->getConfig($jobFile);
     if (!defined($config)){
@@ -366,10 +363,8 @@ sub _getJobFromJobFile {
         $state =~s/\/.*$//;
     }
 
-    if (defined($self->{Logger})){
-        $self->{Logger}->debug("Job State is: $state");
-        $self->{Logger}->debug("Job $jobId.$taskId in cluster $cluster");
-    }
+       
+   $self->{Logger}->debug("Job $jobId.$taskId in cluster $cluster in state $state");
 
    return Panfish::Job->new($cluster,$jobId,$taskId,
                             $config->getParameterValue($self->{JOB_NAME_KEY}),
