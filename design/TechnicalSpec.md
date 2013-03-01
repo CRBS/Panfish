@@ -263,6 +263,8 @@ format as shown with a real configuration below:
     line.stdout.path=/home/churas/src/panfish/p2/out
     submit.dir=/home/churas/src/panfish/p2/shadow
     job.template.dir=/home/churas/src/panfish/p2/templates
+    line.log.verbosity=1
+    panfish.log.verbosity=3
 
     # These properties are cluster specific and will need to
     # be configured for each cluster
@@ -342,6 +344,20 @@ Here is a breakdown of each **global** property:
     Directory where job template files for each cluster reside.  The template files are named with the
     same name as the cluster queue (ie: gordon_shadow.q,codonis_shadow.q) For more information see
     Job Template File section of this document.
+
+* **line.log.verbosity**
+    Sets the logging level of the line command.  Valid values are 0,1,2,3
+    0 = outputs only error,warning, and fatal messages. 
+    1 = adds info messages.
+    2 = adds debug messages.
+
+
+* **panfish.log.verbosity**
+    Sets the logging level of the panfish daemon.  Valid values are 0,1,2,3
+    0 = outputs only error, warning, and fatal messages.  
+    1 = adds info messages.
+    2 = adds debug messages.
+
 
     Example template for gordon_shadow.q:
 
