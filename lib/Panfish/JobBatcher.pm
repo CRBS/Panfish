@@ -152,12 +152,12 @@ sub _createPsubFile {
     my $line = $self->{Reader}->read();
     while(defined($line)){
         chomp($line);
-        $line=~s/\@PANFISH_JOB_STDOUT_PATH\@/$remoteBaseDir\/$jobFileDir\/$psubFile.stdout/g;
-        $line=~s/\@PANFISH_JOB_STDERR_PATH\@/$remoteBaseDir\/$jobFileDir\/$psubFile.stderr/g;
+        $line=~s/\@PANFISH_JOB_STDOUT_PATH\@/$remoteBaseDir$psubFile.stdout/g;
+        $line=~s/\@PANFISH_JOB_STDERR_PATH\@/$remoteBaseDir$psubFile.stderr/g;
         $line=~s/\@PANFISH_JOB_NAME\@/$name/g;
-        $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir\/$jobFileDir/g;
+        $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir$jobFileDir/g;
         $line=~s/\@PANFISH_RUN_JOB_SCRIPT\@/$runJobScript/g;
-        $line=~s/\@PANFISH_JOB_FILE\@/$remoteBaseDir\/$jobFileDir\/$commandsFile/g;
+        $line=~s/\@PANFISH_JOB_FILE\@/$remoteBaseDir$commandsFile/g;
 
         $self->{Writer}->write($line."\n");
 
@@ -166,6 +166,9 @@ sub _createPsubFile {
       
     $self->{Reader}->close();
     $self->{Writer}->close();
+
+    # give the psub file execute permission for users and groups
+    $self->{FileUtil}->makePathUserGroupExecutableAndReadable($psubFile);
     return $psubFile;
 }
 
