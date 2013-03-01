@@ -763,7 +763,7 @@ files are left unless the files are over X seconds old in which case they get
 their own batch.  
 
 Once the batches are figured out they are written to files known as **COMMAND** files with 
-the name:  **$JOB_ID.(MIN SGE_TASK_ID).command** 
+the name:  **$JOB_ID.(MIN SGE_TASK_ID).commands** 
 
 **$JOB_ID** is the id of the job and can be parsed from the **.job** file and
 **(MIN SGE_TASK_ID)** is the smallest **$SGE_TASK_ID** in the batch.  
@@ -791,8 +791,10 @@ See **Job template files and directory** section for more information on templat
 
 After writing the **.psub** file the original file should have the following
 line added:
-
+    commands.file=(PATH TO COMMANDS file)
     psub.file=(PATH TO PSUB file)
+
+The psub file should also be made user/group executable.
 
 and the file should be moved to **CLUSTER/batched** directory
 
