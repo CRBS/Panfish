@@ -28,7 +28,6 @@ use Panfish::JobBatchedChummer;
 
 my $cmdLineParseResult = GetOptions ("daemon=s"      => \$daemonArgValue,
                                      "log=s"      => \$logArgValue,
-                                     "verbose+" => \$verboseArg,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
 
@@ -50,14 +49,11 @@ if (defined($logArgValue)){
     $logger->setOutput($logFileHandle);
 }
 
-# sets the logging level based on number of times verbose flag 
-# was passed into command
-$logger->setLevelBasedOnVerbosity($verboseArg);
-
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
 my $writer = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
+$logger->setLevelBasedOnVerbosity($config->getPanfishVerbosity());
 my $exec = Panfish::ForkExecutor->new();
 my $jobDb = Panfish::JobDatabase->new($reader,$config->getSubmitDir(),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
