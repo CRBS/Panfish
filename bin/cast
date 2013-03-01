@@ -113,7 +113,7 @@ my $taskId = "";
 $cmd = $config->getQsubPath()." $newArgList -e ".
        $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
        $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
-       $config->getLineCommand()."$stdout$stderr$dir $command --verbose --verbose --verbose";
+       $config->getLineCommand()."$stdout$stderr$dir $command";
 
 $logger->info("Running command: $cmd");
 
