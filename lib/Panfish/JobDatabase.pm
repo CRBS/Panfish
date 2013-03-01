@@ -158,7 +158,7 @@ sub update {
          return undef;
       }
    
-      $self->{Logger}->("Deleting old job");
+      $self->{Logger}->debug("Deleting old job");
       # delete that job
       $res =$self->delete($oldJob);
 
@@ -347,7 +347,7 @@ sub _getJobFromJobFile {
                             $config->getParameterValue($self->{COMMAND_KEY}),$state,
                             $self->{FileUtil}->getModificationTimeOfFile($jobFile),
                             $config->getParameterValue($self->{COMMANDS_FILE_KEY}),
-                            $config->getParameterValue($self->{PSUB_FILE_FILE_KEY}));
+                            $config->getParameterValue($self->{PSUB_FILE_KEY}));
 }
 
 
