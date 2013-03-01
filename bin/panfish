@@ -77,12 +77,16 @@ if (defined($error)){
 }
 
 while(1 == 1){
+  
+    
    for (my $x = 0; $x < @clusterList ; $x++){
-      $logger->debug("Checking $clusterList[$x] for jobs that need to be batched");
+      if ($logger->isDebugEnabled()){
+          $logger->debug("$clusterList[$x] --".$jobDb->getSummaryForCluster($clusterList[$x]));
+      }
+
       $check = $batcher->batchJobs($clusterList[$x]);
       
 
-      $logger->debug("Checking $clusterList[$x] for batched jobs that need to be chummed");
       $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
       # fail if error
 
