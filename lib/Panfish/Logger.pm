@@ -41,9 +41,9 @@ sub setLevelBasedOnVerbosity {
 
     if (defined($verbosity)){
         if ($verbosity == 1){
-            $self->setLevel($self->getLevel().",".$self->{INFO}.",");
+            $self->setLevel($self->getLevel().",".$self->{INFO});
         } elsif ($verbosity >= 2){
-            $self->setLevel($self->getLevel().",".$self->{DEBUG}.",");
+            $self->setLevel($self->getLevel().",".$self->{INFO}.",".$self->{DEBUG});
     }
 }
 
