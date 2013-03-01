@@ -27,7 +27,7 @@ sub new {
         Email               => undef,
 	LogFile             => undef
     };
-    $self->{Level} = $self->{ERROR}.",".$self->{FATAL};
+    $self->{Level} = $self->{ERROR}.",".$self->{FATAL}.",".$self->{WARN};
     $self->{NotificationLevel} = $self->{ERROR}.",".$self->{FATAL};
     return bless ($self,$class);
 }
@@ -36,15 +36,13 @@ sub setLevelBasedOnVerbosity {
     my $self = shift;
     my $verbosity = shift;
 
-    # set default to ERROR level
-    $self->setLevel($self->{ERROR}.".".$self->{FATAL});
+    # set default to ERROR, WARN, FATAL
+    $self->setLevel($self->{ERROR}.",".$self->{FATAL}.",".$self->{WARN});
 
     if (defined($verbosity)){
         if ($verbosity == 1){
-            $self->setLevel($self->getLevel().",".$self->{WARN}.",");
-        } elsif ($verbosity == 2){
             $self->setLevel($self->getLevel().",".$self->{INFO}.",");
-        } elsif ($verbosity >= 3){
+        } elsif ($verbosity >= 2){
             $self->setLevel($self->getLevel().",".$self->{DEBUG}.",");
     }
 }
@@ -192,6 +190,16 @@ sub fatal {
     my $self = shift;
     my $message = shift;
     $self->_logmessage("FATAL",$message);
+}
+
+sub isDebugEnabled {
+    my $self = shift;
+    
+    if (defined($self->{Level}) &&
+        $self->{Level}=~/$self->{DEBUG}/){
+        return 1;
+    }
+    return 0;
 }
 
 #
