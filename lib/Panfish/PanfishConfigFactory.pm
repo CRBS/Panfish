@@ -57,12 +57,16 @@ sub new {
 =head3 getPanfishConfig
 
 Returns PanfishConfig object by looking for a config file in a
-few key places.
+few key places.  This method will create a new PanfishConfig object
+unless a PanfishConfig object is passed into the method, in which case
+ the configuration is adjusted in the PanfishConfig object passed in and
+is returned to the caller
 
 =cut
 
 sub getPanfishConfig {
     my $self = shift;
+    my $existingConfig = shift;
 
     if (defined($self->{Logger})){
         $self->{Logger}->debug("Attempting to parse config from: $Bin/".$self->{PANFISH_CONFIG});
@@ -72,6 +76,12 @@ sub getPanfishConfig {
 
     if (!defined($config)){
       return undef;
+    }
+   
+    # if we are given a PanfishConfig, just set the config into that object and return it
+    if (defined($existingConfig)){
+       $existingConfig->setConfig($config);
+       return $existingConfig;
     }
 
     return Panfish::PanfishConfig->new($config);
