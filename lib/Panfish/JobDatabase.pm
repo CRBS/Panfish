@@ -55,7 +55,37 @@ sub new {
 }
 
 
+=head3 getSummaryForCluster
 
+This method returns a human readable string summarizing
+The number of jobs in each state for a given cluster
+
+Format of output:
+
+(#) submitted (#) batched (#) batchedandchummed (#) queued (#) running (#) failed (#) deleted (#) done
+
+
+=cut
+
+sub getSummaryForCluster {
+    my $self = shift;
+    my $cluster = shift;
+
+    
+    # basically get # of files in each directory and report it
+    # in a string
+    my $outStr = "";
+    my @states = Panfish::JobState->getAllStates();
+    my $count = 0;
+    for (my $x = 0; $x < @states; $x++){
+        $count = $self->{FileUtil}->getNumberFilesInDirectory($self->{SubmitDir}.
+                                                              "/".$cluster.
+                                                              "/".$states[$x]);
+        $outStr .= " ($count) $states[$x]";
+    }
+    
+    return $outStr;
+}
 
 =head3 insert
 
