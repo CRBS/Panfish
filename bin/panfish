@@ -19,6 +19,12 @@ use Panfish::PanfishConfigFactory;
 use Panfish::JobDatabase;
 use Panfish::JobBatcher;
 use Panfish::FileUtil;
+use Panfish::SSHExecutor;
+use Panfish::RsyncUploader;
+use Panfish::JobBatchedChummer;
+
+
+
 
 my $cmdLineParseResult = GetOptions ("daemon=s"      => \$daemonArgValue,
                                      "log=s"      => \$logArgValue,
@@ -57,6 +63,12 @@ my $jobDb = Panfish::JobDatabase->new($reader,$config->getSubmitDir(),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
 my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer);
 
+my $exec = Panfish::ForkExecutor->new();
+my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
+my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,$logger);
+
+my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,$logger,$fUtil,$uploader);
+
 my ($error,@clusterList) = $config->getClusterListAsArray();
 
 if (defined($error)){
@@ -66,12 +78,12 @@ if (defined($error)){
 
 while(1 == 1){
    for (my $x = 0; $x < @clusterList ; $x++){
-      $logger->debug("Checking $clusterList[$x] for anything to do");
+      $logger->debug("Checking $clusterList[$x] for jobs that need to be batched");
       $check = $batcher->batchJobs($clusterList[$x]);
       
-      
 
-      # $check = $batchedchummer->chumBatchedJobs($clusterList[$x]);
+      $logger->debug("Checking $clusterList[$x] for batched jobs that need to be chummed");
+      $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
       # fail if error
 
       # $check = $queuer->$queueJobs($clusterList[$x]);
