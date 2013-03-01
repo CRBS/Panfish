@@ -23,20 +23,22 @@ use FindBin qw($Bin);
 sub new {
    my $class = shift;
    my $self = {
-     Config           => shift,
-     QSUB_PATH        => "qsub.path",
-     CLUSTER_LIST     => "cluster.list",
-     LINE_SLEEP_TIME  => "line.sleep.time",
-     LINE_STDERR_PATH => "line.stderr.path",
-     LINE_STDOUT_PATH => "line.stdout.path",
-     SUBMIT_DIR       => "submit.dir",
-     JOB_TEMPLATE_DIR => "job.template.dir",
-     LINE_COMMAND     => "line",
-     BASEDIR          => "basedir",
-     HOST             => "host",
-     JOBS_PER_NODE    => "jobs.per.node",
-     RUN_JOB_SCRIPT   => "run.job.script",
-     BATCHER_OVERRIDE => "job.batcher.override.timeout"
+     Config            => shift,
+     QSUB_PATH         => "qsub.path",
+     CLUSTER_LIST      => "cluster.list",
+     LINE_VERBOSITY    => "line.log.verbosity",
+     PANFISH_VERBOSITY => "panfish.log.verbosity",
+     LINE_SLEEP_TIME   => "line.sleep.time",
+     LINE_STDERR_PATH  => "line.stderr.path",
+     LINE_STDOUT_PATH  => "line.stdout.path",
+     SUBMIT_DIR        => "submit.dir",
+     JOB_TEMPLATE_DIR  => "job.template.dir",
+     LINE_COMMAND      => "line",
+     BASEDIR           => "basedir",
+     HOST              => "host",
+     JOBS_PER_NODE     => "jobs.per.node",
+     RUN_JOB_SCRIPT    => "run.job.script",
+     BATCHER_OVERRIDE  => "job.batcher.override.timeout"
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -63,6 +65,31 @@ sub _getValueFromConfig {
 
     return $self->{Config}->getParameterValue($key);
 }
+
+
+=head3 getLineVerbosity
+
+Defines the logging level the line program should use
+
+=cut
+
+sub getLineVerbosity {
+    my $self = shift;
+    return $self->_getValueFromConfig($self->{LINE_VERBOSITY});
+}
+
+=head3 getPanfishVerbosity
+
+Defines the logging level the panfish daemon should use
+
+=cut
+
+sub getPanfishVerbosity {
+    my $self = shift;
+    return $self->_getValueFromConfig($self->{PANFISH_VERBOSITY});
+}
+
+
 
 =head3 getJobTemplateDir
 
