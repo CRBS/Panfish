@@ -85,30 +85,29 @@ sub batchJobs {
     # iterate through each job array
     for my $jobId (keys %$jobHashById){
 
-        $self->{Logger}->debug("Sorting ".@{$jobHashById->{$jobId}}." jobs");
         # sort the job array by task id
         @sortedJobs = sort {$self->_sortJobsByTaskId } @{$jobHashById->{$jobId}};
 
-        $self->{Logger}->debug("Checking if jobs can be submitted");
         # check if it is okay to submit these jobs
         while ($self->_isItOkayToSubmitJobs($cluster,\@sortedJobs) eq "yes"){
 
-             $self->{Logger}->debug("Creating batchable subset of jobs");
              # grab a batchable set of those jobs 
              my @batchableJobs = $self->_createBatchableArrayOfJobs($cluster,
                                                                     \@sortedJobs);
 
-             $self->{Logger}->debug("Creating command file for ".@batchableJobs." jobs");
              # generate a command file for those jobs
              $self->_createCommandFileForJobs($cluster,\@batchableJobs);
 
-             $self->{Logger}->debug("Creating psub file for jobs");
              # generate a psub file
              $self->_createPsubFileForJobs($cluster,\@batchableJobs);            
 
-             $self->{Logger}->debug("Updating jobs in database");
              # update batched jobs in database
              $self->{JobDb}->updateArray(\@batchableJobs);
+
+             $self->{Logger}->info("Batched ".@batchableJobs.
+                                   " jobs on $cluster with base id: ".
+                                   $batchableJobs[0]->getJobId().".".
+                                   $batchableJobs[0]->getTaskId());
         } 
     }
 }
