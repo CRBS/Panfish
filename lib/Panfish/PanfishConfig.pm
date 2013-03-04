@@ -38,7 +38,9 @@ sub new {
      HOST              => "host",
      JOBS_PER_NODE     => "jobs.per.node",
      RUN_JOB_SCRIPT    => "run.job.script",
-     BATCHER_OVERRIDE  => "job.batcher.override.timeout"
+     BATCHER_OVERRIDE  => "job.batcher.override.timeout",
+     PANFISH_SUBMIT    => "panfishsubmit",
+     PANFISH_STAT      => "panfishstat",
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -65,6 +67,42 @@ sub _getValueFromConfig {
 
     return $self->{Config}->getParameterValue($key);
 }
+
+=head3 getPanfishStat
+
+Gets the path on the remote cluster to panfishstat
+binary.  This method expects a cluster as a parameter.
+
+my $psub = $foo->getPanfishStat("gordon_shadow.q");
+
+=cut
+
+sub getPanfishStat {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($cluster.".".
+                                      $self->{PANFISH_STAT});
+}
+
+
+
+=head3 getPanfishSubmit 
+
+Gets the path on the remote cluster to panfishsubmit
+binary.  This method expects a cluster as a parameter.
+
+my $psub = $foo->getPanfishSubmit("gordon_shadow.q");
+
+=cut
+
+sub getPanfishSubmit {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($cluster.".".
+                                      $self->{PANFISH_SUBMIT});
+}
+
+
 
 
 =head3 getLineVerbosity
