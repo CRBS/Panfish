@@ -75,10 +75,10 @@ sub chumBatchedJobs {
     # builds a hash where key is base dir where psub and commands
     # file reside and value is an array
     # of jobs with that have their psub job in that directory
-    $self->{Logger}->debug("Building job hash for $cluster");
     my $jobHashByPsubDir = $self->_buildJobHash($cluster); 
 
-    $self->{Logger}->debug("Getting remote base dir");
+    $self->{Logger}->debug("Looking for jobs in ".Panfish::JobState->BATCHEDANDCHUMMED().
+                           " state for $cluster");
     my $remoteBaseDir = $self->{Config}->getClusterBaseDir($cluster);
  
     # iterate through each job array
@@ -133,6 +133,7 @@ sub _buildJobHash {
     }
     my %jobHashByPsubDir = ();
     my $psubFile;
+    my $jobCnt = 0;
     for (my $x = 0; $x < @jobs; $x++){
         if (defined($jobs[$x])){
             $psubFile = $jobs[$x]->getPsubFile();
@@ -141,7 +142,12 @@ sub _buildJobHash {
                 return undef;
             }
             push(@{$jobHashByPsubDir{$self->{FileUtil}->getDirname($psubFile)}},$jobs[$x]);
+            $jobCnt++;
         }
+    }
+
+    if ($jobCnt > 0){
+        $self->{Logger}->debug("Found $jobCnt job(s) that need to be chummed");
     }
     return \%jobHashByPsubDir;
 }
