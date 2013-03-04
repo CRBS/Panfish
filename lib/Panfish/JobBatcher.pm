@@ -77,7 +77,6 @@ sub batchJobs {
     
     # builds a hash where key is job id and value is an array
     # of jobs with that job id
-    $self->{Logger}->debug("Building job hash for $cluster");
     my $jobHashById = $self->_buildJobHash($cluster); 
 
     my @sortedJobs;
@@ -348,20 +347,29 @@ sub _buildJobHash {
     my $self = shift;
     my $cluster = shift;
     
+    $self->{Logger}->debug("Looking for jobs in submitted state for $cluster");
     my @jobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
                 Panfish::JobState->SUBMITTED());
 
+    
     if (!@jobs){
             $self->{Logger}->error("Error getting jobs from database");
         return undef;
     }
+   
     my %jobHashById = ();
-
+    my $jobCnt = 0; 
     for (my $x = 0; $x < @jobs; $x++){
         if (defined($jobs[$x])){
             push(@{$jobHashById{$jobs[$x]->getJobId()}},$jobs[$x]);
+            $jobCnt++;
         }
     }
+
+    if ($jobCnt > 0){
+        $self->{Logger}->debug("Found ".$jobCnt." job(s) seeing if they can be batched");
+    }
+
     return \%jobHashById;
 }
 
