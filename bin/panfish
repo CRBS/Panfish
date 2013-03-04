@@ -22,8 +22,8 @@ use Panfish::FileUtil;
 use Panfish::SSHExecutor;
 use Panfish::RsyncUploader;
 use Panfish::JobBatchedChummer;
-
-
+use Panfish::JobSubmitter;
+use Panfish::JobWatcher;
 
 
 my $cmdLineParseResult = GetOptions ("daemon=s"      => \$daemonArgValue,
@@ -55,15 +55,25 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($config->getPanfishVerbosity());
 my $exec = Panfish::ForkExecutor->new();
-my $jobDb = Panfish::JobDatabase->new($reader,$config->getSubmitDir(),$logger);
+my $jobDb = Panfish::JobDatabase->new($reader,
+                                      $config->getSubmitDir(),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
-my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer);
+my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,
+                                       $reader,$writer);
 
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,$logger);
+my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,
+                                           $logger);
 
-my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,$logger,$fUtil,$uploader);
+my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
+                                                     $logger,$fUtil,$uploader);
+
+my $submitter = Panfish::JobSubmitter->new($config,$jobDb,$logger,
+                                           $fUtil,$sshExec);
+
+my $watcher = Panfish::JobWatcher->new($config,$jobDb,$logger,
+                                       $fUtil,$sshExec);
 
 my ($error,@clusterList) = $config->getClusterListAsArray();
 
@@ -77,21 +87,17 @@ while(1 == 1){
     
    for (my $x = 0; $x < @clusterList ; $x++){
       if ($logger->isDebugEnabled()){
-          $logger->debug("$clusterList[$x] --".$jobDb->getSummaryForCluster($clusterList[$x]));
+          $logger->debug("$clusterList[$x] --".
+                         $jobDb->getSummaryForCluster($clusterList[$x]));
       }
 
       $check = $batcher->batchJobs($clusterList[$x]);
       
-
       $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
-      # fail if error
-
-      # $check = $queuer->$queueJobs($clusterList[$x]);
-      # fail if error
-
-      # $check = $watcher->updateJobsStatus($clusterList[$x]);
-      # fail if error
       
+      $check = $submitter->submitJobs($clusterList[$x]);
+
+      $check = $watcher->checkJobs($clusterList[$x]);
    }
    $logger->debug("sleeping X seconds");
    sleep 5;
