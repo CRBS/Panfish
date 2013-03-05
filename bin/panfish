@@ -23,7 +23,7 @@ use Panfish::SSHExecutor;
 use Panfish::RsyncUploader;
 use Panfish::JobBatchedChummer;
 use Panfish::JobSubmitter;
-use Panfish::JobWatcher;
+use Panfish::SSHJobWatcher;
 
 
 my $cmdLineParseResult = GetOptions ("daemon=s"      => \$daemonArgValue,
@@ -72,7 +72,7 @@ my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
 my $submitter = Panfish::JobSubmitter->new($config,$jobDb,$logger,
                                            $fUtil,$sshExec);
 
-my $watcher = Panfish::JobWatcher->new($config,$jobDb,$logger,
+my $watcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
                                        $fUtil,$sshExec);
 
 my ($error,@clusterList) = $config->getClusterListAsArray();

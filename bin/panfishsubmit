@@ -13,19 +13,11 @@ use Cwd;
 use Getopt::Long;
 use Pod::Usage;
 
-use Panfish::ForkExecutor;
 use Panfish::PanfishConfig;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
 use Panfish::JobDatabase;
-use Panfish::JobBatcher;
-use Panfish::FileUtil;
-use Panfish::SSHExecutor;
-use Panfish::RsyncUploader;
-use Panfish::JobBatchedChummer;
-use Panfish::JobSubmitter;
-use Panfish::JobWatcher;
 
 
 my $cmdLineParseResult = GetOptions ("cluster=s" => \$clusterArgVal,
@@ -47,11 +39,9 @@ my $logger = Panfish::Logger->new();
 my $logFileHandle = undef;
 
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
-my $writer = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($verboseArg);
-print "$clusterArgVal\n";
 
 my $jobDb = Panfish::JobDatabase->new($reader,
                                       $config->getPanfishSubmitDir($clusterArgVal),$logger);
