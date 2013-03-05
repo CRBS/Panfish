@@ -269,12 +269,15 @@ format as shown with a real configuration below:
     # These properties are cluster specific and will need to
     # be configured for each cluster
     gordon_shadow.q.host=churas@gordon.sdsc.edu
+    gordon_shadow.q.qsub=/opt/torque/bin/qsub
+    gordon_shadow.q.qstat=/opt/torque/bin/qstat
+    gordon_shadow.q.engine=PBS
     gordon_shadow.q.basedir=/projects/ps-camera/gordon/panfish/p2
     gordon_shadow.q.panfishsubmit=/home/churas/gordon/panfish/panfishsubmit
     gordon_shadow.q.panfishstat=/home/churas/gordon/panfish/panfishstat
-    gordon_shadow.q.panfishsubmit.dir=/home/churas/gordon/panfish/jobs
-    gordon_shadow.q.panfishsubmit.max.num.jobs=10
-    gordon_shadow.q.panfishsubmit.submit.sleep=60
+    gordon_shadow.q.panfish.dir=/home/churas/gordon/panfish/jobs
+    gordon_shadow.q.panfish.max.num.jobs=10
+    gordon_shadow.q.panfish.submit.sleep=60
     gordon_shadow.q.run.job.script=/home/churas/gordon/panfish/panfishjobrunner
     gordon_shadow.q.scratch=`/bin/ls /scratch/$USER/[0-9]* -d`
     gordon_shadow.q.jobs.per.node=16
@@ -296,12 +299,15 @@ will be in this format with **CLUSTER** to be replaced by the name of the shadow
     # These properties are queue specific and will need to
     # be configured for each queue
     CLUSTER.host=
+    CLUSTER.qsub=
+    CLUSTER.qstat=
+    CLUSTER.engine=
     CLUSTER.basedir=
     CLUSTER.panfishsubmit=
     CLUSTER.panfishstat=
-    CLUSTER.panfishsubmit.dir=
-    CLUSTER.panfishsubmit.max.num.jobs=
-    CLUSTER.panfishsubmit.submit.sleep=
+    CLUSTER.panfish.dir=
+    CLUSTER.panfish.max.num.jobs=
+    CLUSTER.panfish.submit.sleep=
     CLUSTER.run.job.script=
     CLUSTER.scratch=
     CLUSTER.jobs.per.node=
@@ -388,6 +394,15 @@ Here is a breakdown of the **queue** specific properties
     Host of remote cluster to submit jobs on and to copy data to/from.  This
     should be of the form (user)@(host) ex:  bob@gordon.sdsc.edu
 
+* **CLUSTER.qsub**
+    Path to qsub program on cluster
+
+* **CLUSTER.qstat**
+    Path to qstat program on cluster
+
+* **CLUSTER.engine**
+    Batch processing system used by cluster.  Currently PBS, SGE, and GE are supported.
+
 * **CLUSTER.basedir**
     Directory on remote cluster that is considered the base directory under which all
     Panfish jobs will run.  For example, if this is set to /home/foo and a job is run which
@@ -403,17 +418,16 @@ Here is a breakdown of the **queue** specific properties
 * **CLUSTER.panfishstat**
     Path to **panfishstat** wrapper that lets caller get status of job.
 
-* **CLUSTER.panfishsubmit.dir**
+* **CLUSTER.panfish.dir**
     Directory cluster to write out the panfishsubmit job files.  They will be
     put in folders under this path which denote the state of the job.
 
-* **CLUSTER.panfishsubmit.max.num.jobs**
+* **CLUSTER.panfish.max.num.jobs**
     Maximum number of jobs to allow to run concurrently on the cluster.  This
     is done because some clusters restrict # of jobs per user.
 
-* **CLUSTER.panfishsubmit.submit.sleep**
+* **CLUSTER.panfish.submit.sleep**
     Sleep time between submissions.  Some clusters need a break :)
-
 
 * **CLUSTER.run.job.script**
     This script lets a set of serial jobs run on a single node in parallel.
@@ -424,7 +438,7 @@ Here is a breakdown of the **queue** specific properties
 * **CLUSTER.jobs.per.node**
     The number of serial jobs that can be batched onto one node. 
 
-* **CLUSTER.job.batcher.override.timeout
+* **CLUSTER.job.batcher.override.timeout**
     Number of seconds to wait before batching a set of jobs that are
     less then **CLUSTER.jobs.per.node** for the cluster in question.  This
     will result in a submission of a job that does not fully utilize the remote
@@ -1047,6 +1061,7 @@ the output of **qstat** to move the job files to appropriate file if state
 changed.  
 
 Example PBS output from qstat:
+
      $ qstat
      Job id                    Name             User            Time Use S Queue
      ------------------------- ---------------- --------------- -------- - -----
