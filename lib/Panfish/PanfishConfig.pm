@@ -23,24 +23,25 @@ use FindBin qw($Bin);
 sub new {
    my $class = shift;
    my $self = {
-     Config            => shift,
-     QSUB_PATH         => "qsub.path",
-     CLUSTER_LIST      => "cluster.list",
-     LINE_VERBOSITY    => "line.log.verbosity",
-     PANFISH_VERBOSITY => "panfish.log.verbosity",
-     LINE_SLEEP_TIME   => "line.sleep.time",
-     LINE_STDERR_PATH  => "line.stderr.path",
-     LINE_STDOUT_PATH  => "line.stdout.path",
-     SUBMIT_DIR        => "submit.dir",
-     JOB_TEMPLATE_DIR  => "job.template.dir",
-     LINE_COMMAND      => "line",
-     BASEDIR           => "basedir",
-     HOST              => "host",
-     JOBS_PER_NODE     => "jobs.per.node",
-     RUN_JOB_SCRIPT    => "run.job.script",
-     BATCHER_OVERRIDE  => "job.batcher.override.timeout",
-     PANFISH_SUBMIT    => "panfishsubmit",
-     PANFISH_STAT      => "panfishstat",
+     Config             => shift,
+     QSUB_PATH          => "qsub.path",
+     CLUSTER_LIST       => "cluster.list",
+     LINE_VERBOSITY     => "line.log.verbosity",
+     PANFISH_VERBOSITY  => "panfish.log.verbosity",
+     LINE_SLEEP_TIME    => "line.sleep.time",
+     LINE_STDERR_PATH   => "line.stderr.path",
+     LINE_STDOUT_PATH   => "line.stdout.path",
+     SUBMIT_DIR         => "submit.dir",
+     JOB_TEMPLATE_DIR   => "job.template.dir",
+     LINE_COMMAND       => "line",
+     BASEDIR            => "basedir",
+     HOST               => "host",
+     JOBS_PER_NODE      => "jobs.per.node",
+     RUN_JOB_SCRIPT     => "run.job.script",
+     BATCHER_OVERRIDE   => "job.batcher.override.timeout",
+     PANFISH_SUBMIT     => "panfishsubmit",
+     PANFISH_STAT       => "panfishstat",
+     PANFISH_SUBMIT_DIR => "panfishsubmit.dir"
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -67,6 +68,22 @@ sub _getValueFromConfig {
 
     return $self->{Config}->getParameterValue($key);
 }
+
+
+=head3 getPanfishSubmitDir
+
+Gets the directory where panfishsubmit places job files for the
+cluster specified.
+
+=cut 
+
+sub getPanfishSubmitDir {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($cluster.".".
+                                      $self->{PANFISH_SUBMIT_DIR});
+}
+
 
 =head3 getPanfishStat
 
