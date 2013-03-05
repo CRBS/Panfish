@@ -1,0 +1,166 @@
+#!/usr/bin/perl
+
+
+use FindBin qw($Bin);
+
+#these allow this script to work when installed in alternate path
+use lib "$Bin/../lib";
+use lib "$Bin/../lib/perl5/site_perl";
+use lib "$Bin/../lib/perl5";
+
+use Cwd;
+
+use Getopt::Long;
+use Pod::Usage;
+
+use Panfish::ForkExecutor;
+use Panfish::PanfishConfig;
+use Panfish::Logger;
+use Panfish::FileReaderWriterImpl;
+use Panfish::PanfishConfigFactory;
+use Panfish::JobDatabase;
+use Panfish::JobBatcher;
+use Panfish::FileUtil;
+use Panfish::SSHExecutor;
+use Panfish::RsyncUploader;
+use Panfish::JobBatchedChummer;
+use Panfish::JobSubmitter;
+use Panfish::JobWatcher;
+
+
+my $cmdLineParseResult = GetOptions ("cluster=s" => \$clusterArgVal,
+                                     "help|?"    => \$helpArg,
+                                     "verbose+"  => \$verboseArg,
+                                     "man"       => \$manArg) or pod2usage(2);
+
+
+if ($helpArg || !defined($clusterArgVal)){
+  pod2usage(1);
+}
+
+if ($manArg){
+  pod2usage(-exitstatus => 0, -verbose => 2);
+}
+
+my $logger = Panfish::Logger->new();
+
+my $logFileHandle = undef;
+
+my $reader = Panfish::FileReaderWriterImpl->new($logger);
+my $writer = Panfish::FileReaderWriterImpl->new($logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $config = $configFactory->getPanfishConfig();
+$logger->setLevelBasedOnVerbosity($verboseArg);
+print "$clusterArgVal\n";
+
+my $jobDb = Panfish::JobDatabase->new($reader,
+                                      $config->getPanfishSubmitDir($clusterArgVal),$logger);
+my $fUtil = Panfish::FileUtil->new($logger);
+
+my $job;
+my $line;
+my $jobId;
+my $taskId;
+
+my $exitVal = 0;
+
+my $cwd = getcwd();
+while(<STDIN>){
+    chomp();
+    $line = $_;
+    # line should contain path to psub file
+    # take this file and make a new job file using this as the command
+    # write the command to a file using the job database
+    # and print out the psub file minus .psub and path prefix.
+    if ($line=~/^.*\/(.*)\.(.*)\.psub$/){
+        $jobId = $1;
+        $taskId = $2;
+    }   
+    $logger->debug("Job id: ".$jobId); 
+    $job = Panfish::Job->new("",
+                             $jobId,
+                             $taskId,
+                             "X".$jobId."_".$taskId,
+                             $cwd,
+                             $line,
+                             Panfish::JobState->SUBMITTED());
+
+    my $res = $jobDb->insert($job);
+    if (!defined($res)){
+        print "$jobId.$taskId\n";
+    }
+    else {
+        $exitVal = 1;
+        $logger->error("Unable to submit job $line : $res");
+    }
+}  
+    
+exit($exitVal);
+1;
+
+__END__
+
+=head1 NAME
+
+panfishsubmit - Remote cluster Panfish submit
+
+=head1 SYNOPSIS
+
+panfish [ B<options> ]
+
+=head1 DESCRIPTION
+
+B<panfishsubmit> is run on remote cluster to submit the psub jobs.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--cluster name>
+
+Defines cluster this program is invoked on
+
+=item B<--verbose>
+
+Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
+verbosity.  The maximum is 3.
+
+NOTE:  This is not an option in B<qsub>.
+
+
+=head1 EXIT STATUS
+
+=over
+
+=item 0     Operation was successful.
+
+=item >0    Error.
+
+=back
+
+=head1 EXAMPLES
+
+=head1 FILES
+
+ hello
+
+=head1 AUTHOR
+
+Christopher Churas <churas@ncmir.ucsd.edu>
+
+=head1 REPORTING BUGS
+
+bugs
+
+
+=head1 COPYRIGHT
+
+blah blah
+
+=head1 SEE ALSO
+
+more blah
+
+
+
+=cut
