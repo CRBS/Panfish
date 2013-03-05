@@ -136,7 +136,11 @@ sub _submitPsubFilesViaSSH {
     my $remoteBaseDir = $self->{Config}->getClusterBaseDir($cluster);
     my $panfishSubmit = $self->{Config}->getPanfishSubmit($cluster);
     my @noJobs;
-    
+   
+
+    #need to tell the command what cluster it is.  yeah its weird
+    $panfishSubmit = $panfishSubmit." --cluster $cluster";
+ 
     # set to correct cluster
     $self->{SSHExecutor}->setCluster($cluster);   
 
