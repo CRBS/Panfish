@@ -64,6 +64,7 @@ my $taskId;
 
 my $exitVal = 0;
 my $jobName;
+my $jobNameWithUnderscore;
 my $cwd = getcwd();
 while(<STDIN>){
     chomp();
@@ -84,11 +85,14 @@ while(<STDIN>){
         $taskId = "";
         $jobName = $jobId;
     } 
-    $logger->debug("Job id: ".$jobId); 
+    $logger->debug("Job id: ".$jobName);
+    $jobNameWithUnderscore = $jobName;
+    $jobNameWithUnderscore=~s/\./_/g; 
+    
     $job = Panfish::Job->new("",
                              $jobId,
                              $taskId,
-                             "X".$jobName,
+                             "X".$jobNameWithUnderscore,
                              $cwd,
                              $line,
                              Panfish::JobState->SUBMITTED());
