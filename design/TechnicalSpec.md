@@ -272,6 +272,9 @@ format as shown with a real configuration below:
     gordon_shadow.q.basedir=/projects/ps-camera/gordon/panfish/p2
     gordon_shadow.q.panfishsubmit=/home/churas/gordon/panfish/panfishsubmit
     gordon_shadow.q.panfishstat=/home/churas/gordon/panfish/panfishstat
+    gordon_shadow.q.panfishsubmit.dir=/home/churas/gordon/panfish/jobs
+    gordon_shadow.q.panfishsubmit.max.num.jobs=10
+    gordon_shadow.q.panfishsubmit.submit.sleep=60
     gordon_shadow.q.run.job.script=/home/churas/gordon/panfish/panfishjobrunner
     gordon_shadow.q.scratch=`/bin/ls /scratch/$USER/[0-9]* -d`
     gordon_shadow.q.jobs.per.node=16
@@ -296,6 +299,9 @@ will be in this format with **CLUSTER** to be replaced by the name of the shadow
     CLUSTER.basedir=
     CLUSTER.panfishsubmit=
     CLUSTER.panfishstat=
+    CLUSTER.panfishsubmit.dir=
+    CLUSTER.panfishsubmit.max.num.jobs=
+    CLUSTER.panfishsubmit.submit.sleep=
     CLUSTER.run.job.script=
     CLUSTER.scratch=
     CLUSTER.jobs.per.node=
@@ -396,6 +402,18 @@ Here is a breakdown of the **queue** specific properties
 
 * **CLUSTER.panfishstat**
     Path to **panfishstat** wrapper that lets caller get status of job.
+
+* **CLUSTER.panfishsubmit.dir**
+    Directory cluster to write out the panfishsubmit job files.  They will be
+    put in folders under this path which denote the state of the job.
+
+* **CLUSTER.panfishsubmit.max.num.jobs**
+    Maximum number of jobs to allow to run concurrently on the cluster.  This
+    is done because some clusters restrict # of jobs per user.
+
+* **CLUSTER.panfishsubmit.submit.sleep**
+    Sleep time between submissions.  Some clusters need a break :)
+
 
 * **CLUSTER.run.job.script**
     This script lets a set of serial jobs run on a single node in parallel.
@@ -998,7 +1016,7 @@ The **panfish submit directory** looks like this:
     submitted/
     queued/
     running/
-    completed/
+    done/
     failed/
 
 **panfishstat** should return the name of the directory as the state of the job. 
@@ -1125,12 +1143,3 @@ This configuration file will reside in the same directory as the **panfishsubmit
      max.num.jobs=Maximum # of jobs to submit to batch processing system 
 
      submit.sleep=Wait time in seconds between submission of jobs to batch processing system
-
-     # Used to let all commands know what folders are what states.
-     submitted.job.dir=submitted
-     queued.job.dir=queued
-     running.job.dir=running
-     completed.job.dir=completed
-     failed.job.dir=failed
-  
-
