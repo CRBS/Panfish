@@ -352,6 +352,7 @@ sub _getJobFromJobFile {
 
     if ($jobFile=~/^.*\/([0-9]+)$/){
        $jobId = $1;
+       $taskId = "";
     }
     elsif ($jobFile=~/^.*\/([0-9]+)\.([0-9]+)$/){
        $jobId = $1;
