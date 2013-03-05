@@ -138,6 +138,8 @@ sub _getPsubJobStateViaSSH {
     # set to correct cluster
     $self->{SSHExecutor}->setCluster($cluster);   
 
+    $panfishSubmit = $panfishSubmit." --cluster $cluster";
+
     # build echo command to pipe to submitter program via ssh
     # need to get all keys and
     # invoke myqsubstdin.sh like this to minimize ssh activity
@@ -253,7 +255,7 @@ __END__
 
 =head1 AUTHOR
 
-Panfish::JobBatchedChummer is written by Christopher Churas<churas@ncmir.ucsd.edu>
+Panfish::JobWatcher is written by Christopher Churas<churas@ncmir.ucsd.edu>
 
 =cut
 
