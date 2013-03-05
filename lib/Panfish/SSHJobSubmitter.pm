@@ -1,4 +1,4 @@
-package Panfish::JobSubmitter;
+package Panfish::SSHJobSubmitter;
 
 use strict;
 use English;
@@ -13,7 +13,7 @@ use Panfish::Job;
 
 =head1 SYNOPSIS
    
-  Panfish::JobSubmitter -- Submits actual jobs to clusters
+  Panfish::SSHJobSubmitter -- Submits actual jobs to clusters via ssh
 
 =head1 DESCRIPTION
 
@@ -234,7 +234,7 @@ __END__
 
 =head1 AUTHOR
 
-Panfish::JobBatchedChummer is written by Christopher Churas<churas@ncmir.ucsd.edu>
+Panfish::SSHJobSubmitter is written by Christopher Churas<churas@ncmir.ucsd.edu>
 
 =cut
 
