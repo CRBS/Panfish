@@ -63,7 +63,7 @@ my $jobId;
 my $taskId;
 
 my $exitVal = 0;
-
+my $jobName;
 my $cwd = getcwd();
 while(<STDIN>){
     chomp();
@@ -74,20 +74,28 @@ while(<STDIN>){
     # and print out the psub file minus .psub and path prefix.
     if ($line=~/^.*\/(.*)\.(.*)\.psub$/){
         $jobId = $1;
-        $taskId = $2;
-    }   
+        $taskId = $2;  
+        $jobName = $jobId.".".$taskId;
+    }  
+    else {
+        $jobId = $line;
+        $jobId=~s/^.*\///;
+        $jobId=~s/\.psub//;
+        $taskId = "";
+        $jobName = $jobId;
+    } 
     $logger->debug("Job id: ".$jobId); 
     $job = Panfish::Job->new("",
                              $jobId,
                              $taskId,
-                             "X".$jobId."_".$taskId,
+                             "X".$jobName,
                              $cwd,
                              $line,
                              Panfish::JobState->SUBMITTED());
 
     my $res = $jobDb->insert($job);
     if (!defined($res)){
-        print "$jobId.$taskId\n";
+        print "$jobName\n";
     }
     else {
         $exitVal = 1;
@@ -106,7 +114,7 @@ panfishsubmit - Remote cluster Panfish submit
 
 =head1 SYNOPSIS
 
-panfish [ B<options> ]
+panfishsubmit [ B<options> ]
 
 =head1 DESCRIPTION
 
@@ -122,11 +130,8 @@ Defines cluster this program is invoked on
 
 =item B<--verbose>
 
-Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 3.
-
-NOTE:  This is not an option in B<qsub>.
-
+Verbose mode.  Causes B<panfishsubmit> to print debugging messages.  
+Multiple B<--verbose> increase verbosity.  The maximum is 2.
 
 =head1 EXIT STATUS
 
