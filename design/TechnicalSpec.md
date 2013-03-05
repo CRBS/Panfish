@@ -1,4 +1,3 @@
-
 Panfish Technical Specification
 ===============================
 
@@ -61,6 +60,7 @@ In a normal scenario the user does the following:
     Done
 
 With **Panfish** the user does the following:
+
     User ----> [invokes] ----> chum
      ||                         ||
      ||                         \/
@@ -365,7 +365,7 @@ Here is a breakdown of each **global** property:
     2 = adds debug messages.
 
 
-    Example template for gordon_shadow.q:
+Example template for gordon_shadow.q:
 
       #!/bin/sh
       #
@@ -379,7 +379,7 @@ Here is a breakdown of each **global** property:
       #PBS -l nodes=1:ppn=16,walltime=12:00:00
       #PBS -N @PANFISH_JOB_NAME@
       #PBS -d @PANFISH_JOB_CWD@
-
+      
       /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
 
 Here is a breakdown of the **queue** specific properties
