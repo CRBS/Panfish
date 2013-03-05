@@ -22,14 +22,15 @@ use Panfish::FileUtil;
 use Panfish::SSHExecutor;
 use Panfish::RsyncUploader;
 use Panfish::JobBatchedChummer;
-use Panfish::JobSubmitter;
+use Panfish::SSHJobSubmitter;
 use Panfish::SSHJobWatcher;
 
 
-my $cmdLineParseResult = GetOptions ("daemon=s"      => \$daemonArgValue,
-                                     "log=s"      => \$logArgValue,
-                                     "help|?"   => \$helpArg,
-                                     "man"      => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("daemon=s"    => \$daemonArgValue,
+                                     "cluster=s"   => \$clusterArgValue,
+                                     "log=s"       => \$logArgValue,
+                                     "help|?"      => \$helpArg,
+                                     "man"         => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -58,29 +59,52 @@ my $exec = Panfish::ForkExecutor->new();
 my $jobDb = Panfish::JobDatabase->new($reader,
                                       $config->getSubmitDir(),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
-my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,
-                                       $reader,$writer);
 
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,
                                            $logger);
 
-my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
+my $batcher;
+my $batchedChummer;
+my $submitter;
+my $watcher;
+my @clusterList;
+my $error;
+
+# if no cluster is specified this daemon handles the shadow jobs and uses
+# ssh to run jobs on remote clusters
+#
+if (!defined($clusterArgVal)){
+    
+    $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,
+                                       $reader,$writer);
+
+    $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
                                                      $logger,$fUtil,$uploader);
 
-my $submitter = Panfish::JobSubmitter->new($config,$jobDb,$logger,
+    $submitter = Panfish::SSHJobSubmitter->new($config,$jobDb,$logger,
                                            $fUtil,$sshExec);
 
-my $watcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
+    $watcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
                                        $fUtil,$sshExec);
 
-my ($error,@clusterList) = $config->getClusterListAsArray();
+    ($error,@clusterList) = $config->getClusterListAsArray();
 
-if (defined($error)){
-   $logger->fatal("Problem getting cluster list : $error");
-   exit(1);
+    if (defined($error)){
+        $logger->fatal("Problem getting cluster list : $error");
+        exit(1);
+    }
+
 }
+else {
+    # the cluster is defined so we need to ignore batcher and batchedchummer
+    # and make special versions of submitter and watcher to actually
+    # run the jobs on the cluster
+    $clusterList[0] = $clusterArgVal;
+    
+}
+
 
 while(1 == 1){
   
@@ -90,10 +114,14 @@ while(1 == 1){
           $logger->debug("$clusterList[$x] --".
                          $jobDb->getSummaryForCluster($clusterList[$x]));
       }
-
-      $check = $batcher->batchJobs($clusterList[$x]);
       
-      $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
+      if (defined($batcher)){
+          $check = $batcher->batchJobs($clusterList[$x]);
+      {
+      
+      if (defined($batchedChummer)){
+          $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
+      }
       
       $check = $submitter->submitJobs($clusterList[$x]);
 
