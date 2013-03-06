@@ -63,11 +63,9 @@ sub new {
         Executor      => shift,
         Logger        => shift,
         Host          => "",
-	Command       => "",
         StdInCommand  => "",
-	Output        => "",
-	ExitCode      => -1,
-        SSHCommand    => "/usr/bin/ssh"
+        SSHCommand    => "/usr/bin/ssh",
+        UseSSH        => 1
 	};
     return bless ($self,$class);
 }
@@ -103,7 +101,7 @@ sub setCluster {
 
 sub getCommand {
     my $self = shift;
-    return $self->{Command};
+    return $self->{Executor}->getCommand();
 }
 
 =head3 getOutput
@@ -117,7 +115,7 @@ sub getCommand {
 
 sub getOutput {
     my $self = shift;
-    return $self->{Output};
+    return $self->{Executor}->getOutput();
 }
 
 =head3 getExitCode
@@ -130,7 +128,7 @@ sub getOutput {
 
 sub getExitCode {
     my $self = shift;
-    return $self->{ExitCode};
+    return $self->{Executor}->getExitCode();
 }
 
 
@@ -149,6 +147,27 @@ sub setStandardInputCommand {
 
     return undef;
 }
+
+=head3 enableSSH 
+
+
+=cut
+
+sub enableSSH {
+    my $self = shift;
+    $self->{UseSSH} = 1;
+}
+
+=head3 disableSSH 
+
+
+=cut
+
+sub disableSSH {
+    my $self = shift;
+    $self->{UseSSH} = 0;
+}
+
 
 =head3 executeCommand
 
@@ -181,38 +200,29 @@ sub executeCommand {
     my $resetTimeoutOnOutput = shift;
 
     
-    
-    $self->{ExitCode} = -1;
-    $self->{Output} = "";
+    # if there is no command let the parent executor handle the failure 
     if (!defined($command)){
-	$self->{Command} = undef;
-	$self->{Output} = undef;
-	$self->{ExitCode} = -1;
-	return -1;
+        return $self->{Executor}->executeCommand($command,$timeout,$resetTimeoutOnOutput);
     }    
 
-    $self->{Command} = "";
+    my $cmd = "";
 
+    # see if any command neads to be set before the ssh command
     if (defined($self->{StdInCommand}) && 
         $self->{StdInCommand} ne ""){
 
-        $self->{Command} = $self->{StdInCommand}." | ";
+        $cmd = $self->{StdInCommand}." | ";
+    }
+    
+    # only set the ssh stuff if the user wants it.
+    if ($self->{UseSSH} == 1){
+        $cmd .= $self->{SSHCommand}." ".$self->{Host}." ";
     }
 
-    $self->{Command} .= $self->{SSHCommand}." ".$self->{Host}." ".
-                        $command;
+    # finally append the command
+    $cmd .= $command;
 
-
-    if (!defined($resetTimeoutOnOutput)){
-	$resetTimeoutOnOutput = 0;
-    }
-
-    $self->{ExitCode} = $self->{Executor}->executeCommand($self->{Command},
-                                           $timeout,$resetTimeoutOnOutput);
-
-    $self->{Output} = $self->{Executor}->getOutput();
-
-    return $self->{ExitCode};
+    return $self->{Executor}->executeCommand($cmd,$timeout,$resetTimeoutOnOutput);
 }
 
 1;
