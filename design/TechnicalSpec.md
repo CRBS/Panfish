@@ -275,7 +275,7 @@ format as shown with a real configuration below:
     gordon_shadow.q.basedir=/projects/ps-camera/gordon/panfish/p2
     gordon_shadow.q.panfishsubmit=/home/churas/gordon/panfish/panfishsubmit
     gordon_shadow.q.panfishstat=/home/churas/gordon/panfish/panfishstat
-    gordon_shadow.q.panfish.dir=/home/churas/gordon/panfish/jobs
+    gordon_shadow.q.panfish.job.dir=/home/churas/gordon/panfish/jobs
     gordon_shadow.q.panfish.max.num.jobs=10
     gordon_shadow.q.panfish.submit.sleep=60
     gordon_shadow.q.run.job.script=/home/churas/gordon/panfish/panfishjobrunner
@@ -305,9 +305,9 @@ will be in this format with **CLUSTER** to be replaced by the name of the shadow
     CLUSTER.basedir=
     CLUSTER.panfishsubmit=
     CLUSTER.panfishstat=
-    CLUSTER.panfish.dir=
-    CLUSTER.panfish.max.num.jobs=
-    CLUSTER.panfish.submit.sleep=
+    CLUSTER.job.dir=
+    CLUSTER.max.num.jobs=
+    CLUSTER.submit.sleep=
     CLUSTER.run.job.script=
     CLUSTER.scratch=
     CLUSTER.jobs.per.node=
@@ -418,15 +418,15 @@ Here is a breakdown of the **queue** specific properties
 * **CLUSTER.panfishstat**
     Path to **panfishstat** wrapper that lets caller get status of job.
 
-* **CLUSTER.panfish.dir**
+* **CLUSTER.job.dir**
     Directory cluster to write out the panfishsubmit job files.  They will be
     put in folders under this path which denote the state of the job.
 
-* **CLUSTER.panfish.max.num.jobs**
+* **CLUSTER.max.num.jobs**
     Maximum number of jobs to allow to run concurrently on the cluster.  This
     is done because some clusters restrict # of jobs per user.
 
-* **CLUSTER.panfish.submit.sleep**
+* **CLUSTER.submit.sleep**
     Sleep time between submissions.  Some clusters need a break :)
 
 * **CLUSTER.run.job.script**
