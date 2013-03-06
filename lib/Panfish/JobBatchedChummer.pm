@@ -69,7 +69,7 @@ sub chumBatchedJobs {
         $self->{Logger}->error("Cluster is not set");
         return "Cluster is not set";
     }
-
+    
     my $res;
     
     # builds a hash where key is base dir where psub and commands
@@ -79,6 +79,7 @@ sub chumBatchedJobs {
 
     $self->{Logger}->debug("Looking for jobs in ".Panfish::JobState->BATCHEDANDCHUMMED().
                            " state for $cluster");
+    
     my $remoteBaseDir = $self->{Config}->getClusterBaseDir($cluster);
  
     # iterate through each job array
@@ -87,14 +88,19 @@ sub chumBatchedJobs {
         $self->{Logger}->debug("Found ".@{$jobHashByPsubDir->{$psubDir}}.
                                " jobs with dir : $psubDir");
 
-        $self->{Logger}->debug("Uploading $psubDir to $cluster");
+        if ($remoteBaseDir ne ""){
+            $self->{Logger}->debug("Uploading $psubDir to $cluster");
               
-        my $res = $self->{RsyncUploader}->upload($psubDir,$cluster);
-        if (defined($res)){
-             $self->{Logger}->error("Problem uploading $psubDir to $cluster : $res");
-             next;
+            my $res = $self->{RsyncUploader}->upload($psubDir,$cluster);
+            if (defined($res)){
+                 $self->{Logger}->error("Problem uploading $psubDir to $cluster : $res");
+                 next;
+            }
+            $self->{Logger}->debug("Upload succeeded updating database");
         }
-        $self->{Logger}->debug("Upload succeeded updating database");
+        else {
+            $self->{Logger}->debug("No upload necessary updating database");
+        }
         #need to update state
         for (my $x = 0; $x < @{$jobHashByPsubDir->{$psubDir}}; $x++){
             ${$jobHashByPsubDir->{$psubDir}}[$x]->setState(Panfish::JobState->BATCHEDANDCHUMMED());
