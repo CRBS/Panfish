@@ -101,6 +101,7 @@ if (defined($error)){
     $logger->fatal("Invalid queue/cluster list set via -q flag : $error");
     exit(1);
 }
+
 $newArgList .= " -q ".$cList;
 
 my $dir = "";
