@@ -41,7 +41,10 @@ sub new {
      BATCHER_OVERRIDE   => "job.batcher.override.timeout",
      PANFISH_SUBMIT     => "panfishsubmit",
      PANFISH_STAT       => "panfishstat",
-     PANFISH_SUBMIT_DIR => "panfishsubmit.dir"
+     JOB_DIR            => "job.dir",
+     QSUB               => "qsub",
+     QSTAT              => "qstat",
+     
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -70,18 +73,47 @@ sub _getValueFromConfig {
 }
 
 
-=head3 getPanfishSubmitDir
+=head3 getClusterQsub 
+
+Gets path to qsub for cluster
+
+=cut
+
+sub getClusterQsub {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($cluster.".".
+                                      $self->{QSUB});
+}
+
+
+=head3 getClusterQstat
+
+Gets path for qstat for cluster
+
+=cut
+
+sub getClusterQstat {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($cluster.".".
+                                      $self->{QSTAT});
+}
+
+
+
+=head3 getClusterJobDir
 
 Gets the directory where panfishsubmit places job files for the
 cluster specified.
 
 =cut 
 
-sub getPanfishSubmitDir {
+sub getClusterJobDir {
     my $self = shift;
     my $cluster = shift;
     return $self->_getValueFromConfig($cluster.".".
-                                      $self->{PANFISH_SUBMIT_DIR});
+                                      $self->{JOB_DIR});
 }
 
 
@@ -269,10 +301,10 @@ sub getClusterListAsArray {
     my @cArrayFromParam = split(",",$clusterList);
 
     my @finalArray;
-    my $cnt = 0;
+    
     for (my $x = 0; $x < @cArrayFromParam; $x++){
         if (defined($cHash{$cArrayFromParam[$x]})){
-            $finalArray[$cnt++] = $cArray[$x];
+            push(@finalArray,$cArrayFromParam[$x]);
         }
         else {
            return ("$cArrayFromParam[$x] is not a valid cluster",undef);
