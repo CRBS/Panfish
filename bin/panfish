@@ -24,6 +24,7 @@ use Panfish::RsyncUploader;
 use Panfish::JobBatchedChummer;
 use Panfish::SSHJobSubmitter;
 use Panfish::SSHJobWatcher;
+use Panfish::QsubJobSubmitter;
 
 
 my $cmdLineParseResult = GetOptions ("daemon=s"    => \$daemonArgValue,
@@ -56,8 +57,6 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($config->getPanfishVerbosity());
 my $exec = Panfish::ForkExecutor->new();
-my $jobDb = Panfish::JobDatabase->new($reader,
-                                      $config->getSubmitDir(),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
 
 my $exec = Panfish::ForkExecutor->new();
@@ -65,6 +64,7 @@ my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,
                                            $logger);
 
+my $jobDb;
 my $batcher;
 my $batchedChummer;
 my $submitter;
@@ -75,8 +75,9 @@ my $error;
 # if no cluster is specified this daemon handles the shadow jobs and uses
 # ssh to run jobs on remote clusters
 #
-if (!defined($clusterArgVal)){
-    
+if (!defined($clusterArgValue)){
+    $jobDb = Panfish::JobDatabase->new($reader,
+                                      $config->getSubmitDir(),$logger);
     $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,
                                        $reader,$writer);
 
@@ -101,8 +102,12 @@ else {
     # the cluster is defined so we need to ignore batcher and batchedchummer
     # and make special versions of submitter and watcher to actually
     # run the jobs on the cluster
-    $clusterList[0] = $clusterArgVal;
-    
+    $logger->info("Submitting jobs directly via qsub");
+    $clusterList[0] = $clusterArgValue;
+    $jobDb = Panfish::JobDatabase->new($reader,
+                                      $config->getClusterJobDir($clusterArgValue),$logger);
+
+    $submitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec);
 }
 
 
@@ -110,14 +115,14 @@ while(1 == 1){
   
     
    for (my $x = 0; $x < @clusterList ; $x++){
-      if ($logger->isDebugEnabled()){
+      if ($logger->isDebugEnabled() && !defined($clusterArgValue)){
           $logger->debug("$clusterList[$x] --".
                          $jobDb->getSummaryForCluster($clusterList[$x]));
       }
       
       if (defined($batcher)){
           $check = $batcher->batchJobs($clusterList[$x]);
-      {
+      }
       
       if (defined($batchedChummer)){
           $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
