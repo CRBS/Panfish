@@ -107,7 +107,8 @@ sub checkJobs {
     for my $psubJobId (keys %$jobHashByPsubJobId){
         
         $state = $psubStatusHash->{$psubJobId};
-        if ($state ne ${$jobHashByPsubJobId->{$psubJobId}}[0]->getState()){
+        if ($state ne Panfish::JobState->SUBMITTED() && 
+            $state ne ${$jobHashByPsubJobId->{$psubJobId}}[0]->getState()){
             for (my $x = 0; $x < @{$jobHashByPsubJobId->{$psubJobId}}; $x++){
                  ${$jobHashByPsubJobId->{$psubJobId}}[$x]->setState($state);
                  $self->{JobDb}->update(${$jobHashByPsubJobId->{$psubJobId}}[$x]);
