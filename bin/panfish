@@ -108,6 +108,9 @@ else {
                                       $config->getClusterJobDir($clusterArgValue),$logger);
 
     $submitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec);
+   
+    $watcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
+                                           $fUtil,$sshExec);
 }
 
 
