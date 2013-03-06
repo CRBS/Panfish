@@ -263,6 +263,20 @@ sub setState {
    $self->{State} = shift;
 }
 
+sub getJobAndTaskId {
+    my $self = shift;
+ 
+    if (defined($self->{JobId}) && defined($self->{TaskId})){
+       return $self->{JobId}.".".$self->{TaskId};
+    }
+
+    if (defined($self->{JobId})){
+       return $self->{JobId};
+    }
+    
+
+}
+
 1;
 
 __END__
