@@ -1,0 +1,180 @@
+#!/usr/bin/perl
+
+
+use FindBin qw($Bin);
+
+#these allow this script to work when installed in alternate path
+use lib "$Bin/../lib";
+use lib "$Bin/../lib/perl5/site_perl";
+use lib "$Bin/../lib/perl5";
+
+use Getopt::Long;
+use Pod::Usage;
+
+use Panfish::ForkExecutor;
+use Panfish::PanfishConfig;
+use Panfish::Logger;
+use Panfish::FileReaderWriterImpl;
+use Panfish::PanfishConfigFactory;
+
+if (@ARGV == 0){
+  pod2usage(2);
+}
+
+my $verboseArg;
+my $helpArg;
+my $manArg;
+
+my $cmdLineParseResult = GetOptions ("verbose+" => \$verboseArg,
+                                     "help|?"   => \$helpArg,
+                                     "man"      => \$manArg) or pod2usage(2);
+
+
+if ($helpArg){
+  pod2usage(1);
+}
+
+if ($manArg){
+  pod2usage(-exitstatus => 0, -verbose => 2);
+}
+
+if (@ARGV < 1){
+  pod2usage(2);
+}
+
+my $logger = Panfish::Logger->new();
+my $reader = Panfish::FileReaderWriterImpl->new($logger);
+$logger->setLevelBasedOnVerbosity($verboseArg);
+
+my $commands = $ARGV[0];
+
+my $res = $reader->openFile($commands);
+if (defined($res)){
+    $logger->fatal($res);
+    exit(1);
+}
+
+my @pidarray;
+my @pidCmds;
+my $cnt = 0;
+
+my $cmd = $reader->read();
+while($cmd){
+   chomp($cmd);
+   my $pid = fork();
+
+   if (!defined($pid)){ # fork failed
+       $logger->fatal("Resources not available to fork");
+       exit(1); #figure this is bad so we will just bail
+   }
+   elsif($pid == 0){ # I am the child
+       my $ret = system($cmd);
+       exit($ret);
+   }
+
+   #if i am here I am the parent
+   $pidCmds[$cnt]=$cmd;
+   $pidarray[$cnt++]=$pid; #add child pid to array
+   
+   $cmd = $reader->read();
+}
+
+$reader->close();
+
+$logger->info("Waiting for ".@pidarray." commands to complete");
+
+my $exitCode;
+
+my $childFailed = 0;
+
+#only the parent reaches this
+#wait for all the children threads to complete
+for (my $x = 0; $x < @pidarray; $x++){
+  $logger->debug("Waiting for $x process id: $pidarray[$x]");
+  waitpid($pidarray[$x],0);
+  $exitCode = $?;
+  if ($exitCode != 0){
+     $logger->error("Process $x : $pidCmds[$x] : exited with nonzero exit code : $exitCode");
+     $childFailed = 20;
+  }
+}
+
+exit($childFailed);
+
+1;
+
+__END__
+
+=head1 NAME
+
+panfishjobrunner - Runs commands passed in via input file in parallel
+
+=head1 SYNOPSIS
+
+panfishjobrunner [ B<options> ] [ B<command file> ]
+
+=head1 DESCRIPTION
+
+B<Panfishjobrunner> takes a file containing commands and runs them in
+parallel.  
+
+B<Panfishjobrunner> simply runs each command as a child process and waits
+for them to finish.
+
+=head1 OPTIONS
+
+As of now there are no options, but there should be :)
+
+=over 4
+
+=item B<--help>
+
+Displays help.
+
+=item B<--man>
+
+Displays man page.
+
+=item B<--verbose>
+
+Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
+verbosity.  The maximum is 3.
+
+=back
+
+=head1 EXIT STATUS
+
+=over
+
+=item 0     Operation was successful.
+
+=item >0    Error.
+
+=back
+
+=head1 EXAMPLES
+
+=head1 FILES
+
+ hello
+
+=head1 AUTHOR
+
+Christopher Churas <churas@ncmir.ucsd.edu>
+
+=head1 REPORTING BUGS
+
+bugs
+
+
+=head1 COPYRIGHT
+
+blah blah
+
+=head1 SEE ALSO
+
+more blah
+
+
+
+=cut
