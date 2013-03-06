@@ -169,14 +169,16 @@ sub _submitPsubFilesViaSSH {
     # if the remote base dir is unset assume a local cluster
     # submission and don't use ssh
     if ($remoteBaseDir eq ""){
-        $cmd = "echo -e \"$echoArgs\" | $panfishSubmit";
-        $self->{SSHExecutor}->setStandardInputCommand("");
+       $self->{SSHExecutor}->disableSSH();
     }
     else {
-        $self->{SSHExecutor}->setStandardInputCommand("echo -e \"$echoArgs\"");
-        $cmd = "$panfishSubmit";
+       $self->{SSHExecutor}->enableSSH();
     }
-    $exit = $self->{SSHExecutor}->executeCommand($cmd,60);
+   
+    $self->{SSHExecutor}->setStandardInputCommand("echo -e \"$echoArgs\"");
+        
+    
+    $exit = $self->{SSHExecutor}->executeCommand($panfishSubmit,60);
     if ($exit != 0){
         $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
                                "  : ".$self->{SSHExecutor}->getOutput());
