@@ -171,7 +171,7 @@ sub _getPsubJobStateViaSSH {
         $self->{SSHExecutor}->enableSSH();
     }
 
-    $self->{SSHExecutor}->setStandardInputCommand($echoArgs);
+    $self->{SSHExecutor}->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
 
     $exit = $self->{SSHExecutor}->executeCommand($panfishSubmit,60);
     if ($exit != 0){

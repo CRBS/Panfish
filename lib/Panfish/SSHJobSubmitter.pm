@@ -175,7 +175,7 @@ sub _submitPsubFilesViaSSH {
        $self->{SSHExecutor}->enableSSH();
     }
    
-    $self->{SSHExecutor}->setStandardInputCommand("echo -e \"$echoArgs\"");
+    $self->{SSHExecutor}->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
         
     
     $exit = $self->{SSHExecutor}->executeCommand($panfishSubmit,60);
