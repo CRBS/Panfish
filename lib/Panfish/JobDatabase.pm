@@ -190,11 +190,12 @@ sub update {
          return undef;
       }
    
-      $self->{Logger}->debug("Deleting old job");
+      $self->{Logger}->debug("Deleting old job: ".$oldJob->getJobAndTaskId());
       # delete that job
       $res =$self->delete($oldJob);
 
       if (defined($res)){
+         $self->{Logger}->error("Unable to delete old job $res");
          return "Unable to delete old job $res";
       }
    }
@@ -207,11 +208,15 @@ sub updateArray {
    my $self = shift;
    my $jobArrayRef = shift;
 
+   $self->{Logger}->info(" found ".@{$jobArrayRef}." to update");
+
    if (!defined($jobArrayRef) || @{$jobArrayRef} <= 0){
+      $self->{Logger}->error("No jobs to update");
       return "no jobs to update";
    }
    my $res;
    for (my $x = 0; $x < @{$jobArrayRef}; $x++){
+     $self->{Logger}->info("updating ".${$jobArrayRef}[$x]->getJobId().".".${$jobArrayRef}[$x]->getTaskId()); 
      $res = $self->update(${$jobArrayRef}[$x]);
      if (defined($res)){
          return $res;
@@ -219,7 +224,7 @@ sub updateArray {
      
    }
 
-   return "not implemented yet";
+   return undef;
 }
 
 
@@ -396,15 +401,21 @@ sub delete {
    if (!defined($job)){
       return "No job passed in";
    }
-  
+ 
+   $self->{Logger}->debug("Deleting ".$self->{SubmitDir}."/".
+                                           $job->getCluster()."/".
+                                           $job->getState()."/".
+                                           $job->getJobAndTaskId());
+ 
    my $res = $self->{FileUtil}->deleteFile($self->{SubmitDir}."/".
                                            $job->getCluster()."/".
                                            $job->getState()."/".
-                                           $job->getJobId().".".$job->getTaskId());
+                                           $job->getJobAndTaskId());
 
    if ($res != 1){
        return "Unable to delete job $!";
-   } 
+   }
+ 
    return undef;
 }
 
