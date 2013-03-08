@@ -357,7 +357,7 @@ sub _buildJobHash {
 
     
     if (!@jobs){
-            $self->{Logger}->error("Error getting jobs from database");
+            $self->{Logger}->debug("no jobs");
         return undef;
     }
    
