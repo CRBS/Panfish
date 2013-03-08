@@ -160,17 +160,10 @@ sub _getPsubJobStateViaSSH {
         return \@noJobs;
     }
 
-
     my $exit;
     my $cmd;
-    # if the remote base dir is unset assume a local cluster
-    # submission and don't use ssh
-    if ($self->{Config}->getClusterBaseDir($cluster) eq ""){
-        $self->{SSHExecutor}->disableSSH();
-    }
-    else {
-        $self->{SSHExecutor}->enableSSH();
-    }
+
+    $self->{SSHExecutor}->enableSSH();
 
     $self->{SSHExecutor}->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
 
