@@ -222,7 +222,9 @@ System side Programs
 
 * **panfish**             Daemon that runs job files put into the submit directory on
                           appropriate cluster.  The daemon also watches for job
-                          completion on the clusters and updates job files status.
+                          completion on the clusters and updates job files status.  If a job
+                          needs to run on the local cluster this daemon also submits it 
+                          to whatever Batch processing system is on the cluster.
                           
 * **line**                Shadow job that generates a job file and puts it into the
                           submit directory for the appropriate cluster.  The
@@ -230,19 +232,11 @@ System side Programs
                           change to either **.failed**, denoting failure, or **.done**
                           denoting successful completion.
 
-* **panfishsubmit**       Submits command to **panfishsubmitd** which submits the
-                          job to the remote cluster.  Outputs a job file which 
-                          can be used to monitor command status.
-             
+* **panfishsubmit**       Takes a list of job files that can be run on the cluster and
+                          updates the database so the local **panfish** daemon can submit
+                          them to the batch processing system.  
 
 * **panfishstat**         Takes a **panfishsubmit** job file and returns status of the job.
-
-* **panfishsubmitd**      Daemon on remote cluster that submits **panfishsubmitd** jobs.
-
-* **psubmitter.config**   Configuration file used by **panfishstat,panfishsubmit, and panfishsubmitd** and
-                          is located in the same directory as those programs on the
-                          remote clusters.  This file contains information used to run
-                          jobs on those remote clusters.  
 
 * **panfishrunner**       Runs serial jobs in parallel on a cluster node.
 
@@ -257,21 +251,19 @@ In the configuration file is the following properties in a **key=value**
 format as shown with a real configuration below:
 
     cluster.list=gordon_shadow.q,codonis_shadow.q,trestles_shadow.q,lonestar_shadow.q
-    qsub.path=/opt/gridengine/ge6.2u4/bin/lx24-amd64/qsub
-    line.sleep.time=1
-    line.stderr.path=/home/churas/src/panfish/p2/out
-    line.stdout.path=/home/churas/src/panfish/p2/out
-    submit.dir=/home/churas/src/panfish/p2/shadow
-    job.template.dir=/home/churas/src/panfish/p2/templates
-    line.log.verbosity=1
-    panfish.log.verbosity=3
 
     # These properties are cluster specific and will need to
     # be configured for each cluster
     gordon_shadow.q.host=churas@gordon.sdsc.edu
+    gordon_shadow.q.engine=PBS
     gordon_shadow.q.qsub=/opt/torque/bin/qsub
     gordon_shadow.q.qstat=/opt/torque/bin/qstat
-    gordon_shadow.q.engine=PBS
+    gordon_shadow.q.job.template.dir=/projects/ps-camera/gordon/panfish/p2/templates
+    gordon_shadow.q.line.sleep.time=1
+    gordon_shadow.q.line.stderr.path=/projects/ps-camera/gordon/panfish/p2/lineout
+    gordon_shadow.q.line.stdout.path=/projects/ps-camera/gordon/panfish/p2/lineout
+    gordon_shadow.q.line.log.verbosity=1
+    gordon_shadow.q.panfish.log.verbosity=3
     gordon_shadow.q.basedir=/projects/ps-camera/gordon/panfish/p2
     gordon_shadow.q.panfishsubmit=/home/churas/gordon/panfish/panfishsubmit
     gordon_shadow.q.panfishstat=/home/churas/gordon/panfish/panfishstat
@@ -328,67 +320,39 @@ Here is a breakdown of each **global** property:
     list.  The list should be comma delimited ideally with no spaces in 
     between.
 
-* **qsub.path** 
-    Full path to **qsub** command on local system that lets **Panfish** submit 
-    the shadow jobs.
 
-* **line.sleep.time**
+Here is a breakdown of the **queue** specific properties
+
+
+* **CLUSTER.line.sleep.time**
     Time in seconds the line command should wait between checks on actual job.
     Might want to set this on a per cluster basis cause some clusters are slow
     and others are fast.
 
-
-* **line.stderr.path**
-    Directory to write the standard error stream for the shadow job.  This 
-    output needs to go somewhere and is not relevant to the user so we have it 
+* **CLUSTER.line.stderr.path**
+    Directory to write the standard error stream for the shadow job.  This
+    output needs to go somewhere and is not relevant to the user so we have it
     written to a special side directory.
 
-* **line.stdout.path**
+* **CLUSTER.line.stdout.path**
     Directory to write the standard output stream for the shadow job.
 
-* **submit.dir**
-    Directory where job files created by the line shadow job are written to.  
-    Under this directory is a directory with the same name as the cluster queue 
-    (ie: gordon_shadow.q/ or codonis_shadow.q)  This property is used by line 
-    and by **Panfish**.
-
-* **job.template.dir**
+* **CLUSTER.job.template.dir**
     Directory where job template files for each cluster reside.  The template files are named with the
     same name as the cluster queue (ie: gordon_shadow.q,codonis_shadow.q) For more information see
     Job Template File section of this document.
 
-* **line.log.verbosity**
+* **CLUSTER.line.log.verbosity**
     Sets the logging level of the line command.  Valid values are 0,1,2,3
-    0 = outputs only error,warning, and fatal messages. 
+    0 = outputs only error,warning, and fatal messages.
     1 = adds info messages.
     2 = adds debug messages.
 
-
-* **panfish.log.verbosity**
+* **CLUSTER.panfish.log.verbosity**
     Sets the logging level of the panfish daemon.  Valid values are 0,1,2,3
-    0 = outputs only error, warning, and fatal messages.  
+    0 = outputs only error, warning, and fatal messages.
     1 = adds info messages.
     2 = adds debug messages.
-
-
-Example template for gordon_shadow.q:
-
-      #!/bin/sh
-      #
-      #PBS -q normal
-      #PBS -m n
-      #PBS -A ddp140
-      #PBS -W umask=0022
-      #PBS -o @PANFISH_JOB_STDOUT_PATH@
-      #PBS -e @PANFISH_JOB_STDERR_PATH@
-      #PBS -V
-      #PBS -l nodes=1:ppn=16,walltime=12:00:00
-      #PBS -N @PANFISH_JOB_NAME@
-      #PBS -d @PANFISH_JOB_CWD@
-      
-      /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
-
-Here is a breakdown of the **queue** specific properties
 
 * **CLUSTER.host**
     Host of remote cluster to submit jobs on and to copy data to/from.  This
@@ -419,8 +383,7 @@ Here is a breakdown of the **queue** specific properties
     Path to **panfishstat** wrapper that lets caller get status of job.
 
 * **CLUSTER.job.dir**
-    Directory cluster to write out the panfishsubmit job files.  They will be
-    put in folders under this path which denote the state of the job.
+    Directory housing filesystem database of jobs.  
 
 * **CLUSTER.max.num.jobs**
     Maximum number of jobs to allow to run concurrently on the cluster.  This
@@ -458,6 +421,26 @@ Here is a breakdown of the **queue** specific properties
 
 * **CLUSTER.land.rsync.contimeout**
     Sets the rsync connection timeout in seconds. (--contimeout)
+
+
+Example template for gordon_shadow.q:
+
+      #!/bin/sh
+      #
+      #PBS -q normal
+      #PBS -m n
+      #PBS -A ddp140
+      #PBS -W umask=0022
+      #PBS -o @PANFISH_JOB_STDOUT_PATH@
+      #PBS -e @PANFISH_JOB_STDERR_PATH@
+      #PBS -V
+      #PBS -l nodes=1:ppn=16,walltime=12:00:00
+      #PBS -N @PANFISH_JOB_NAME@
+      #PBS -d @PANFISH_JOB_CWD@
+
+      /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
+
+
 
 Cast
 ====
@@ -611,6 +594,7 @@ Here is a breakdown of the variables in the line above which are denoted by **<>
 
 Example job file:
 
+    submitter=line
     current.working.dir=/home/foo/job1
     job.name=frodo_blast
     command.to.run=export PANFISH_BASEDIR="/projects/foo";export JOB_ID="345";export SGE_TASK_ID="12";$PANFISH_BASEDIR/home/foo/job1/runjob.sh -somearg 1 -somearg 2 > $PANFISH_BASEDIR/home/foo/job1/stdout/runjob.$SGE_TASK_ID.out 2> $PANFISH_BASEDIR/home/foo/job1/stderr/runjob.$SGE_TASK_ID.err
@@ -624,7 +608,7 @@ The **line** program should now sit in a wait loop waiting **panfish.config::[CL
 before checking if file has moved to **done** or **failed** directory.   **line** should also watch
 for USR1, USR2, and TERM signals and if received the program should write out the job file to
 
-    <panfish.config::submit.dir>/$QUEUE/kill
+    <panfish.config::cluster.job.dir>/$QUEUE/kill
 
 before exiting with 50 as an exit code and a log message to standard error and out.  The above
 lets **Panfish** know that the real job should be killed.
@@ -740,6 +724,8 @@ Command line:
 
 **(options)**
 
+* **--cluster**  Specifies the cluster this panfish daemon is running on.
+
 * **--log**      Specifies path to log file
 
 * **--conf**     Specifies path to **panfish.config** file
@@ -757,12 +743,18 @@ Base File name structure:
 * **SGE_TASK_ID** is the Grid Engine array job id given to the **line** job when it is submitted to the cluster (it maybe unset)
 
 The subdirectory in which the above job file is placed defines the state of the job.  Under each
-**submit** directory the following directories need to exist:
+**job.dir** directory the following directories need to exist:
 
 
 * **submitted**
-  Job has been submitted by **line** command which was submitted by **cast** command.
+  Job has been submitted by one of three programs which is defined by **submitter** property in
+  job file.  
+  **line**  Means job was submitted as a shadow job by **cast** command.  Jobs with this source
+            go through batched,batchedandchummed states then onto queued, running,done.
 
+  **panfishsubmit** Means a **panfish** daemon has submitted this job to be run directly on
+                    batch processing system for the cluster the job file resides in.  These
+                    jobs move next to queued when they are submitted to cluster for invocation.
 
 * **batched**
   **Panfish** has batched this job with other jobs from the same directory in the **batching of jobs** phase.
@@ -778,7 +770,7 @@ The subdirectory in which the above job file is placed defines the state of the 
   **Panfish** has uploaded the batched jobs to the remote cluster in the **upload of batched jobs**
 
 * **queued**
-  **Panfish** has submitted the jobs to the remote clusters, but they have not started running.
+  **Panfish** has submitted the job for processing on local or remote clusters via a call to **panfishsubmit**
 
 * **running**
   **Panfish** has updated status to running in the **monitoring of running jobs** phase.
@@ -798,13 +790,23 @@ program, but could easily be split up.  In the next sections the main pieces of
 the application will be described.  
 
 
-Going from submitted to batched
--------------------------------
+Going from submitted to queued for **panfishsubmit** source jobs
+----------------------------------------------------------------
+
+The **submitted** directory does a double duty here.  Jobs that have a **submitter**
+type of panfishsubmit are jobs that have already come from a shadow job and just need
+to be run on the cluster.  These jobs should only show up in this folder for the cluster
+the panfish daemon is running on.  **Panfish** should again invoke **panfishsubmit** on this
+job to submit the job for real to the local cluster.  **panfishsubmit** will append a **real.job.id**
+property to the job file as it moves the job to **queued** state
+
+Going from submitted to batched for **line** source jobs
+--------------------------------------------------------
 
 This is the initial phase of the job and **Panfish**'s job is to look for a 
 list of files within a given **CLUSTER/submitted** directory that share the 
-same **JOB_ID**.  These files are sorted by **SGE_TASK_ID** in 
-ascending order.  
+same **JOB_ID** AND have a **submitter** of type **line**. 
+These files are sorted by **SGE_TASK_ID** in ascending order 
    These files are then put into batches based on number of cores each
 node has on the cluster corresponding to the **CLUSTER** for the job.  Any extra job
 files are left unless the files are over X seconds old in which case they get
@@ -846,6 +848,8 @@ The psub file should also be made user/group executable.
 
 and the file should be moved to **CLUSTER/batched** directory
 
+
+
 Going from batched to batchedandchummed
 ---------------------------------------
 
@@ -868,19 +872,16 @@ cluster **<panfish.config::[CLUSTER].basedir>** and passed to standard in of
 **<panfish.config::[CLUSTER].psub>** command.  **panfishsubmit** will output job ids that
 match the job file.  
 
-and the files should be moved to **CLUSTER/queued** directory. 
+and the files should be moved to **CLUSTER/queued** directory.  
 
 
 Going from queued/running to failed or done
 ---------------------------------
 
-In this phase the jobs are on the remote cluster and just need to get their status.
+In this phase the jobs are on the remote cluster or local and just need to get their status.
 
-In this phase look for all **.submitted** and **.running** files and extract all
-the **psub.file** file paths to get a unique list.  Invoke **<panfish.config::[CLUSTER].pstat>**
-script passing these file paths to standard in.  The output will have status
-for each **psub.file**  Based on the status adjust the suffix
-for the **.job** files.
+In this phase look for all jobs in **queued or running** and simply pass these jobs to **<panfish.config::[CLUSTER].panfishstat>**
+via standard in to get the job status.  The status of the jobs should be updated.
 
 
 Job template Files and Directory
@@ -933,13 +934,17 @@ In the above case the queue is set to **all.q** and runtime is set to 12 hours
 and with no other setting each job gets only 1 core.
 
 panfishsubmit
-================
+=============
 
-panfishsubmit [command -- command args | - ]
+panfishsubmit --cluster (cluster name)
 
-This program writes the **command** given to it to a file with the same name as the job file (ending .psub removed) to
-a directory monitored by **psubmitter** daemon.  The directory is set by 
-**<panfishsubmit.config::panfishsubmit.dir>>/<panfishsubmit.config::psub.submitted.dir>**
+This program is given **commands** to run via standard in (one per line) and should do one of two things.
+If the command passed in has a .psub suffix then this is a request from a remote cluster and a job should be created 
+and put in the **submitted** state with **submitter** set to panfishsubmit and psub file is set within as well.  
+
+
+
+
 
 
 These job files known as **psub job files**.
