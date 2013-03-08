@@ -159,8 +159,9 @@ sub _submitJobsViaQsub {
             elsif ($self->{Config}->getEngine() eq "PBS"){
                # example output PBS on gordon
                # 580504.gordon-fe2.local
-               $self->{Logger}->error("Not supported yet");
-           
+               my @rows = split("\n",$self->{Executor}->getOutput());
+               $realJobId = $rows[0];
+               $realJobId=~s/\..*//;
                ${$jobsArrayRef}[$x]->setRealJobId($realJobId);
             }
 
