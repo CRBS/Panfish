@@ -65,7 +65,7 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,$logger);
+my $uploader = Panfish::RsyncUploader->new($config,$sshExec,$logger);
 
 my ($error,@clusterList) = $config->getClusterListAsArray($clusterArgValue);
 
@@ -107,6 +107,12 @@ $logger->info("Size in Bytes:  $sizeInBytes");
 
 
 for (my $x = 0; $x < @clusterList ; $x++){
+
+    # skip this cluster cause the data does NOT need to be moved
+    if ($clusterList[$x] eq $config->getThisCluster()){
+        print "Skipping $clusterList[$x] cause this program is running on this cluster\n";
+        next;
+    }
     print "Uploading to $clusterList[$x] ...";
     $startTime = time();
     $res = $uploader->upload($directoryArgValue,$clusterList[$x]);
