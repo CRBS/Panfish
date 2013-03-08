@@ -100,6 +100,13 @@ if (defined($error)){
 }
 
 
+#double check cluster set in clusterArgValue is actually valid
+($cError,@testClist) = $config->getClusterListAsArray($clusterArgValue);
+if (defined($cError)){
+   $logger->fatal("Cluster $clusterArgValue is not a valid cluster");
+   exit(1);
+}
+
 # infinite loop broken only by signal or fatal error.
 while(1 == 1){
   
