@@ -133,7 +133,7 @@ sub _submitPsubFilesViaSSH {
     my $self = shift;
     my $cluster = shift;
     my $psubFileArrayRef = shift;
-    my $remoteBaseDir = $self->{Config}->getClusterBaseDir($cluster);
+    my $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
     my $panfishSubmit = $self->{Config}->getPanfishSubmit($cluster);
     my @noJobs;
    
