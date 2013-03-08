@@ -93,9 +93,12 @@ sub checkJobs {
     if ($self->{Config}->getEngine() eq "SGE"){
         $jobStatusHash = $self->_getSGEJobStateHash($jobArrayRef);
     }
-    else {
+    elsif ($self->{Config}->getEngine() eq "PBS") {
 
-        return "engine not supported";
+        $jobStatusHash = $self->_getPBSJobStateHash($jobArrayRef);
+    }
+    else {
+        return "Engine ".$self->{Config}->getEngine()." not supported";
     }
     my $jobCount = 0;
   
@@ -122,6 +125,54 @@ sub checkJobs {
                           $jobCount.
                           " job(s) on $cluster");     
     return undef;
+}
+
+
+sub getPBSJobStateHash {
+    my $self = shift;
+    my $jobArrayRef = shift;
+    my %jobStatusHash = ();
+
+    my $qstatCmd = $self->{Config}->getQstat()." -u \"*\"";
+
+    my $exit = $self->{Executor}->executeCommand($qstatCmd,60);
+    if ($exit != 0){
+       $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
+                               "  : ".$self->{Executor}->getOutput());
+       return \%jobStatusHash;
+    }
+
+    if ($self->{Logger}->isDebugEnabled()){
+       $self->{Logger}->debug($self->{Executor}->getOutput());
+    }
+    my $realJobId;
+    my $rawState;
+    my @subSplit;
+    my @rows = split("\n",$self->{Executor}->getOutput());
+    for (my $x = 0; $x < @rows; $x++){
+
+        chomp($rows[$x]);
+        if ($rows[$x]=~/^---.*/ ||
+            $rows[$x]=~/^Job.*/){
+           next;
+        }
+        
+        $rows[$x]=~s/ +/ /g;
+        @subSplit = split(" ",$rows[$x]);
+         $self->{Logger}->debug("XXXXXXX".$rows[$x]);
+        for (my $y = 0; $y < @subSplit; $y++){
+           $self->{Logger}->debug("YYY $y - $subSplit[$y]");
+        }
+        $realJobId = $subSplit[0];
+        $realJobId=~s/\..*//;
+        $rawState = $subSplit[4];
+        $self->{Logger}->debug("Setting hash ".$realJobId." => ($rawState) -> ".$self->_convertStateToJobState($rawState));
+        $jobStatusHash{$realJobId}=$self->_convertStateToJobState($rawState);
+
+    }
+    return \%jobStatusHash;
+
+
 }
 
 
@@ -169,21 +220,22 @@ sub _getSGEJobStateHash {
         #} 
         $realJobId = $subSplit[0];
         $rawState = $subSplit[4];
-        $self->{Logger}->debug("Setting hash ".$realJobId." => ($rawState) -> ".$self->_convertSGEStateToJobState($rawState));
-        $jobStatusHash{$realJobId}=$self->_convertSGEStateToJobState($rawState);
+        $self->{Logger}->debug("Setting hash ".$realJobId." => ($rawState) -> ".$self->_convertStateToJobState($rawState));
+        $jobStatusHash{$realJobId}=$self->_convertStateToJobState($rawState);
         
     }
     return \%jobStatusHash;
 }
 
 
-sub _convertSGEStateToJobState {
+sub _convertStateToJobState {
    my $self = shift;
    my $rawState = shift;
 
    if ($rawState eq "r" ||
        $rawState eq "hr" ||
-       $rawState eq "dr"){
+       $rawState eq "dr" ||
+       $rawState eq "R"){
       return Panfish::JobState->RUNNING();
    }
 
@@ -194,8 +246,12 @@ sub _convertSGEStateToJobState {
 
    if ($rawState eq "hqw" ||
        $rawState eq "S" ||
-       $rawState eq "qw"){
+       $rawState eq "qw" ||
+       $rawState eq "Q"){
       return Panfish::JobState->QUEUED();
+   }
+   if ($rawState eq "C"){
+      return Panfish::JobState->DONE();
    }
 
    return Panfish::JobState->UNKNOWN();
