@@ -47,7 +47,8 @@ sub new {
      QSTAT                => "qstat",
      MAX_NUM_RUNNING_JOBS => "max.num.running.jobs",
      ENGINE               => "engine",
-     SCRATCH              => "scratch"
+     SCRATCH              => "scratch",
+     PANFISH_SLEEP        => "panfish.sleep"
      
    };
    
@@ -108,6 +109,19 @@ sub getScratchDir {
    my $self = shift;
    my $cluster = shift;
    return $self->_getValueFromConfig($self->{SCRATCH},$cluster);
+}
+
+
+=head3 getPanfishSleepTime 
+
+Panfish sleep time in seconds
+
+=cut
+
+sub getPanfishSleepTime {
+   my $self = shift;
+   my $cluster = shift;
+   return $self->_getValueFromConfig($self->{PANFISH_SLEEP},$cluster);
 }
 
 =head3 getMaximumNumberOfRunningJobs 
