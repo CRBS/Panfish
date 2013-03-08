@@ -34,7 +34,8 @@ sub new {
      State             => shift,
      ModificationTime  => shift,
      CommandsFile      => shift,
-     PsubFile          => shift
+     PsubFile          => shift,
+     RealJobId         => shift
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -52,7 +53,6 @@ are not.  This code does not check if its
 sub equals {
     my $self = shift;
     my $job = shift;
-
 
     my $equal = 1;
     my $notEqual = 0;
@@ -93,6 +93,11 @@ sub equals {
        return $notEqual;
     }
 
+    if ($self->_safeCompare($job->getRealJobId(),$self->getRealJobId()) == 0){
+       return $notEqual;
+    }
+
+
     return $equal;
 }
 
@@ -125,6 +130,21 @@ sub _safeCompare {
     return 0;
 }
 
+=head3 getRealJobId
+
+Id of the job really doing the work
+
+=cut
+
+sub getRealJobId {
+    my $self = shift;
+    return $self->{RealJobId};
+}
+
+sub setRealJobId {
+    my $self = shift;
+    $self->{RealJobId} = shift;
+}
 
 =head3 getPsubFile 
 
