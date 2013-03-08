@@ -127,11 +127,16 @@ sub insert {
      return $res;
    }
 
-   $self->{FileReaderWriter}->write($self->{CURRENT_DIR_KEY}."=".$job->getCurrentWorkingDir()."\n");
+   if (defined($job->getCurrentWorkingDir())){
+      $self->{FileReaderWriter}->write($self->{CURRENT_DIR_KEY}."=".$job->getCurrentWorkingDir()."\n");
+   }
    if (defined($job->getJobName())){
        $self->{FileReaderWriter}->write($self->{JOB_NAME_KEY}."=".$job->getJobName()."\n");
    }
-   $self->{FileReaderWriter}->write($self->{COMMAND_KEY}."=".$job->getCommand()."\n");
+   
+   if (defined($job->getCommand())){
+     $self->{FileReaderWriter}->write($self->{COMMAND_KEY}."=".$job->getCommand()."\n");
+   }
    if (defined($job->getCommandsFile())){
        $self->{FileReaderWriter}->write($self->{COMMANDS_FILE_KEY}."=".$job->getCommandsFile()."\n");
    }
