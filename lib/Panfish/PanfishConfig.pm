@@ -23,29 +23,33 @@ use FindBin qw($Bin);
 sub new {
    my $class = shift;
    my $self = {
-     Config             => shift,
-     QSUB_PATH          => "qsub.path",
-     CLUSTER_LIST       => "cluster.list",
-     LINE_VERBOSITY     => "line.log.verbosity",
-     PANFISH_VERBOSITY  => "panfish.log.verbosity",
-     LINE_SLEEP_TIME    => "line.sleep.time",
-     LINE_STDERR_PATH   => "line.stderr.path",
-     LINE_STDOUT_PATH   => "line.stdout.path",
-     SUBMIT_DIR         => "submit.dir",
-     JOB_TEMPLATE_DIR   => "job.template.dir",
-     LINE_COMMAND       => "line",
-     BASEDIR            => "basedir",
-     HOST               => "host",
-     JOBS_PER_NODE      => "jobs.per.node",
-     RUN_JOB_SCRIPT     => "run.job.script",
-     BATCHER_OVERRIDE   => "job.batcher.override.timeout",
-     PANFISH_SUBMIT     => "panfishsubmit",
-     PANFISH_STAT       => "panfishstat",
-     JOB_DIR            => "job.dir",
-     QSUB               => "qsub",
-     QSTAT              => "qstat",
+     Config               => shift,
+     THIS_CLUSTER         => "this.cluster",     
+     QSUB_PATH            => "qsub.path",
+     CLUSTER_LIST         => "cluster.list",
+     LINE_VERBOSITY       => "line.log.verbosity",
+     PANFISH_VERBOSITY    => "panfish.log.verbosity",
+     LINE_SLEEP_TIME      => "line.sleep.time",
+     LINE_STDERR_PATH     => "line.stderr.path",
+     LINE_STDOUT_PATH     => "line.stdout.path",
+     JOB_TEMPLATE_DIR     => "job.template.dir",
+     LINE_COMMAND         => "line",
+     BASE_DIR             => "basedir",
+     HOST                 => "host",
+     JOBS_PER_NODE        => "jobs.per.node",
+     RUN_JOB_SCRIPT       => "run.job.script",
+     BATCHER_OVERRIDE     => "job.batcher.override.timeout",
+     PANFISH_SUBMIT       => "panfishsubmit",
+     PANFISH_STAT         => "panfishstat",
+     DATABASE_DIR         => "database.dir",
+     QSUB                 => "qsub",
+     QSTAT                => "qstat",
+     MAX_NUM_RUNNING_JOBS => "max.num.running.jobs",
+     ENGINE               => "engine",
+     SCRATCH              => "scratch"
      
    };
+   
    my $blessedself = bless($self,$class);
    return $blessedself;
 }
@@ -65,55 +69,121 @@ sub setConfig {
 sub _getValueFromConfig {
     my $self = shift;
     my $key = shift; 
+    my $cluster = shift;
     if (!defined($self->{Config})){
         return undef;
+    }
+
+    if (!defined($cluster)){
+      $key = $self->getThisCluster().".".$key;
+    }
+    elsif ($cluster ne ""){
+      $key = $cluster.".".$key;
     }
 
     return $self->{Config}->getParameterValue($key);
 }
 
+=head3 getThisCluster 
 
-=head3 getClusterQsub 
+Gets the cluster that this config is running on aka the cluster
+that is considered local
+
+=cut
+
+sub getThisCluster {
+    my $self = shift;
+    return $self->_getValueFromConfig($self->{THIS_CLUSTER},"");
+
+}
+
+=head3 getScratchDir 
+
+Gets the scratch directory for the cluster
+
+=cut
+
+sub getScratchDir {
+   my $self = shift;
+   my $cluster = shift;
+   return $self->_getValueFromConfig($self->{SCRATCH},$cluster);
+}
+
+=head3 getMaximumNumberOfRunningJobs 
+
+Gets Maximum number of running jobs allowed to be run on this cluster
+
+=cut
+
+sub getMaximumNumberOfRunningJobs {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{MAX_NUM_RUNNING_JOBS},$cluster);
+}
+
+=head3 getEngine
+
+Get the scheduler used on the cluster
+
+=cut
+
+sub getEngine {
+   my $self = shift;
+   my $cluster = shift;
+   return $self->_getValueFromConfig($self->{ENGINE},$cluster);
+}
+
+=head3 getBaseDir
+
+Gets the base directory for the cluster.
+
+=cut
+
+sub getBaseDir {
+   my $self = shift;
+   my $cluster = shift;
+   
+   return $self->_getValueFromConfig($self->{BASE_DIR},$cluster);
+}
+
+=head3 getQsub 
 
 Gets path to qsub for cluster
 
 =cut
 
-sub getClusterQsub {
+sub getQsub {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($cluster.".".
-                                      $self->{QSUB});
+    return $self->_getValueFromConfig($self->{QSUB},$cluster);
 }
 
 
-=head3 getClusterQstat
+=head3 getQstat
 
 Gets path for qstat for cluster
 
 =cut
 
-sub getClusterQstat {
+sub getQstat {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($cluster.".".
-                                      $self->{QSTAT});
+    return $self->_getValueFromConfig($self->{QSTAT},$cluster);
 }
 
 
 
-=head3 getClusterJobDir
+=head3 getDatabaseDir
 
 Gets the directory where panfishsubmit places job files for the
 cluster specified.
 
 =cut 
 
-sub getClusterJobDir {
+sub getDatabaseDir {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($cluster.".".
-                                      $self->{JOB_DIR});
+    return $self->_getValueFromConfig($self->{DATABASE_DIR},$cluster);
 }
 
 
@@ -129,8 +199,7 @@ my $psub = $foo->getPanfishStat("gordon_shadow.q");
 sub getPanfishStat {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($cluster.".".
-                                      $self->{PANFISH_STAT});
+    return $self->_getValueFromConfig($self->{PANFISH_STAT},$cluster);
 }
 
 
@@ -147,8 +216,7 @@ my $psub = $foo->getPanfishSubmit("gordon_shadow.q");
 sub getPanfishSubmit {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($cluster.".".
-                                      $self->{PANFISH_SUBMIT});
+    return $self->_getValueFromConfig($self->{PANFISH_SUBMIT},$cluster);
 }
 
 
@@ -162,7 +230,8 @@ Defines the logging level the line program should use
 
 sub getLineVerbosity {
     my $self = shift;
-    return $self->_getValueFromConfig($self->{LINE_VERBOSITY});
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{LINE_VERBOSITY},$cluster);
 }
 
 =head3 getPanfishVerbosity
@@ -173,7 +242,8 @@ Defines the logging level the panfish daemon should use
 
 sub getPanfishVerbosity {
     my $self = shift;
-    return $self->_getValueFromConfig($self->{PANFISH_VERBOSITY});
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{PANFISH_VERBOSITY},$cluster);
 }
 
 
@@ -186,7 +256,8 @@ Gets the job template directory
 
 sub getJobTemplateDir {
     my $self = shift;
-    return $self->_getValueFromConfig($self->{JOB_TEMPLATE_DIR});
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{JOB_TEMPLATE_DIR},$cluster);
 }
 
 
@@ -200,8 +271,7 @@ be batched up per node
 sub getJobsPerNode {
     my $self = shift;
     my $cluster =shift;
-    
-    return $self->_getValueFromConfig($cluster.".".$self->{JOBS_PER_NODE});
+    return $self->_getValueFromConfig($self->{JOBS_PER_NODE},$cluster);
 }
 
 =head3 getJobBatcherOverrideTimeout 
@@ -212,22 +282,7 @@ sub getJobsPerNode {
 sub getJobBatcherOverrideTimeout {
     my $self = shift;
     my $cluster = shift;
-
-    return $self->_getValueFromConfig($cluster.".".$self->{BATCHER_OVERRIDE});
-}
-
-=head3 getQsubPath
-
-Returns path to qsub program
-
-my $val = $foo->getQsubPath();
-
-=cut
-
-sub getQsubPath {
-    my $self = shift;
-
-    return $self->_getValueFromConfig($self->{QSUB_PATH});
+    return $self->_getValueFromConfig($self->{BATCHER_OVERRIDE},$cluster);
 }
 
 =head3 getCommaDelimitedClusterList
@@ -284,7 +339,7 @@ sub getClusterListAsArray {
     my $self = shift;
     my $clusterList = shift;
 
-    my @cArray = split(",",$self->_getValueFromConfig($self->{CLUSTER_LIST}));
+    my @cArray = split(",",$self->_getValueFromConfig($self->{CLUSTER_LIST},""));
 
     if (!defined($clusterList)){
         return (undef,@cArray);
@@ -332,8 +387,8 @@ Gets the Standard error directory for line command
 
 sub getLineStandardErrorPath {
     my $self = shift;
-
-    return $self->_getValueFromConfig($self->{LINE_STDERR_PATH});
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{LINE_STDERR_PATH},$cluster);
 }
 
 
@@ -345,8 +400,8 @@ Gets the Standard out directory for line command
 
 sub getLineStandardOutPath {
     my $self = shift;
-
-    return $self->_getValueFromConfig($self->{LINE_STDOUT_PATH});
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{LINE_STDOUT_PATH},$cluster);
 }
 
 =head3 getLineSleepTime
@@ -358,68 +413,42 @@ wait between checks on the real job
 
 sub getLineSleepTime {
     my $self = shift;
-
-    return $self->_getValueFromConfig($self->{LINE_SLEEP_TIME});
-}
-
-
-=head3 getSubmitDir
-
-Gets the Submit directory or the directory where files representing Panfish
-jobs are stored
-
-my $c->getSubmitDir
-
-=cut
-
-sub getSubmitDir {
-    my $self = shift;
-
-    return $self->_getValueFromConfig($self->{SUBMIT_DIR});
-}
-
-
-=head3 getClusterBaseDir 
-
-Gets the base directory for the cluster specified.
-
-my $rdir = $c->getClusterBaseDir("gordon_shadow.q");
-
-=cut
-
-sub getClusterBaseDir {
-    my $self = shift;
     my $cluster = shift;
-
-    return $self->_getValueFromConfig($cluster.".".$self->{BASEDIR});
+    return $self->_getValueFromConfig($self->{LINE_SLEEP_TIME},$cluster);
 }
 
-=head3 getClusterRunJobScript
+
+=head3 getRunJobScript
 
 Gets the run job script for the cluster specified
 
 =cut
 
-sub getClusterRunJobScript {
+sub getRunJobScript {
     my $self = shift;
     my $cluster = shift;
 
-    return $self->_getValueFromConfig($cluster.".".$self->{RUN_JOB_SCRIPT});
+    return $self->_getValueFromConfig($self->{RUN_JOB_SCRIPT},$cluster);
 }
 
-=head3 getClusterHost 
+=head3 getHost 
 
-Gets the host of the cluster specified.
+Gets the host of the local cluster or of the cluster 
+passed in.
 
-my $host = $c->getClusterHost("gordon_shadow.q");
+my $host = $c->getHost("gordon_shadow.q");
+
+or
+
+my $host = $c->getHost();
 
 =cut
 
-sub getClusterHost {
+sub getHost {
     my $self = shift;
     my $cluster = shift;
 
-    return $self->_getValueFromConfig($cluster.".".$self->{HOST});
+    return $self->_getValueFromConfig($self->{HOST},$cluster);
 }
 
 
