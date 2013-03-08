@@ -80,7 +80,7 @@ sub chumBatchedJobs {
     $self->{Logger}->debug("Looking for jobs in ".Panfish::JobState->BATCHEDANDCHUMMED().
                            " state for $cluster");
     
-    my $remoteBaseDir = $self->{Config}->getClusterBaseDir($cluster);
+    my $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
  
     # iterate through each job array
     for my $psubDir (keys %$jobHashByPsubDir){
@@ -88,7 +88,7 @@ sub chumBatchedJobs {
         $self->{Logger}->debug("Found ".@{$jobHashByPsubDir->{$psubDir}}.
                                " jobs with dir : $psubDir");
 
-        if ($remoteBaseDir ne ""){
+        if ($cluster ne $self->{Config}->getThisCluster()){
             $self->{Logger}->debug("Uploading $psubDir to $cluster");
               
             my $res = $self->{RsyncUploader}->upload($psubDir,$cluster);
