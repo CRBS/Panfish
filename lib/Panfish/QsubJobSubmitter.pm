@@ -66,16 +66,27 @@ sub submitJobs {
         return "Cluster is not set";
     }
 
+    if ($cluster ne $self->{Config}->getThisCluster()){
+       $self->{Logger}->warn("This should only be run on jobs for local cluster returning.");
+       return undef;
+    }
+
+    my $runningJobCount = $self->{JobDb}->getNumberOfJobsInState($cluster,Panfish::JobState->QUEUED());
+    $runningJobCount += $self->{JobDb}->getNumberOfJobsInState($cluster,Panfish::JobState->RUNNING());
+
+    $self->{Logger}->debug("Max num jobs allowed: ".$self->{Config}->getMaximumNumberOfRunningJobs());
+    if ($runningJobCount >= $self->{Config}->getMaximumNumberOfRunningJobs()){
+        $self->{Logger}->debug("$runningJobCount jobs running which exceeds ".
+                               $self->{Config}->getMaximumNumberOfRunningJobs()." not submitting any jobs");
+    }
+
     my $res;
     
-    # builds a hash where key is the psub file psub
-    # and value is an array
-    # of jobs which will be run by that psub file
-    $self->{Logger}->debug("Looking for jobs in ".Panfish::JobState->SUBMITTED().
+    $self->{Logger}->debug("Looking for jobs in ".Panfish::JobState->BATCHEDANDCHUMMED().
                            " state for $cluster");
 
-    my @jobs = $self->{JobDb}->getJobsByClusterAndState("",
-                Panfish::JobState->SUBMITTED());
+    my @jobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
+                Panfish::JobState->BATCHEDANDCHUMMED());
 
     if (!@jobs || !defined($jobs[0])){
         $self->{Logger}->debug("No jobs");
@@ -83,9 +94,12 @@ sub submitJobs {
     }
     
     $self->{Logger}->debug("Found ".@jobs." jobs  ");
+
+    #sort those jobs so oldest are first
+    
     
     # submit array of psub files
-    my $submittedJobsRef = $self->_submitJobsViaQsub($cluster,\@jobs);
+    my $submittedJobsRef = $self->_submitJobsViaQsub(\@jobs,$self->{Config}->getMaximumNumberOfRunningJobs()-$runningJobCount);
     
     if (@{$submittedJobsRef} <= 0){
         $self->{Logger}->debug("No jobs submitted hmmm...");
@@ -113,15 +127,18 @@ sub submitJobs {
 #
 sub _submitJobsViaQsub {
     my $self = shift;
-    my $cluster = shift;
     my $jobsArrayRef = shift;
-
-    my $qsubCmd = $self->{Config}->getClusterQsub($cluster);
+    my $jobsThatCanBeSubmitted = shift;
+    my $qsubCmd = $self->{Config}->getQsub();
     my @submittedJobs;
     my $exit;
     my $cmd;
+
     for (my $x = 0; $x < @{$jobsArrayRef}; $x++){
-        $cmd = "$qsubCmd ".${$jobsArrayRef}[$x]->getCommand();
+        if ($x+1 > $jobsThatCanBeSubmitted){
+            return \@submittedJobs;
+        }
+        $cmd = "$qsubCmd ".${$jobsArrayRef}[$x]->getPsubFile();
         $exit = $self->{Executor}->executeCommand($cmd,60);
         if ($exit != 0){
             $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
@@ -129,11 +146,28 @@ sub _submitJobsViaQsub {
         }
         else {
             #need to parse out the job id from output and set it in the job somehow
+            # example SGE output:
+            # Your job 661 ("line") has been submitted
+            my $realJobId;
+            if ($self->{Config}->getEngine() eq "SGE"){
+               my @rows = split("\n",$self->{Executor}->getOutput());
+               $realJobId = $rows[0];
+               $realJobId=~s/^Your job //;
+               $realJobId=~s/ \(.*//;
+               ${$jobsArrayRef}[$x]->setRealJobId($realJobId);
+            }
+            elsif ($self->{Config}->getEngine() eq "PBS"){
+               # example output PBS on gordon
+               # 580504.gordon-fe2.local
+               $self->{Logger}->error("Not supported yet");
+           
+               ${$jobsArrayRef}[$x]->setRealJobId($realJobId);
+            }
+
             push(@submittedJobs,${$jobsArrayRef}[$x]);
         }
     }
-    $self->{Logger}->debug($self->{Executor}->getCommand()." : ".
-                           $self->{Executor}->getOutput());
+    
     return \@submittedJobs;
 }
 
