@@ -26,6 +26,7 @@ my $cmdLineParseResult = GetOptions ("q=s"      => \$qArgValue,
                                      "t=s"      => \$tArgValue,
                                      "e=s"      => \$eArgValue,
                                      "o=s"      => \$oArgValue,
+                                     "N=s"      => \$nArgValue,
                                      "dir=s"    => \$dirArgValue,
                                      "verbose+" => \$verboseArg,
                                      "help|?"   => \$helpArg,
@@ -82,6 +83,10 @@ $stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
 
 
 my $newArgList = "-b y -cwd -notify";
+
+if (defined($nArgValue)){
+   $newArgList .= " -N $nArgValue";
+}
 # lets build a new argument list for the qsub call
 if (defined($tArgValue)){
     $newArgList .= " -t $tArgValue";
@@ -111,7 +116,7 @@ if (defined($dirArgValue)){
 
 my $taskId = "";
 
-$cmd = $config->getQsubPath()." $newArgList -e ".
+$cmd = $config->getQsub()." $newArgList -e ".
        $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
        $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
        $config->getLineCommand()."$stdout$stderr$dir $command";
