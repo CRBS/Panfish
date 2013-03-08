@@ -29,6 +29,7 @@ sub new {
      CLUSTER_LIST         => "cluster.list",
      LINE_VERBOSITY       => "line.log.verbosity",
      PANFISH_VERBOSITY    => "panfish.log.verbosity",
+     PANFISHSUBMIT_VERBOSITY => "panfishsubmit.log.verbosity",
      LINE_SLEEP_TIME      => "line.sleep.time",
      LINE_STDERR_PATH     => "line.stderr.path",
      LINE_STDOUT_PATH     => "line.stdout.path",
@@ -246,7 +247,17 @@ sub getPanfishVerbosity {
     return $self->_getValueFromConfig($self->{PANFISH_VERBOSITY},$cluster);
 }
 
+=head3 getPanfishSubmitVerbosity
 
+Defines logging level panfishsubmit should use
+
+=cut
+
+sub getPanfishSubmitVerbosity {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{PANFISHSUBMIT_VERBOSITY},$cluster);
+}
 
 =head3 getJobTemplateDir
 
