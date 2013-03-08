@@ -44,7 +44,6 @@ if (@ARGV == 0){
 
 my $cmdLineParseResult = GetOptions ("e=s"      => \$eArgValue,
                                      "o=s"      => \$oArgValue,
-                                     "dir=s"    => \$dirArgValue,
                                      "c=s"      => \$cArgValue,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
