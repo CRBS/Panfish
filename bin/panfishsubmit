@@ -84,8 +84,11 @@ while(<STDIN>){
                              $taskId,
                              "X".$jobNameWithUnderscore,
                              $cwd,
-                             $line,
-                             Panfish::JobState->SUBMITTED());
+                             undef,
+                             Panfish::JobState->BATCHEDANDCHUMMED(),
+                             0,
+                             undef,
+                             $line);
 
     my $res = $jobDb->insert($job);
     if (!defined($res)){
