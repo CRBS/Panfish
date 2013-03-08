@@ -30,7 +30,6 @@ sub new {
    my $class = shift;
    my $self = {
      Config          => shift,
-     Executor        => shift,
      SSHExecutor     => shift,
      Logger          => shift,
      ConnectTimeOut  => 360,
@@ -62,18 +61,26 @@ sub upload {
         $self->{Logger}->debug("Directory to upload: $dirToUpload to $cluster");
     }
 
+
+    # unset any command which is piped to the command to execute
+    $self->{SSHExecutor}->setStandardInputCommand(undef);
+
     my $parentDir = dirname($dirToUpload); 
 
-    my $remoteParentDir = $self->{Config}->getClusterBaseDir($cluster).$parentDir;
+    my $remoteParentDir = $self->{Config}->getBaseDir($cluster).$parentDir;
 
     $self->{SSHExecutor}->setCluster($cluster);
+
+    $self->{SSHExecutor}->enableSSH();
 
     my $checkExit = $self->{SSHExecutor}->executeCommand("/bin/mkdir -p $remoteParentDir",30);
     if ($checkExit != 0){
         return "Unable to create $remoteParentDir on $cluster";
     }
+
+    $self->{SSHExecutor}->disableSSH();
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh $dirToUpload ".$self->{Config}->getClusterHost($cluster).":$remoteParentDir";
+    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
        
@@ -83,14 +90,14 @@ sub upload {
         }
         
         # okay lets try the upload now 
-        $checkExit = $self->{Executor}->executeCommand($cmd);
+        $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
 
   
         if ($checkExit == 0){
             return undef;
         }
         $self->{Logger}->error("Try # $tryCount received error when attempting upload : ".
-                               $self->{Executor}->getOutput());
+                               $self->{SSHExecutor}->getOutput());
         
         $tryCount++;
     }
