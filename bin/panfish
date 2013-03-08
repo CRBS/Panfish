@@ -27,11 +27,12 @@ use Panfish::SSHJobWatcher;
 use Panfish::QsubJobSubmitter;
 use Panfish::QstatJobWatcher;
 
-my $cmdLineParseResult = GetOptions ("daemon=s"    => \$daemonArgValue,
-                                     "cluster=s"   => \$clusterArgValue,
-                                     "log=s"       => \$logArgValue,
-                                     "help|?"      => \$helpArg,
-                                     "man"         => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("daemon=s"     => \$daemonArgValue,
+                                     "cluster=s"    => \$clusterArgValue,
+                                     "log=s"        => \$logArgValue,
+                                     "iterations=i" => \$iterationArgValue,
+                                     "help|?"       => \$helpArg,
+                                     "man"          => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -107,8 +108,14 @@ if (defined($cError)){
    exit(1);
 }
 
+my $iterationCount = 1;
+
+my $keepLooping = 1;
+
+my $exitCode = 0;
+
 # infinite loop broken only by signal or fatal error.
-while(1 == 1){
+while($keepLooping == 1){
   
     
    for (my $x = 0; $x < @clusterList ; $x++){
@@ -134,12 +141,23 @@ while(1 == 1){
           $check = $sshWatcher->checkJobs($clusterList[$x]);
       }
    }
-   $logger->debug("sleeping X seconds");
-   sleep 5;
+
+   if (defined($iterationArgValue)){
+     if ($iterationCount >= $iterationArgValue){
+        $logger->debug("IterationCount $iterationCount equals or exceeds $iterationArgValue exiting..");
+        $keepLooping = 0;
+     }
+   }
+   if ($keepLooping == 1){
+       $logger->debug("Sleeping ".$config->getPanfishSleepTime());
+       sleep $config->getPanfishSleepTime();
+   }
+   $iterationCount++;
+
 }
 
 
-$logger->info("Exit Code:  ".$exec->getExitCode());
+$logger->info("Exit Code:  ".$exitCode);
 exit($exitCode);
 1;
 
@@ -172,6 +190,11 @@ Defines path to a file to write output to.
 =item B<--daemon>
 
 Defines if B<panfish> should be run as a daemon or not
+
+=item B<--iterations val>
+
+Defines number of iterations the program should examine all jobs.  If not set
+the program will run in a loop forever.
 
 =item B<--verbose>
 
