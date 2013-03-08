@@ -44,7 +44,7 @@ my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
 my $jobDb = Panfish::JobDatabase->new($reader,
-                                      $config->getJobDir($clusterArgVal),$logger);
+                                      $config->getDatabaseDir($clusterArgVal),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
 
 my $job;
