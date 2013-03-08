@@ -25,7 +25,7 @@ use Panfish::JobBatchedChummer;
 use Panfish::SSHJobSubmitter;
 use Panfish::SSHJobWatcher;
 use Panfish::QsubJobSubmitter;
-
+use Panfish::QstatJobWatcher;
 
 my $cmdLineParseResult = GetOptions ("daemon=s"    => \$daemonArgValue,
                                      "cluster=s"   => \$clusterArgValue,
@@ -51,6 +51,14 @@ if (defined($logArgValue)){
     $logger->setOutput($logFileHandle);
 }
 
+
+# if no cluster is specified this daemon handles the shadow jobs and uses
+# ssh to run jobs on remote clusters
+#
+if (!defined($clusterArgValue)){
+  pod2usage(-exitstatus => 1, -verbose => 1);
+}
+
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
 my $writer = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
@@ -61,59 +69,38 @@ my $fUtil = Panfish::FileUtil->new($logger);
 
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RsyncUploader->new($config,$exec,$sshExec,
-                                           $logger);
+my $uploader = Panfish::RsyncUploader->new($config,$sshExec,$logger);
 
-my $jobDb;
-my $batcher;
-my $batchedChummer;
-my $submitter;
-my $watcher;
+my $jobDb = Panfish::JobDatabase->new($reader,$config->getDatabaseDir(),$logger);
+
+my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer);
+
+my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
+                                                   $logger,$fUtil,$uploader);
+
+my $sshSubmitter = Panfish::SSHJobSubmitter->new($config,$jobDb,$logger,
+                                           $fUtil,$sshExec);
+
+my $sshWatcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
+                                       $fUtil,$sshExec);
+
+my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec);
+
+my $qstatWatcher = Panfish::QstatJobWatcher->new($config,$jobDb,$logger,
+                                                 $fUtil,$exec);
+
 my @clusterList;
 my $error;
 
-# if no cluster is specified this daemon handles the shadow jobs and uses
-# ssh to run jobs on remote clusters
-#
-if (!defined($clusterArgValue)){
-    $jobDb = Panfish::JobDatabase->new($reader,
-                                      $config->getSubmitDir(),$logger);
-    $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,
-                                       $reader,$writer);
+($error,@clusterList) = $config->getClusterListAsArray();
 
-    $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
-                                                     $logger,$fUtil,$uploader);
-
-    $submitter = Panfish::SSHJobSubmitter->new($config,$jobDb,$logger,
-                                           $fUtil,$sshExec);
-
-    $watcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
-                                       $fUtil,$sshExec);
-
-    ($error,@clusterList) = $config->getClusterListAsArray();
-
-    if (defined($error)){
-        $logger->fatal("Problem getting cluster list : $error");
-        exit(1);
-    }
-
-}
-else {
-    # the cluster is defined so we need to ignore batcher and batchedchummer
-    # and make special versions of submitter and watcher to actually
-    # run the jobs on the cluster
-    $logger->info("Submitting jobs directly via qsub");
-    $clusterList[0] = $clusterArgValue;
-    $jobDb = Panfish::JobDatabase->new($reader,
-                                      $config->getClusterJobDir($clusterArgValue),$logger);
-
-    $submitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec);
-   
-    $watcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
-                                           $fUtil,$sshExec);
+if (defined($error)){
+    $logger->fatal("Problem getting cluster list : $error");
+    exit(1);
 }
 
 
+# infinite loop broken only by signal or fatal error.
 while(1 == 1){
   
     
@@ -123,17 +110,22 @@ while(1 == 1){
                          $jobDb->getSummaryForCluster($clusterList[$x]));
       }
       
-      if (defined($batcher)){
-          $check = $batcher->batchJobs($clusterList[$x]);
-      }
+      $check = $batcher->batchJobs($clusterList[$x]);
       
-      if (defined($batchedChummer)){
-          $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
-      }
+      $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
       
-      $check = $submitter->submitJobs($clusterList[$x]);
-
-      $check = $watcher->checkJobs($clusterList[$x]);
+      # if this is the local cluster so lets see if we have to 
+      # directly submit any jobs and check the status of any
+      # local real jobs
+      # otherwise remotely submit and check on status of jobs
+      if ($clusterArgValue eq $clusterList[$x]){
+          $check = $qsubSubmitter->submitJobs($clusterList[$x]);
+          $check = $qstatWatcher->checkJobs($clusterList[$x]);
+      }
+      else {
+          $check = $sshSubmitter->submitJobs($clusterList[$x]);
+          $check = $sshWatcher->checkJobs($clusterList[$x]);
+      }
    }
    $logger->debug("sleeping X seconds");
    sleep 5;
@@ -162,6 +154,10 @@ B<Panfish> runs jobs submitted by B<cast> on remote clusters letting
 
 =over 4
 
+=item B<--cluster name>
+
+Defines the cluster that this instance of B<panfish> is running on.
+
 =item B<--log path>
 
 Defines path to a file to write output to.
@@ -172,8 +168,8 @@ Defines if B<panfish> should be run as a daemon or not
 
 =item B<--verbose>
 
-Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 3.
+Verbose mode.  Causes B<panfish> to print debugging messages.  Multiple B<--verbose> increase
+verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
 
