@@ -46,7 +46,8 @@ sub new {
      COMMAND_KEY       => "command.to.run",
      CURRENT_DIR_KEY   => "current.working.dir",
      COMMANDS_FILE_KEY => "commands.file",
-     PSUB_FILE_KEY     => "psub.file"
+     PSUB_FILE_KEY     => "psub.file",
+     REAL_JOB_ID_KEY   => "real.job.id"
    };
    $self->{FileUtil} = Panfish::FileUtil->new($self->{Logger});
    $self->{ConfigFactory} = Panfish::ConfigFromFileFactory->new($self->{FileReaderWriter},$self->{Logger});
@@ -137,6 +138,10 @@ sub insert {
 
    if (defined($job->getPsubFile())){
        $self->{FileReaderWriter}->write($self->{PSUB_FILE_KEY}."=".$job->getPsubFile()."\n");
+   }
+   if (defined($job->getRealJobId())){
+       $self->{FileReaderWriter}->write($self->{REAL_JOB_ID_KEY}."=".$job->getRealJobId()."\n");
+
    }
 
    $self->{FileReaderWriter}->close();
@@ -241,12 +246,12 @@ sub getJobsByClusterAndState {
     my $self = shift;
     my $cluster = shift;
     my $state = shift;
-
+    my @jobArr;
     my $searchDir = $self->{SubmitDir}."/".$cluster."/".$state;
     
     my @files = $self->{FileUtil}->getFilesInDirectory($searchDir);
     if (!@files){
-       return undef;
+       return @jobArr;
     }
     my $len = @files;
 
@@ -254,7 +259,6 @@ sub getJobsByClusterAndState {
         $self->{Logger}->debug("Found $len files in search of $searchDir");
     }
 
-    my @jobArr;
     my $curJob;
     for (my $x = 0; $x < @files; $x++){
        $curJob = $self->_getJobFromJobFile($files[$x],$cluster,$state);
@@ -264,9 +268,33 @@ sub getJobsByClusterAndState {
            }
            return undef;
        }
-       $jobArr[$x] = $curJob;
+       push(@jobArr,$curJob);
     }
     return @jobArr;
+}
+
+=head3 getNumberOfJobsInState
+
+Gets the number of jobs in the state specified
+
+=cut
+
+sub getNumberOfJobsInState {
+    my $self = shift;
+    my $cluster = shift;
+    my $state = shift;
+
+    my $searchDir = $self->{SubmitDir}."/".$cluster."/".$state;
+
+    $self->{Logger}->debug("Searching $searchDir");
+
+    my @files = $self->{FileUtil}->getFilesInDirectory($searchDir);
+    if (!@files){
+       $self->{Logger}->debug("didnt find any jobs");
+       return 0;
+    }
+    my $len = @files;
+    return $len;
 }
 
 =head3 getJob
@@ -380,7 +408,8 @@ sub _getJobFromJobFile {
                             $config->getParameterValue($self->{COMMAND_KEY}),$state,
                             $self->{FileUtil}->getModificationTimeOfFile($jobFile),
                             $config->getParameterValue($self->{COMMANDS_FILE_KEY}),
-                            $config->getParameterValue($self->{PSUB_FILE_KEY}));
+                            $config->getParameterValue($self->{PSUB_FILE_KEY}),
+                            $config->getParameterValue($self->{REAL_JOB_ID_KEY}));
 }
 
 
