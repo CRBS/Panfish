@@ -138,10 +138,14 @@ sub _createPsubFile {
         $self->{Logger}->error("There was a problem opening file : $commandsFile");
         return undef;
     }
+    my $remoteBaseDir = "";
 
-    my $remoteBaseDir = $self->{Config}->getClusterBaseDir($cluster);
+    # set the path prefix if we are batching for another cluster otherwise dont
+    if ($cluster ne $self->{Config}->getThisCluster()){
+       $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
+    }
 
-    my $runJobScript = $self->{Config}->getClusterRunJobScript($cluster);
+    my $runJobScript = $self->{Config}->getRunJobScript($cluster);
     
     my $jobFileDir = $self->{FileUtil}->getDirname($psubFile);
 
