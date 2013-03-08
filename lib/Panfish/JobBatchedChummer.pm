@@ -134,7 +134,7 @@ sub _buildJobHash {
                 Panfish::JobState->BATCHED());
 
     if (!@jobs){
-            $self->{Logger}->error("Error getting jobs from database");
+            $self->{Logger}->debug("No jobs");
         return undef;
     }
     my %jobHashByPsubDir = ();
