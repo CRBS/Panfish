@@ -84,7 +84,7 @@ sub setCluster {
         return "Config not set...";
     }
 
-    $self->{Host} = $self->{Config}->getClusterHost($cluster); 
+    $self->{Host} = $self->{Config}->getHost($cluster); 
     if (!defined($self->{Host})){
         return "Unable to get host for cluster:  $cluster";
     }
