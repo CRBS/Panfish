@@ -93,7 +93,7 @@ my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($config->getLineVerbosity());
 
 # Find the queue we are running under as well as job and task id
-my $queue = $ENV{"QUEUE"};
+my $cluster = $ENV{"QUEUE"};
 my $jobId = $ENV{"JOB_ID"};
 my $taskId = $ENV{"SGE_TASK_ID"};
 my $jobName = $ENV{"JOB_NAME"};
@@ -112,18 +112,28 @@ else {
    $jobIdWithTaskId = $jobId.".".$taskId;
 }
    
-$logger->info("Job: ($jobIdWithTaskId) JobName: ($jobName) Cluster: ($queue)");
+$logger->info("Job: ($jobIdWithTaskId) JobName: ($jobName) Cluster: ($cluster)");
 
 
-my $command = "export PANFISH_BASEDIR=\"".$config->getClusterBaseDir($queue)."\";".
+# set the base directory to the value for the cluster defined by the QUEUE environment variable
+# UNLESS the cluster matches this cluster in which case leave the $baseDir set to an empty
+# string cause the job will be running on this cluster anyways.
+my $baseDir = "";
+if ($cluster ne $config->getThisCluster()){
+    $baseDir = $config->getBaseDir($cluster);
+}
+
+my $scratch = $config->getScratchDir($cluster);
+
+my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
+              "export PANFISH_SCRATCH=\"".$scratch."\";".
               "export JOB_ID=\"".$jobId."\";export SGE_TASK_ID=\"".$taskId."\";".
               "\$PANFISH_BASEDIR".$rawCommand." > \$PANFISH_BASEDIR$stdout 2> \$PANFISH_BASEDIR$stderr";
                 
 
-# Write out the job file to the submit.dir/queue folder
-
-my $job = Panfish::Job->new($queue,$jobId,$taskId,$jobName,getcwd(),$command,Panfish::JobState->SUBMITTED());
-my $jobDb = Panfish::JobDatabase->new($readerWriter,$config->getSubmitDir(),$logger);
+# Save job to database
+my $job = Panfish::Job->new($cluster,$jobId,$taskId,$jobName,getcwd(),$command,Panfish::JobState->SUBMITTED());
+my $jobDb = Panfish::JobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
 
 my $res = $jobDb->insert($job);
 
@@ -138,7 +148,7 @@ my $sleepTime = $config->getLineSleepTime();
 
 
 # Wait for the above file to move into done or failed directory
-$job = getJob($jobDb,$sleepTime,$logger,$queue,$jobId,$taskId);
+$job = getJob($jobDb,$sleepTime,$logger,$cluster,$jobId,$taskId);
 
 my $lastState = Panfish::JobState->UNKNOWN();
 
@@ -160,7 +170,7 @@ while ($job->getState() ne Panfish::JobState->DONE() &&
 
     handleSignal($jobDb,$job,$logger);
 
-    $job = getJob($jobDb,$sleepTime,$logger,$queue,$jobId,$taskId);
+    $job = getJob($jobDb,$sleepTime,$logger,$cluster,$jobId,$taskId);
 }
 
 $logger->info("Real job exited in state... ".$job->getState());
@@ -187,20 +197,20 @@ sub getJob {
    my $jobDb = shift;
    my $sleepTime = shift;
    my $logger = shift;
-   my $queue = shift;
+   my $cluster = shift;
    my $jobId = shift;
    my $taskId = shift;
 
-   my $job = $jobDb->getJobByClusterAndId($queue,$jobId,$taskId);
+   my $job = $jobDb->getJobByClusterAndId($cluster,$jobId,$taskId);
    if (!defined($job)){
 
-       $logger->warn("Unable to find job : $queue,$jobId,$taskId.".
+       $logger->warn("Unable to find job : $cluster,$jobId,$taskId.".
                      "  Sleeping $sleepTime seconds before trying again cause this could just be a temporary problem");
 
-       $job = $jobDb->getJobByClusterAndId($queue,$jobId,$taskId);
+       $job = $jobDb->getJobByClusterAndId($cluster,$jobId,$taskId);
 
        if (!defined($job)){
-           $logger->fatal("Unable to find job : $queue,$jobId,$taskId  : Exiting");
+           $logger->fatal("Unable to find job : $cluster,$jobId,$taskId  : Exiting");
            exit(2);
        }    
    }
