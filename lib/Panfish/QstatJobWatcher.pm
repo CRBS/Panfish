@@ -128,12 +128,12 @@ sub checkJobs {
 }
 
 
-sub getPBSJobStateHash {
+sub _getPBSJobStateHash {
     my $self = shift;
     my $jobArrayRef = shift;
     my %jobStatusHash = ();
 
-    my $qstatCmd = $self->{Config}->getQstat()." -u \"*\"";
+    my $qstatCmd = $self->{Config}->getQstat();
 
     my $exit = $self->{Executor}->executeCommand($qstatCmd,60);
     if ($exit != 0){
@@ -142,9 +142,6 @@ sub getPBSJobStateHash {
        return \%jobStatusHash;
     }
 
-    if ($self->{Logger}->isDebugEnabled()){
-       $self->{Logger}->debug($self->{Executor}->getOutput());
-    }
     my $realJobId;
     my $rawState;
     my @subSplit;
@@ -159,10 +156,10 @@ sub getPBSJobStateHash {
         
         $rows[$x]=~s/ +/ /g;
         @subSplit = split(" ",$rows[$x]);
-         $self->{Logger}->debug("XXXXXXX".$rows[$x]);
-        for (my $y = 0; $y < @subSplit; $y++){
-           $self->{Logger}->debug("YYY $y - $subSplit[$y]");
-        }
+        # $self->{Logger}->debug("XXXXXXX".$rows[$x]);
+        #for (my $y = 0; $y < @subSplit; $y++){
+        #   $self->{Logger}->debug("YYY $y - $subSplit[$y]");
+        #}
         $realJobId = $subSplit[0];
         $realJobId=~s/\..*//;
         $rawState = $subSplit[4];
@@ -196,9 +193,6 @@ sub _getSGEJobStateHash {
        return \%jobStatusHash;
     }
 
-    if ($self->{Logger}->isDebugEnabled()){
-       $self->{Logger}->debug($self->{Executor}->getOutput());
-    }
 
     my $realJobId;
     my $rawState;
@@ -247,7 +241,8 @@ sub _convertStateToJobState {
    if ($rawState eq "hqw" ||
        $rawState eq "S" ||
        $rawState eq "qw" ||
-       $rawState eq "Q"){
+       $rawState eq "Q"  ||
+       $rawState eq "H"){
       return Panfish::JobState->QUEUED();
    }
    if ($rawState eq "C"){
