@@ -27,7 +27,6 @@ my $cmdLineParseResult = GetOptions ("q=s"      => \$qArgValue,
                                      "e=s"      => \$eArgValue,
                                      "o=s"      => \$oArgValue,
                                      "N=s"      => \$nArgValue,
-                                     "dir=s"    => \$dirArgValue,
                                      "verbose+" => \$verboseArg,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
@@ -109,17 +108,13 @@ if (defined($error)){
 
 $newArgList .= " -q ".$cList;
 
-my $dir = "";
-if (defined($dirArgValue)){
-   $dir = " -dir $dirArgValue";
-}
 
 my $taskId = "";
 
 $cmd = $config->getQsub()." $newArgList -e ".
        $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
        $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
-       $config->getLineCommand()."$stdout$stderr$dir $command";
+       $config->getLineCommand()."$stdout$stderr $command";
 
 $logger->info("Running command: $cmd");
 
@@ -201,15 +196,6 @@ the B<#$PANFISH> directive.
 Defines list of queues this job can run under.  The queues should correspond to
 valid shadow queues.  This value can also be set within the B<command> using
 the B<#$PANFISH> directive.
-
-=item B<-dir path>
-
-Defines directory to upload to remote clusters.  B<Cast> will upload the contents of
-this directory to all remote clusters in B<-q> queue list when set.  If not set no
-upload operation is performed.  This value can also be set within the B<command> using
-the B<#$PANFISH> directive.  
-
-NOTE:  This is not an option in B<qsub>.
 
 =item B<--verbose>
 
