@@ -162,7 +162,7 @@ sub _getPsubJobStateViaSSH {
 
     my $exit;
     my $cmd;
-
+    my $state;
     $self->{SSHExecutor}->enableSSH();
 
     $self->{SSHExecutor}->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
@@ -183,7 +183,14 @@ sub _getPsubJobStateViaSSH {
     for (my $x = 0; $x < @rows; $x++){
         chomp($rows[$x]);
         if ($rows[$x]=~/^(.*):::(.*)$/){
-            $psubJobStatusHash{$1}=$2;
+            $state = $2;
+            # if the remote state is batchedandchumed still set the
+            # state to queued.  it just means on the remote side that
+            # they have yet to submit the job.
+            if ($state eq Panfish::JobState->BATCHEDANDCHUMMED()){
+                $state =  Panfish::JobState->QUEUED();
+            }
+            $psubJobStatusHash{$1} = $state;
         }
     }
 
@@ -211,19 +218,19 @@ sub _buildJobHash {
                 Panfish::JobState->QUEUED());
 
     if (!@jobs){
-            $self->{Logger}->error("Error getting jobs from database");
-        return undef;
-    }
+        $self->{Logger}->debug("No jobs in ".Panfish::JobState->QUEUED()."state");
+    }   
+    
 
     my @rJobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
                 Panfish::JobState->RUNNING());
 
     if (!@rJobs){
-        $self->{Logger}->error("Error getting jobs from database");
-        return undef;
+        $self->{Logger}->error("No jobs in ".Panfish::JobState->RUNNING()." state");
     }
-
-    push(@jobs,@rJobs);
+    else {
+        push(@jobs,@rJobs);
+    }
 
     my %jobHashByPsubJobId = ();
     my $psubFile;
