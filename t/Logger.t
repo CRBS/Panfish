@@ -16,13 +16,14 @@ use Panfish::Logger;
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
-#test default constructor and verify all log levels are output
+#test default constructor and verify all log levels are output with verbosity set to 2
 {
     my $logoutput;
     my $foo;
     open $foo,'>',\$logoutput;
 
     my $blog = Panfish::Logger->new();
+    $blog->setLevelBasedOnVerbosity(2);
     $blog->setOutput($foo);
     $blog->debug("aaa");
     $blog->info("bbb");
@@ -39,16 +40,15 @@ use Panfish::Logger;
     close($foo);
 }
 
-#test setting level to an invalid value which will result 
-#in all levels being output
+#test default constructor and verify all log levels are output with verbosity set to 3
 {
     my $logoutput;
     my $foo;
     open $foo,'>',\$logoutput;
-    
+
     my $blog = Panfish::Logger->new();
+    $blog->setLevelBasedOnVerbosity(3);
     $blog->setOutput($foo);
-    $blog->setLevel("blah");
     $blog->debug("aaa");
     $blog->info("bbb");
     $blog->warn("ccc");
@@ -56,7 +56,6 @@ use Panfish::Logger;
     $blog->fatal("eee");
 
     my @rows = split("\n",$logoutput);
-    ok(@rows == 5);
     ok($rows[0]=~/DEBUG.*aaa/);
     ok($rows[1]=~/INFO.*bbb/);
     ok($rows[2]=~/WARN.*ccc/);
@@ -65,17 +64,15 @@ use Panfish::Logger;
     close($foo);
 }
 
-
-#test setting level to undef which will result in all
-#levels being output
+#test verbosity of 1
 {
     my $logoutput;
     my $foo;
     open $foo,'>',\$logoutput;
 
     my $blog = Panfish::Logger->new();
+    $blog->setLevelBasedOnVerbosity(1);
     $blog->setOutput($foo);
-    $blog->setLevel(undef);
     $blog->debug("aaa");
     $blog->info("bbb");
     $blog->warn("ccc");
@@ -83,14 +80,41 @@ use Panfish::Logger;
     $blog->fatal("eee");
 
     my @rows = split("\n",$logoutput);
-    ok(@rows == 5);
-    ok($rows[0]=~/DEBUG.*aaa/);
-    ok($rows[1]=~/INFO.*bbb/);
-    ok($rows[2]=~/WARN.*ccc/);
-    ok($rows[3]=~/ERROR.*ddd/);
-    ok($rows[4]=~/FATAL.*eee/);
+    ok($rows[0]=~/INFO.*bbb/);
+    ok($rows[1]=~/WARN.*ccc/);
+    ok($rows[2]=~/ERROR.*ddd/);
+    ok($rows[3]=~/FATAL.*eee/);
     close($foo);
 }
+
+#test verbosity of 0
+{
+    my $logoutput;
+    my $foo;
+    open $foo,'>',\$logoutput;
+
+    my $blog = Panfish::Logger->new();
+    $blog->setLevelBasedOnVerbosity(0);
+    $blog->setOutput($foo);
+    $blog->debug("aaa");
+    $blog->info("bbb");
+    $blog->warn("ccc");
+    $blog->error("ddd");
+    $blog->fatal("eee");
+
+    my @rows = split("\n",$logoutput);
+    ok($rows[0]=~/WARN.*ccc/);
+    ok($rows[1]=~/ERROR.*ddd/);
+    ok($rows[2]=~/FATAL.*eee/);
+    close($foo);
+}
+
+
+
+
+
+
+
 
 #test default constructor and setLevel to DEBUG and verify all log levels are output
 {
@@ -100,7 +124,7 @@ use Panfish::Logger;
 
     my $blog = Panfish::Logger->new();
     $blog->setOutput($foo);
-    $blog->setLevel("DEBUG");
+    $blog->setLevel("DEBUG,INFO,WARN,FATAL,ERROR");
     $blog->debug("aaa");
     $blog->info("bbb");
     $blog->warn("ccc");
@@ -125,8 +149,8 @@ use Panfish::Logger;
     open $foo,'>',\$logoutput;
 
     my $blog = Panfish::Logger->new();
+    $blog->setLevel("INFO,WARN,ERROR,FATAL");
     $blog->setOutput($foo);
-    $blog->setLevel("INFO");
     $blog->debug("aaa");
     $blog->info("bbb");
     $blog->warn("ccc");
@@ -152,7 +176,7 @@ use Panfish::Logger;
 
     my $blog = Panfish::Logger->new();
     $blog->setOutput($foo);
-    $blog->setLevel("WARN");
+    $blog->setLevel("WARN,ERROR,FATAL");
     $blog->debug("aaa");
     $blog->info("bbb");
     $blog->warn("ccc");
@@ -176,7 +200,7 @@ use Panfish::Logger;
 
     my $blog = Panfish::Logger->new();
     $blog->setOutput($foo);
-    $blog->setLevel("ERROR");
+    $blog->setLevel("ERROR,FATAL");
     $blog->debug("aaa");
     $blog->info("bbb");
     $blog->warn("ccc");
