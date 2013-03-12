@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 41;
+use Test::More tests => 46;
 use Panfish::Job;
 
 #########################
