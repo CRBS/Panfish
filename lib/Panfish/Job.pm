@@ -46,7 +46,9 @@ sub new {
 Compares job passed in with this job.
 Returns 1 if they are equal or 0 if they
 are not.  This code does not check if its
- the same object being checked against itself.
+the same object being checked against itself.
+Also the comparison ignores ModificationTime
+
 
 =cut
 
@@ -66,6 +68,10 @@ sub equals {
     }
 
     if ($self->_safeCompare($job->getTaskId(),$self->getTaskId()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getCurrentWorkingDir(),$self->getCurrentWorkingDir()) == 0){
        return $notEqual;
     }
 
@@ -294,7 +300,7 @@ sub getJobAndTaskId {
        return $self->{JobId};
     }
     
-
+    return undef;
 }
 
 1;
