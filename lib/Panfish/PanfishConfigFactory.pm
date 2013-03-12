@@ -45,8 +45,6 @@ sub new {
       PANFISH_CONFIG => "panfish.config"
    };
 
-   die "Invalid FileReaderWriter object" unless $reader->isa('Panfish::FileReaderWriter');
-
    $self->{ConfigFactory} = Panfish::ConfigFromFileFactory->new($reader,$self->{Logger});
 
    my $blessedself = bless($self,$class);
@@ -75,6 +73,7 @@ sub getPanfishConfig {
     my $config = $self->{ConfigFactory}->getConfig("$Bin/".$self->{PANFISH_CONFIG});
 
     if (!defined($config)){
+      $self->{Logger}->error("Unable to parse config from: $Bin/".$self->{PANFISH_CONFIG});
       return undef;
     }
    
