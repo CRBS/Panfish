@@ -8,13 +8,23 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 5;
+use Test::More tests => 7;
 use Panfish::FileReaderWriterImpl;
 use Panfish::ConfigFromFileFactory;
 use Panfish::Config;
 
 #########################
 
+
+# Test opening an invalid non existant file
+{
+  my $fr = Panfish::FileReaderWriterImpl->new();
+  my $cFac = Panfish::ConfigFromFileFactory->new($fr);
+
+  my $config = $cFac->getConfig($Bin."/asdfljasdljasdfljksadlj;f");
+
+  ok(!defined($config));
+}
 
 
 # Test opening a valid file with 3 lines in it.
@@ -33,7 +43,7 @@ use Panfish::Config;
 
     ok(!defined($writer->openFile(">$first")));
 
-    $writer->write("key1=val1\nkey2=val2\nkey3 = val3\n");
+    $writer->write("key1=val1\nkey2=val2\nkey3 = val3\nkey4 = val4=val5");
     $writer->close();
  
     my $fr = Panfish::FileReaderWriterImpl->new();
@@ -46,6 +56,7 @@ use Panfish::Config;
     ok($config->getParameterValue("key1") eq "val1");
     ok($config->getParameterValue("key2") eq "val2");
     ok($config->getParameterValue("key3") eq "val3");
+    ok($config->getParameterValue("key4") eq "val4=val5");
 
     
 }
