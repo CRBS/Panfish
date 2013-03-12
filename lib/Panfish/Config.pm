@@ -112,6 +112,9 @@ sub getAllSetValues {
   my $self = shift;
   
   my $keylist = $self->getParameterNames();
+  if (!defined($keylist)){
+    return undef;
+  }
   my @sortedkeys = sort { $a cmp $b} @$keylist;
   my $key;
   my $resStr = "";
