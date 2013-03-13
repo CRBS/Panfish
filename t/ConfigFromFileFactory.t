@@ -12,18 +12,55 @@ use Test::More tests => 7;
 use Panfish::FileReaderWriterImpl;
 use Panfish::ConfigFromFileFactory;
 use Panfish::Config;
-
+use Panfish::FileUtil;
+use Panfish::Logger;
 #########################
 
 
 # Test opening an invalid non existant file
 {
-  my $fr = Panfish::FileReaderWriterImpl->new();
-  my $cFac = Panfish::ConfigFromFileFactory->new($fr);
+  my $logoutput;
+   my $foo;
+   open $foo,'>',\$logoutput;
+
+   my $blog = Panfish::Logger->new();
+   $blog->setLevelBasedOnVerbosity(2);
+   $blog->setOutput($foo);
+
+ 
+  my $fr = Panfish::FileReaderWriterImpl->new($blog);
+  my $cFac = Panfish::ConfigFromFileFactory->new($fr,$blog);
 
   my $config = $cFac->getConfig($Bin."/asdfljasdljasdfljksadlj;f");
 
   ok(!defined($config));
+  close($foo);
+}
+
+# Test opening an empty file
+{
+   my $testdir = $Bin."/testConfigFromFileFactory";
+   
+   my $logoutput;
+   my $foo;
+   open $foo,'>',\$logoutput;
+
+   my $blog = Panfish::Logger->new();
+   $blog->setLevelBasedOnVerbosity(2);
+   $blog->setOutput($foo);
+
+   my $fUtil = Panfish::FileUtil->new($blog);
+   $fUtil->recursiveRemoveDir($testdir);
+   $fUtil->makeDir($testdir);
+
+   my $fr = Panfish::FileReaderWriterImpl->new($blog);
+   $fr->openFile(">$testdir/empty");
+   $fr->close();
+   my $cFac = Panfish::ConfigFromFileFactory->new($fr,$blog);
+
+   my $config = $cFac->getConfig("$testdir/empty");
+   ok(defined($config));  
+   close($foo);
 }
 
 
