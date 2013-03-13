@@ -9,3 +9,4 @@ t/testConfigFromFileFactory/
 t/testFileReaderImpl/
 t/testFileReaderWriterImpl/
 t/panfish.config
+t/testFileUtil/
