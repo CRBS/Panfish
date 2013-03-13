@@ -6,6 +6,7 @@ use warnings;
 use File::stat;
 use File::Basename;
 use File::Copy;
+use File::Path;
 use Panfish::Logger;
 
 =head1 SYNOPSIS
@@ -22,7 +23,7 @@ Set of File utility methods
 
 Creates new instance of Job object
 
-my $job = Panfish::Job->new()
+my $fUtil = Panfish::FileUtil->new()
 
 =cut
 
@@ -42,11 +43,15 @@ sub new {
 
 =head3 makePathUserGroupExecutable 
 
-In effect makes whatever path passed in user rwx and group
+In effect makes whatever file passed in user rwx and group
 rx and only readable for everyone else.
 Ex:
 
 -rwxr-xr--
+
+$fUtil->makePathUserGroupExecutableAndReadable("/tmp/blah/foo.txt");
+
+The return value is 1 upon success otherwise failure.
 
 =cut
 
@@ -70,6 +75,32 @@ sub deleteFile {
     my $self = shift;
     return unlink(shift);
 }
+
+=head3 recursiveRemoteDir 
+
+Removes a directory and any data within that directory
+
+=cut
+
+sub recursiveRemoveDir {
+   my $self = shift;
+   my $dir = shift;
+   return rmtree($dir);
+}
+
+=head3 makeDir 
+
+Creates directory specified.  THe parent directory must
+already exist.
+
+=cut
+
+sub makeDir {
+   my $self = shift;
+   my $path = shift;
+   return mkdir($path);
+}
+
 
 =head3 copyFile
 
@@ -114,6 +145,12 @@ module
 sub getDirname {
     my $self = shift;
     my $file = shift;
+
+    # return undef if undef is passed in
+    if (!defined($file)){
+       return undef;
+    }
+
     return dirname($file);
 }
 
@@ -156,7 +193,8 @@ sub getFilesInDirectory {
 
 =head3 getNumberFilesInDirectory
 
-Gets number of files in a directory passed in.
+Gets number of files in a directory passed in. This method does NOT
+examine any subdirectories.
 
 =cut
 sub getNumberFilesInDirectory {
