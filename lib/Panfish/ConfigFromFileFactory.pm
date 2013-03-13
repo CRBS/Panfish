@@ -59,12 +59,13 @@ sub getConfig {
     if (defined($res)){
       # there was a problem opening the file let the caller
       # know by tossing back undef
+      $self->{Logger}->error("Unable to open $configFile : $res");
       return undef;
     }
  
     my $trimParamName;
     my $val;
-    my $config = undef;
+    my $config = Panfish::Config->new();
     my $equalIndex = -1;
     my $curLine = $self->{Reader}->read();
     while (defined($curLine)){
@@ -83,15 +84,14 @@ sub getConfig {
                 $val =~ s/^\s+//;
                 $val =~ s/\s+$//;
 
-                if (!defined($config)){
-                  $config = Panfish::Config->new();
-                }
                 $config->setParameter($trimParamName,$val);
             }
         }
         $curLine = $self->{Reader}->read();
     }
     $self->{Reader}->close();
+    
+    
     return $config;
 }
 
