@@ -17,7 +17,7 @@ use Panfish::PanfishConfig;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
-use Panfish::JobDatabase;
+use Panfish::FileJobDatabase;
 use Panfish::FileUtil;
 
 
@@ -45,7 +45,7 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
-my $jobDb = Panfish::JobDatabase->new($reader,
+my $jobDb = Panfish::FileJobDatabase->new($reader,
                                       $config->getDatabaseDir($clusterArgValue),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
 

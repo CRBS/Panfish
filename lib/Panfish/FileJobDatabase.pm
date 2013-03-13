@@ -1,4 +1,4 @@
-package Panfish::JobDatabase;
+package Panfish::FileJobDatabase;
 
 use strict;
 use English;
@@ -14,7 +14,7 @@ use Panfish::JobState;
 use Panfish::Job;
 =head1 SYNOPSIS
    
-  Panfish::JobDatabase -- Database to store Jobs
+  Panfish::FileJobDatabase -- Database to store Jobs utilizing the filesystem
 
 =head1 DESCRIPTION
 
@@ -25,12 +25,12 @@ medium.
 
 =head3 new
 
-Creates new instance of JobDatabase
+Creates new instance of FileJobDatabase
 
 my $logger = Panfish::Logger->new();
 my $readerWriter =  Panfish::FileReaderWriterImpl->new($logger);
 
-my $jobDb = Panfish::JobDatabase->new($readerWriter,"/home/foo",$logger);
+my $jobDb = Panfish::FileJobDatabase->new($readerWriter,"/home/foo",$logger);
 
 =cut
 
@@ -507,7 +507,7 @@ __END__
 
 =head1 AUTHOR
 
-Panfish::JobDatabase is written by Christopher Churas<churas@ncmir.ucsd.edu>
+Panfish::FileJobDatabase is written by Christopher Churas<churas@ncmir.ucsd.edu>
 
 =cut
 

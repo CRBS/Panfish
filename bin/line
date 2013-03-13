@@ -22,7 +22,7 @@ use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
 use Panfish::Job;
 use Panfish::JobState;
-use Panfish::JobDatabase;
+use Panfish::FileJobDatabase;
 
 use Panfish::ForkExecutor;
 
@@ -132,7 +132,7 @@ my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
 
 # Save job to database
 my $job = Panfish::Job->new($cluster,$jobId,$taskId,$jobName,getcwd(),$command,Panfish::JobState->SUBMITTED());
-my $jobDb = Panfish::JobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
+my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
 
 my $res = $jobDb->insert($job);
 

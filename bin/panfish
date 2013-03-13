@@ -16,7 +16,7 @@ use Panfish::PanfishConfig;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
-use Panfish::JobDatabase;
+use Panfish::FileJobDatabase;
 use Panfish::JobBatcher;
 use Panfish::FileUtil;
 use Panfish::SSHExecutor;
@@ -72,7 +72,7 @@ my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RsyncUploader->new($config,$sshExec,$logger);
 
-my $jobDb = Panfish::JobDatabase->new($reader,$config->getDatabaseDir(),$logger);
+my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$logger);
 
 my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer);
 
