@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 7;
+use Test::More tests => 8;
 use Panfish::FileReaderWriterImpl;
 use Panfish::ConfigFromFileFactory;
 use Panfish::Config;
