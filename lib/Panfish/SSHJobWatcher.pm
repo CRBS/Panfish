@@ -99,6 +99,12 @@ sub checkJobs {
     # get back a hash where {psub job id} => { JobState}
    
     my $psubStatusHash = $self->_getPsubJobStateViaSSH($cluster,\@psubArray);
+
+    # either no jobs to check status on or there was a problem.  Either way
+    # dont update the database
+    if (!defined($psubStatusHash)){
+       return undef;
+    }
     $jobCount = 0;
     my $psubJobId;
     my $state;
@@ -134,7 +140,7 @@ sub _getPsubJobStateViaSSH {
     my $cluster = shift;
     my $psubFileArrayRef = shift;
     my $panfishSubmit = $self->{Config}->getPanfishStat($cluster);
-    my @noJobs;
+    my %noJobs;
     
     # set to correct cluster
     $self->{SSHExecutor}->setCluster($cluster);   
@@ -157,7 +163,7 @@ sub _getPsubJobStateViaSSH {
 
     if ($echoArgs eq ""){
         $self->{Logger}->debug("No jobs to check");
-        return \@noJobs;
+        return undef;
     }
 
     my $exit;
@@ -171,7 +177,7 @@ sub _getPsubJobStateViaSSH {
     if ($exit != 0){
         $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
                                "  : ".$self->{SSHExecutor}->getOutput());
-         return \@noJobs;
+         return undef;
     }
     $self->{Logger}->debug($self->{SSHExecutor}->getCommand()." : ".
                            $self->{SSHExecutor}->getOutput());
