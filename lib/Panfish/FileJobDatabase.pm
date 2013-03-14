@@ -49,10 +49,63 @@ sub new {
      PSUB_FILE_KEY     => "psub.file",
      REAL_JOB_ID_KEY   => "real.job.id"
    };
+
+   if (!defined($self->{FileReaderWriter})){
+        return undef;
+   }
+   if (!defined($self->{SubmitDir})){
+       return undef;
+   }
+   if (!defined($self->{Logger})){
+        return undef;
+   }
    $self->{FileUtil} = Panfish::FileUtil->new($self->{Logger});
    $self->{ConfigFactory} = Panfish::ConfigFromFileFactory->new($self->{FileReaderWriter},$self->{Logger});
    my $blessedself = bless($self,$class);
    return $blessedself;
+}
+
+=head3 initializeDatabase
+
+This method will create the necessary directories under
+the submit directory, which will be created if it does not
+exist. Success will return a 1 otherwise 0 will be returned
+
+=cut
+
+sub initializeDatabase {
+    my $self = shift;
+    my $cluster = shift; 
+    if (! -d $self->{SubmitDir}){
+       if ($self->{FileUtil}->makeDir($self->{SubmitDir}) != 1){ 
+           $self->{Logger}->error("Unable to create ".$self->{SubmitDir}." directory");
+           return 0;
+       }
+    }
+    if (! -d $self->{SubmitDir}."/".$cluster){
+       if ($self->{FileUtil}->makeDir($self->{SubmitDir}."/".$cluster) != 1){
+           $self->{Logger}->error("Unable to create ".$self->{SubmitDir}."/".$cluster." directory");
+           return 0;
+       }
+    }
+
+
+    my @jStates = Panfish::JobState->getAllStates();
+
+    # gotta add KILL cause its not really a state
+    push (@jStates,Panfish::JobState->KILL());
+
+    for (my $x = 0; $x < @jStates; $x++){
+      if (! -d $self->{SubmitDir}."/".$cluster."/".$jStates[$x]){
+         if ($self->{FileUtil}->makeDir($self->{SubmitDir}."/".$cluster."/".$jStates[$x]) != 1){
+             $self->{Logger}->error("Unable to create ".$self->{SubmitDir}."/".$cluster."/".
+                                    $jStates[$x]." directory");
+             return 0;
+         }
+      }
+    }
+
+    return 1;
 }
 
 
@@ -63,8 +116,7 @@ The number of jobs in each state for a given cluster
 
 Format of output:
 
-(#) submitted (#) batched (#) batchedandchummed (#) queued (#) running (#) failed (#) deleted (#) done
-
+(#) submitted (#) queued (#) batched (#) batchedandchummed (#) running (#) done (#) failed
 
 =cut
 
@@ -101,16 +153,18 @@ sub insert {
    my $self = shift;
    my $job = shift;
 
-   if (!defined($self->{FileReaderWriter})){
-     return "FileReaderWriter not defined";
-   }
-
-   if (!defined($self->{SubmitDir})){
-     return "SubmitDir not set";
-   }
-
    if (!defined($job)){
      return "Job passed in is undefined";
+   }
+
+   if (!defined($job->getCluster())){
+      return "Job does not have a cluster";
+   }
+   if (!defined($job->getState())){
+      return "Job does not have a state";
+   }
+   if (!defined($job->getJobId())){
+      return "Job id not set";
    }
 
    my $outFile = $self->{SubmitDir}."/".$job->getCluster()."/".
@@ -390,7 +444,6 @@ sub _getJobFromJobFile {
 
     if ($jobFile=~/^.*\/([0-9]+)$/){
        $jobId = $1;
-       $taskId = "";
     }
     elsif ($jobFile=~/^.*\/([0-9]+)\.([0-9]+)$/){
        $jobId = $1;
@@ -405,7 +458,9 @@ sub _getJobFromJobFile {
     }
 
        
-   $self->{Logger}->debug("Job $jobId.$taskId in cluster $cluster in state $state");
+   $self->{Logger}->debug("Job $jobId".
+                          $self->_getTaskSuffix($taskId).
+                          " in cluster $cluster in state $state");
 
    return Panfish::Job->new($cluster,$jobId,$taskId,
                             $config->getParameterValue($self->{JOB_NAME_KEY}),
