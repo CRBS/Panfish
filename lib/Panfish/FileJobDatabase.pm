@@ -51,12 +51,15 @@ sub new {
    };
 
    if (!defined($self->{FileReaderWriter})){
+        print STDERR "file reader writer not set";
         return undef;
    }
    if (!defined($self->{SubmitDir})){
+       print STDERR "submitdir not set";
        return undef;
    }
    if (!defined($self->{Logger})){
+       print STDERR "logger not set";
         return undef;
    }
    $self->{FileUtil} = Panfish::FileUtil->new($self->{Logger});
