@@ -152,6 +152,7 @@ $jobDb->insert($job);
 sub insert {
    my $self = shift;
    my $job = shift;
+   my $skipCheck = shift;
 
    if (!defined($job)){
      return "Job passed in is undefined";
@@ -166,6 +167,16 @@ sub insert {
    if (!defined($job->getJobId())){
       return "Job id not set";
    }
+
+   # to be safe check that this job isn't already in db
+   if (!defined($skipCheck)){
+      if (defined($self->getJobByClusterAndId($job->getCluster(),
+                                              $job->getJobId(),
+                                              $job->getTaskId()))){
+         return "Job already exists in database unable to insert";
+      }
+   }
+
 
    my $outFile = $self->{SubmitDir}."/".$job->getCluster()."/".
                  $job->getState()."/".
@@ -264,8 +275,8 @@ sub update {
       }
    }
 
-   # write out new job
-   return $self->insert($job);
+   # write out new job, the second argument tells insert not to recheck
+   return $self->insert($job,1);
 }
 
 sub updateArray {
@@ -280,7 +291,8 @@ sub updateArray {
    }
    my $res;
    for (my $x = 0; $x < @{$jobArrayRef}; $x++){
-     $self->{Logger}->info("updating ".${$jobArrayRef}[$x]->getJobId().".".${$jobArrayRef}[$x]->getTaskId()); 
+     $self->{Logger}->info("Updating ".${$jobArrayRef}[$x]->getJobId().
+                           ".".${$jobArrayRef}[$x]->getTaskId()); 
      $res = $self->update(${$jobArrayRef}[$x]);
      if (defined($res)){
          return $res;
@@ -456,6 +468,11 @@ sub _getJobFromJobFile {
 
         $state =~s/\/.*$//;
     }
+
+   if (!defined($jobId)){
+      $self->{Logger}->error("Job id is not numeric");
+      return undef;
+   }
 
        
    $self->{Logger}->debug("Job $jobId".
