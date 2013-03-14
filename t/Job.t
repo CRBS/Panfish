@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 46;
+use Test::More tests => 48;
 use Panfish::Job;
 
 #########################
@@ -92,7 +92,14 @@ use Panfish::Job;
 
 # test equals
 {
-  my $job = Panfish::Job->new("cluster","jobid","taskid","jobname",
+
+  my $job = Panfish::Job->new("gee","1",undef,undef,undef,undef,"blah");
+  ok($job->equals($job) == 1);
+
+  my $otherjob = Panfish::Job->new("gee","1",undef,undef,undef,undef,"blah");
+  ok($job->equals($otherjob) == 1);
+
+  $job = Panfish::Job->new("cluster","jobid","taskid","jobname",
                               "currentworkingdir","command","state",
                               "modificationtime","commandsfile","psubfile",
                               "realjobid");
