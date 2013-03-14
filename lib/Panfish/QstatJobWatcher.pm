@@ -163,7 +163,6 @@ sub _getPBSJobStateHash {
         $realJobId = $subSplit[0];
         $realJobId=~s/\..*//;
         $rawState = $subSplit[4];
-        $self->{Logger}->debug("Setting hash ".$realJobId." => ($rawState) -> ".$self->_convertStateToJobState($rawState));
         $jobStatusHash{$realJobId}=$self->_convertStateToJobState($rawState);
 
     }
