@@ -303,6 +303,54 @@ sub getJobAndTaskId {
     return undef;
 }
 
+
+=head3 getJobAsString
+
+Generates a String summarizing the job in this format
+
+Cluster:           foo
+JobId:             1
+TaskId:            23
+JobName:           blah
+CurrentWorkingDir: /tmp
+Command:           /bin/foo.sh
+State:             SUBMITTED
+ModificationTime:  12313433
+CommandsFile:      undef
+PsubFile:          undef
+RealJobId:         undef
+
+
+=cut
+
+sub getJobAsString {
+    my $self = shift;
+    my $res = "";
+
+    my $keyMaxLen = 0;
+    my $curLen = 0;
+    my $valueMaxLen = 0;
+    while (my ($key,$value) = each(%$self)){
+      $curLen = length($key);
+      if ($curLen > $keyMaxLen){
+        $keyMaxLen = $curLen;
+      }
+      $curLen = length($value);
+      if ($curLen > $valueMaxLen){
+        $valueMaxLen = $curLen;
+      }
+    }
+    
+    my $offset;
+    while (my ($key,$value) = each(%$self)){
+      if (!defined($value)){
+         $value = "undef";
+      } 
+      $offset = ($keyMaxLen+$valueMaxLen) - (length($key)+($valueMaxLen-length($value)));
+      $res .= sprintf("$key: %*2\$s\n",$value,$offset);
+    }     
+    return $res;
+}
 1;
 
 __END__
