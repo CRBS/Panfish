@@ -10,3 +10,4 @@ t/testFileReaderImpl/
 t/testFileReaderWriterImpl/
 t/panfish.config
 t/testFileUtil/
+t/testFileJobDatabase/
