@@ -7,7 +7,7 @@ use warnings;
 use Panfish::FileUtil;
 use Panfish::PanfishConfig;
 use Panfish::Logger;
-use Panfish::JobDatabase;
+use Panfish::FileJobDatabase;
 use Panfish::JobState;
 use Panfish::Job;
 use Panfish::FileReaderWriterImpl;
