@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 15;
+use Test::More tests => 16;
 use Panfish::FileUtil;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
@@ -42,10 +42,11 @@ use Panfish::Config;
     ok(!defined($config));
 
     my @rows = split("\n",$logoutput);
-    ok(@rows == 3);
+    ok(@rows == 4);
     ok($rows[0]=~/DEBUG.*Attempting to parse config from:.*\/panfish.config/);
     ok($rows[1]=~/ERROR.*Unable to open:.*\/panfish.config.* No such file or directory/);
-    ok($rows[2]=~/ERROR.*Unable to parse config from:.*\/panfish.config/);
+    ok($rows[2]=~/ERROR.*Unable to open/);
+    ok($rows[3]=~/ERROR.*Unable to parse config from:.*\/panfish.config/);
     
     close($foo);
 }
