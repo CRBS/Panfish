@@ -38,7 +38,7 @@ sub new {
      BASE_DIR             => "basedir",
      HOST                 => "host",
      JOBS_PER_NODE        => "jobs.per.node",
-     RUN_JOB_SCRIPT       => "run.job.script",
+     PANFISH_JOB_RUNNER   => "panfishjobrunner",
      BATCHER_OVERRIDE     => "job.batcher.override.timeout",
      PANFISH_SUBMIT       => "panfishsubmit",
      PANFISH_STAT         => "panfishstat",
@@ -48,7 +48,8 @@ sub new {
      MAX_NUM_RUNNING_JOBS => "max.num.running.jobs",
      ENGINE               => "engine",
      SCRATCH              => "scratch",
-     PANFISH_SLEEP        => "panfish.sleep"
+     PANFISH_SLEEP        => "panfish.sleep",  
+     BIN_DIR              => "bin.dir"
      
    };
    
@@ -109,6 +110,19 @@ sub getScratchDir {
    my $self = shift;
    my $cluster = shift;
    return $self->_getValueFromConfig($self->{SCRATCH},$cluster);
+}
+
+=head3 getBinDir 
+
+Gets the directory where the panfish binaries reside 
+for a given cluster
+
+=cut
+
+sub getBinDir {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{BIN_DIR},$cluster);
 }
 
 
@@ -214,7 +228,8 @@ my $psub = $foo->getPanfishStat("gordon_shadow.q");
 sub getPanfishStat {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($self->{PANFISH_STAT},$cluster);
+    return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
+           $self->{PANFISH_STAT};
 }
 
 
@@ -231,7 +246,8 @@ my $psub = $foo->getPanfishSubmit("gordon_shadow.q");
 sub getPanfishSubmit {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($self->{PANFISH_SUBMIT},$cluster);
+    return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
+           $self->{PANFISH_SUBMIT};
 }
 
 
@@ -453,7 +469,8 @@ sub getRunJobScript {
     my $self = shift;
     my $cluster = shift;
 
-    return $self->_getValueFromConfig($self->{RUN_JOB_SCRIPT},$cluster);
+    return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
+           $self->{PANFISH_JOB_RUNNER};
 }
 
 =head3 getHost 
@@ -491,6 +508,49 @@ sub getAllSetValues {
     }
 
     return $self->{Config}->getAllSetValues();
+}
+
+
+=head3 getConfigForCluster 
+
+Outputs in an array a configuration for a given cluster.  This
+configuration can be written to a panfish.config file and sets
+
+this.cluster=CLUSTER
+cluster.list=CLUSTER
+
+CLUSTER.q.host=
+.
+.
+.
+
+=cut
+
+sub getConfigForCluster {
+    my $self = shift;
+    my $cluster = shift;
+    my @config = ();
+
+    push(@config,$self->{THIS_CLUSTER}."=".$cluster);
+    push(@config,$self->{CLUSTER_LIST}."=".$cluster);
+    push(@config,$cluster.".".$self->{ENGINE}."=".$self->getEngine($cluster));
+    push(@config,$cluster.".".$self->{BASE_DIR}."=".$self->getBaseDir($cluster));
+    push(@config,$cluster.".".$self->{DATABASE_DIR}."=".$self->getDatabaseDir($cluster));
+    push(@config,$cluster.".".$self->{QSUB}."=".$self->getQsub($cluster));
+    push(@config,$cluster.".".$self->{QSTAT}."=".$self->getQstat($cluster));
+    push(@config,$cluster.".".$self->{BIN_DIR}."=".$self->getBinDir($cluster));
+    push(@config,$cluster.".".$self->{MAX_NUM_RUNNING_JOBS}."=".$self->getMaximumNumberOfRunningJobs($cluster));
+    push(@config,$cluster.".".$self->{PANFISH_SLEEP}."=".$self->getPanfishSleepTime($cluster));
+
+    push(@config,$cluster.".".$self->{SCRATCH}."=".$self->getScratchDir($cluster));
+
+    push(@config,$cluster.".".$self->{PANFISH_VERBOSITY}."=".$self->getPanfishVerbosity($cluster));
+
+    push(@config,$cluster.".".$self->{PANFISHSUBMIT_VERBOSITY}."=".$self->getPanfishSubmitVerbosity($cluster));
+
+    push(@config,$cluster.".".$self->{PANFISH_SLEEP}."=".$self->getPanfishSleepTime($cluster));
+
+    return @config;
 }
 
 1;
