@@ -41,6 +41,69 @@ sub new {
    return $blessedself;
 }
 
+
+=head3 directUpload
+
+Uploads path passed in to path specified
+
+=cut
+
+sub directUpload {
+    my $self = shift;
+    my $pathToUpload = shift;
+    my $destinationDir = shift;
+    my $cluster = shift;
+
+    if (defined($self->{Logger})){
+        $self->{Logger}->debug("Uploading $pathToUpload to $cluster:$destinationDir/.");
+    }
+
+    # unset any command which is piped to the command to execute
+    $self->{SSHExecutor}->setStandardInputCommand(undef);
+
+    my $parentDir = dirname($destinationDir); 
+
+    
+
+    $self->{SSHExecutor}->setCluster($cluster);
+
+    $self->{SSHExecutor}->enableSSH();
+
+    my $checkExit = $self->{SSHExecutor}->executeCommand("/bin/mkdir -p $parentDir",30);
+    if ($checkExit != 0){
+        return "Unable to create $parentDir on $cluster";
+    }
+
+    $self->{SSHExecutor}->disableSSH();
+    my $tryCount = 1;
+    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir";
+    $self->{Logger}->debug("Running $cmd");
+    while ($tryCount <= $self->{RetryCount}){
+
+        if ($tryCount > 1){
+            $self->{Logger}->debug("Sleeping ".$self->{RetrySleep});
+            sleep $self->{RetrySleep};
+        }
+
+        # okay lets try the upload now 
+        $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
+
+
+        if ($checkExit == 0){
+            return undef;
+        }
+        $self->{Logger}->error("Try # $tryCount received error when attempting upload : ".
+                               $self->{SSHExecutor}->getOutput());
+
+        $tryCount++;
+    }
+
+    return "Unable to upload after ".$self->{RetryCount}. " tries.  Giving up";
+
+
+
+}
+
 =head3 upload
 
 Uploads path passed in to remote cluster passed in as well.
