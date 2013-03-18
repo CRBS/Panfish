@@ -19,6 +19,7 @@ use Panfish::PanfishConfigFactory;
 use Panfish::FileReaderWriterImpl;
 use Panfish::FileUtil;
 use Panfish::RsyncUploader;
+use Panfish::FileJobDatabase;
 use Cwd;
 
 if (@ARGV == 0){
@@ -26,10 +27,12 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("syncall=s"  => \$syncallArgValue,
-                                     "verbose+"   => \$verboseArg,
-                                     "help|?"     => \$helpArg,
-                                     "man"        => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("syncall=s"    => \$syncallArgValue,
+                                     "writeconfig"  => \$writeConfigArg,
+                                     "setupdb"      => \$setupDbArg,
+                                     "verbose+"     => \$verboseArg,
+                                     "help|?"       => \$helpArg,
+                                     "man"          => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -40,22 +43,54 @@ if ($manArg){
   pod2usage(-exitstatus => 0, -verbose => 2);
 }
 
+# force auto flush for standard out
+local $| = 1;
+
 my $logger = Panfish::Logger->new();
 
 # sets the logging level based on number of times verbose flag 
 # was passed into command
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
-my $reader = Panfish::FileReaderWriterImpl->new($logger);
-my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
+my $fUtil = Panfish::FileUtil->new($logger);
+ 
+# if writeconfig argument is set then take input of standard in and
+# write to panfish.config in same directory as binary ie dirname($0)
+if (defined($writeConfigArg)){
+   my $panfishConfig = $fUtil->getDirname($0)."/panfish.config";
+
+   $logger->info("Writing $panfishConfig configuration file");
+
+   $readerWriter->openFile(">$panfishConfig");
+
+   while(<STDIN>){
+      $readerWriter->write($_);
+   }
+   $readerWriter->close();
+   exit(0);
+}
+
+
+my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RsyncUploader->new($config,$sshExec,$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
 
-# force auto flush for standard out
-local $| = 1;
+# initialize the job database
+if (defined($setupDbArg)){
+   $logger->info("Initializing Database ".$config->getDatabaseDir());
+   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
+   if ($jobDb->initializeDatabase($config->getThisCluster()) == 0){
+       exit(1);
+   }
+   exit(0);
+}
+
+my $cluster = undef;
+
 
 # user wishes to synchronize configuration with remote cluster
 if (defined($syncallArgValue)){
@@ -64,30 +99,90 @@ if (defined($syncallArgValue)){
      $logger->fatal("Unable to synchronize to cluster not in valid cluster list");
      exit(1);
   }
- 
+  $cluster = $syncallArgValue;
 
-   #find local binaries directory and upload to remote cluster
-   my $binaryDir = $fUtil->getDirname($0); 
-   $logger->info("Binary Directory: $binaryDir");
+   #create basedir
+   $sshExec->setStandardInputCommand(undef);
+   $sshExec->setCluster($cluster);
+   $sshExec->enableSSH();
+   $exit = $sshExec->executeCommand("/bin/mkdir -p ".$config->getBaseDir($cluster),60);
+    if ($exit != 0){
+        $logger->error("Unable to run ".$sshExec->getCommand().
+                               "  : ".$sshExec->getOutput());
+         exit(4);
+    }
+
+
+
    my $libDir = "";
    #find lib directory and upload to remote cluster
    for (my $x = 0; $x < @INC; $x++){
-      print "$x $INC[$x]\n";
       if ( -d "$INC[$x]/Panfish" ){
           $libDir = "$INC[$x]/Panfish";
           $logger->info("Lib Directory: $libDir");
           break;
       }
    }
+   $libDir = $fUtil->getDirname($libDir);
 
    #lets upload to remote cluster to match config
+   my $remoteBinDir = $config->getBinDir($cluster)."/";
+   $logger->debug("Remote cluster bin dir: ".$remoteBinDir);
+   my $localBinDir = $fUtil->getDirname($0);  
 
+   my @binaries;
+   push(@binaries,"$localBinDir/panfish");
+   push(@binaries,"$localBinDir/panfishsubmit");
+   push(@binaries,"$localBinDir/panfishstat");
+   push(@binaries,"$localBinDir/panfishjobrunner");
+   push(@binaries,"$localBinDir/panfish_setup");
+   for (my $x = 0; $x < @binaries; $x++){
+       $res = $uploader->directUpload($binaries[$x],$remoteBinDir,$cluster);
+       if (defined($res)){
+           $logger->fatal("Unable to upload $binaries[$x] : $res");
+           exit(3);
+       }
+   }
 
+   #upload the lib directory to parent directory of remoteBinDir
+   my $remoteBinParent = $fUtil->getDirname($remoteBinDir);
+   $res = $uploader->directUpload($libDir,$remoteBinParent,$cluster);
+ 
    #create panfish.config and upload to directory where binaries reside
+   my @lines = $config->getConfigForCluster($cluster); 
+   for (my $x = 0; $x < @lines; $x++){
+      # setup echo command to invoke on remote cluster via ssh
+      if ($echoArgs eq ""){
+          $echoArgs = $lines[$x];
+      }
+      else {
+          $echoArgs .= "\\\\n$lines[$x]";
+      }
+   }
+   $sshExec->setCluster($cluster);
+   $sshExec->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
+   $sshExec->enableSSH();
+    $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --writeconfig",60);
+    if ($exit != 0){
+        $logger->error("Unable to run ".$sshExec->getCommand().
+                               "  : ".$sshExec->getOutput());
+         exit(4);
+    }
+ 
+
 
    #call panfish_setup on remote cluster to initialize database
-   
-    
+   $sshExec->setStandardInputCommand(undef);
+   $sshExec->setCluster($cluster);
+   $sshExec->enableSSH();
+   $logger->debug("Running $remoteBinDir/panfish_setup --setupdb");
+   $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --setupdb",60);
+    if ($exit != 0){
+        $logger->error("Unable to run ".$sshExec->getCommand().
+                               "  : ".$sshExec->getOutput());
+         exit(4);
+    }
+   exit(0);   
 }
 
 
@@ -113,10 +208,19 @@ changes to remote clusters.
 
 =over 4
 
+=item B<--setupdb>
+
+Sets up Job database directory for current cluster
+
 =item B<--syncall cluster>
 
 Synchronizes configuration to remote cluster.  This includes copying binaries
 and necessary configuration files.
+
+=item B<--writeconfig>
+
+Tells B<panfish_setup> to take any input from standard in and write it to panfish.config.
+This is used to initialize the configuration on a remote cluster.
 
 =item B<--verbose>
 
