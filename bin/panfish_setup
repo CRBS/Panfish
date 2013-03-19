@@ -151,6 +151,7 @@ if (defined($syncallArgValue)){
    #create panfish.config and upload to directory where binaries reside
    my @lines = $config->getConfigForCluster($cluster); 
    for (my $x = 0; $x < @lines; $x++){
+      $lines[$x]=~s/`/\\`/g;
       # setup echo command to invoke on remote cluster via ssh
       if ($echoArgs eq ""){
           $echoArgs = $lines[$x];
