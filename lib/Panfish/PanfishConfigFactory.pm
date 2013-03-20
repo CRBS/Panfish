@@ -65,17 +65,20 @@ is returned to the caller
 sub getPanfishConfig {
     my $self = shift;
     my $existingConfig = shift;
-
-    if (defined($self->{Logger})){
-        $self->{Logger}->debug("Attempting to parse config from: $Bin/".$self->{PANFISH_CONFIG});
+   
+    # Try loading config in Bin/../etc 
+    my $config = $self->_getPanfishConfigFromPath("$Bin/../etc/".$self->{PANFISH_CONFIG});
+  
+    if (!defined($config)){
+        # Try loading config in Bin/
+        $config = $self->_getPanfishConfigFromPath("$Bin/".$self->{PANFISH_CONFIG});
     }
-
-    my $config = $self->{ConfigFactory}->getConfig("$Bin/".$self->{PANFISH_CONFIG});
 
     if (!defined($config)){
-      $self->{Logger}->error("Unable to parse config from: $Bin/".$self->{PANFISH_CONFIG});
-      return undef;
+       $self->{Logger}->error("Unable to load config from $Bin/ or $Bin/../etc");
+       return undef;
     }
+
    
     # if we are given a PanfishConfig, just set the config into that object and return it
     if (defined($existingConfig)){
@@ -85,6 +88,23 @@ sub getPanfishConfig {
 
     return Panfish::PanfishConfig->new($config);
     
+}
+
+sub _getPanfishConfigFromPath {
+    my $self = shift;
+    my $path = shift;
+
+    if (! -e $path){
+        return undef;
+    }
+
+    if (defined($self->{Logger})){
+        $self->{Logger}->debug("Attempting to parse config from: $path");
+    }
+
+    my $config = $self->{ConfigFactory}->getConfig($path);
+
+    return $config;
 }
 
 
