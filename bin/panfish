@@ -20,7 +20,7 @@ use Panfish::FileJobDatabase;
 use Panfish::JobBatcher;
 use Panfish::FileUtil;
 use Panfish::SSHExecutor;
-use Panfish::RsyncUploader;
+use Panfish::RemoteIO;
 use Panfish::JobBatchedChummer;
 use Panfish::SSHJobSubmitter;
 use Panfish::SSHJobWatcher;
@@ -102,7 +102,7 @@ my $fUtil = Panfish::FileUtil->new($logger);
 
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RsyncUploader->new($config,$sshExec,$logger);
+my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
 my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$logger);
 

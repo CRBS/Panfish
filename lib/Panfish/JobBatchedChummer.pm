@@ -32,11 +32,11 @@ my $job = PanfishJobBatchedChummer;
 sub new {
    my $class = shift;
    my $self = {
-     Config              => shift,
-     JobDb               => shift,
-     Logger              => shift,
-     FileUtil            => shift,
-     RsyncUploader       => shift,
+     Config    => shift,
+     JobDb     => shift,
+     Logger    => shift,
+     FileUtil  => shift,
+     RemoteIO  => shift,
    };
  
    if (!defined($self->{Logger})){
@@ -91,7 +91,7 @@ sub chumBatchedJobs {
         if ($cluster ne $self->{Config}->getThisCluster()){
             $self->{Logger}->debug("Uploading $psubDir to $cluster");
               
-            my $res = $self->{RsyncUploader}->upload($psubDir,$cluster);
+            my $res = $self->{RemoteIO}->upload($psubDir,$cluster);
             if (defined($res)){
                  $self->{Logger}->error("Problem uploading $psubDir to $cluster : $res");
                  next;

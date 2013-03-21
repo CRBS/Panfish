@@ -18,7 +18,7 @@ use Panfish::Logger;
 use Panfish::PanfishConfigFactory;
 use Panfish::FileReaderWriterImpl;
 use Panfish::FileUtil;
-use Panfish::RsyncUploader;
+use Panfish::RemoteIO;
 use Panfish::FileJobDatabase;
 use Cwd;
 
@@ -30,6 +30,7 @@ if (@ARGV == 0){
 my $cmdLineParseResult = GetOptions ("syncall=s"    => \$syncallArgValue,
                                      "writeconfig"  => \$writeConfigArg,
                                      "setupdb"      => \$setupDbArg,
+                                     "examinedir=s" => \$examineDirArg,
                                      "verbose+"     => \$verboseArg,
                                      "help|?"       => \$helpArg,
                                      "man"          => \$manArg) or pod2usage(2);
@@ -76,8 +77,26 @@ my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RsyncUploader->new($config,$sshExec,$logger);
+my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
+
+# if --examinedir argument is set get the size of the directory and
+# return information on that path in configuration file format
+if (defined($examineDirArg)){
+   my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($examineDirArg);
+   print "num.files=$numFiles\n";
+   print "num.dirs=$numDirs\n";
+   print "num.symlinks=$numSymLinks\n";
+   print "size.in.bytes=$sizeInBytes\n";
+   print "error=";
+   if (defined($error)){
+     print "$error\n";
+     exit(1);
+   }
+   
+   print "\n";
+   exit(0);
+}
 
 # initialize the job database
 if (defined($setupDbArg)){
@@ -209,8 +228,27 @@ changes to remote clusters.
 
 =over 4
 
-=item B<--setupdb>
+=item B<--examinedir directory>
 
+Outputs information about B<directory> passed in such as number
+of files and directories and total bytes in that path.  Output
+is in this format:
+
+num.files=AA
+
+num.dirs=BB
+
+num.symlinks=CC
+
+size.in.bytes=DD
+
+error=
+
+The AA,BB,CC,DD would be set to values for path and B<error's> value 
+would be blank unless there was a problem in which case it would be set. 
+Also the program will exit with non zero exit code if there is a problem
+
+=item B<--setupdb>
 Sets up Job database directory for current cluster
 
 =item B<--syncall cluster>

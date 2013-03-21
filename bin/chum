@@ -18,7 +18,7 @@ use Panfish::Logger;
 use Panfish::PanfishConfigFactory;
 use Panfish::FileReaderWriterImpl;
 use Panfish::FileUtil;
-use Panfish::RsyncUploader;
+use Panfish::RemoteIO;
 use Cwd;
 
 if (@ARGV == 0){
@@ -53,6 +53,19 @@ if (!defined($directoryArgValue) ||
 
 }
 
+# NOT IMPLEMENTED ARGS
+if (defined($timeOutArgValue)){
+  print STDERR "-timeout flag not implemented yet.  Please omit this argument. Sorry.\n";
+  exit(100);
+}
+
+if (defined($retryArgValue)){
+  print STDERR "-retry flag not implemented yet.  Please omit this argument. Sorry.\n";
+  exit(100);
+}
+
+
+
 
 my $logger = Panfish::Logger->new();
 
@@ -65,7 +78,7 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RsyncUploader->new($config,$sshExec,$logger);
+my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
 my ($error,@clusterList) = $config->getClusterListAsArray($clusterArgValue);
 
@@ -104,6 +117,17 @@ $logger->info("# of Files:  $numFiles");
 $logger->info("# of Directories:  $numDirs");
 $logger->info("# of Symlinks:  $numSymLinks");
 $logger->info("Size in Bytes:  $sizeInBytes");
+
+if (defined($dryRunArg)){
+   print "Dry run set, above path would be uploaded to: ";
+   for (my $x = 0; $x < @clusterList; $x++){
+      if ($clusterList[$x] ne $config->getThisCluster()){
+           print " $clusterList[$x]";
+      }
+   }
+   print "\n";
+   exit(0);
+}
 
 
 for (my $x = 0; $x < @clusterList ; $x++){
