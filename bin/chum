@@ -192,7 +192,7 @@ be used.
 
 =item B<--retry count>
 
-Defines the number of times to retry the transfer per cluster before failing. Default is 3.
+Defines the number of times to retry the transfer per cluster before failing. Default is 10.
 
 
 =item B<--timeout seconds>
@@ -208,7 +208,7 @@ would transfer.
 =item B<--verbose>
 
 Verbose mode.  Causes B<chum> to print debugging messages.  Multiple B<--verbose> options increase
-verbosity.  The maximum is 3.
+verbosity.  The maximum is 2.
 
 =head1 EXIT STATUS
 
