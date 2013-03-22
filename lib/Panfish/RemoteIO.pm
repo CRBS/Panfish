@@ -169,6 +169,14 @@ sub upload {
     return "Unable to upload after ".$self->{RetryCount}. " tries.  Giving up";
 }
 
+=head3 download
+
+Downloads path from cluster specified. The path will be prefixed with the
+basedir path for that cluster.  
+
+my $check = $rmIO->download("/some/path","cluster");
+
+=cut
 
 sub download {
     my $self = shift;
@@ -215,6 +223,96 @@ sub download {
 
     return "Unable to download after ".$self->{RetryCount}. " tries.  Giving up";
 }
+
+=head3 getDirectorySize
+
+This method takes a directory path and determines
+disk space consumed by files in this path on the cluster
+specified.  This method will IGNORE any symbolic links.  
+The method returns a lot of data in separate variables.  
+The last variable $error if set means there was a problem.
+A value of undef in $error means we are good.
+
+Note: The command will prefix the base directory onto path specified.
+
+my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $f->getDirectorySize("/foo","cluster");
+
+=cut
+
+sub getDirectorySize {
+    my $self = shift;
+    my $path = shift;
+    my $cluster = shift;
+
+    if (!defined($path)){
+       return (0,0,0,0,"Path is not defined");
+    }
+
+    if (!defined($cluster)){
+       return (0,0,0,0,"Cluster is not defined");
+    }
+
+    # unset any command which is piped to the command to execute
+    $self->{SSHExecutor}->setStandardInputCommand(undef);
+
+    my $remoteDir = $self->{Config}->getBaseDir($cluster).$path;
+    $self->{SSHExecutor}->setCluster($cluster);
+
+    $self->{SSHExecutor}->enableSSH();
+
+    # call panfish_setup with --examinedir flag on remote cluster
+    # this command will tell us disk consumed and output in this format
+    # num.files=6
+    # num.dirs=1
+    # num.symlinks=0
+    # size.in.bytes=25757
+    # error=
+    my $numFiles = 0;
+    my $numDirs = 0;
+    my $numSymlinks = 0;
+    my $sizeInBytes = 0;
+    my $error = undef;
+
+    my $panfishSetup = $self->{Config}->getPanfishSetup($cluster)." --examinedir $remoteDir";
+    my $exit = $self->{SSHExecutor}->executeCommand($panfishSetup,600);
+
+    if ($exit != 0){
+        $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
+                               "  : ".$self->{SSHExecutor}->getOutput());
+         return (0,0,0,0,$self->{SSHExecutor}->getOutput());
+    }
+    $self->{Logger}->debug($self->{SSHExecutor}->getOutput());
+    my @rows = split("\n",$self->{SSHExecutor}->getOutput());
+    for (my $x = 0; $x < @rows; $x++){
+       chomp($rows[$x]); 
+       if ($rows[$x]=~/^(.*)=(.*)$/){
+           
+           my $key = $1;
+           my $val = $2;
+           if ($key eq "num.files"){
+              $numFiles = $val;
+           }
+           elsif ($key eq "num.dirs"){
+              $numDirs = $val;
+           }
+           elsif ($key eq "num.symlinks"){
+              $numSymlinks = $val;
+           }
+           elsif ($key eq "size.in.bytes"){
+              $sizeInBytes = $val;
+           }
+           elsif ($key eq "error"){
+              if ($val ne "" &&
+                  chop($val) ne " "){
+                 $error = $val;
+              }
+           }
+      }
+    }
+    $self->{Logger}->debug("numFiles=$numFiles, numDirs=$numDirs, numSymlinks=$numSymlinks, sizeInBytes=$sizeInBytes");
+    return ($numFiles,$numDirs,$numSymlinks,$sizeInBytes,$error);
+}
+
 
 1;
 
