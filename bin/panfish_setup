@@ -27,7 +27,8 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("syncall=s"    => \$syncallArgValue,
+my $cmdLineParseResult = GetOptions ("sync=s"       => \$syncArgValue,
+                                     "syncall"      => \$syncallArg,
                                      "writeconfig"  => \$writeConfigArg,
                                      "setupdb"      => \$setupDbArg,
                                      "examinedir=s" => \$examineDirArg,
@@ -112,28 +113,133 @@ my $cluster = undef;
 
 
 # user wishes to synchronize configuration with remote cluster
-if (defined($syncallArgValue)){
-   my ($error,@clusterList) = $config->getClusterListAsArray($syncallArgValue);
-   if (defined($error)){
-     $logger->fatal("Unable to synchronize to cluster not in valid cluster list");
-     exit(1);
-  }
-  $cluster = $syncallArgValue;
+if (defined($syncArgValue) || defined($syncallArg)){
 
-   #create basedir
+   my $cList = undef;
+   if (defined($syncArgValue)){
+     $cList = $syncArgValue;
+   }
+
+   my ($error,@clusterList) = $config->getClusterListAsArray($cList);
+   if (defined($error)){
+     $logger->fatal("Unable to synchronize to cluster : $cList : not in valid cluster list");
+     exit(1);
+   }
+  my $startTime = 0;
+  my $duration = 0;
+  my $libDir = getLibDirToSync($fUtil,$logger);
+  
+  my @binaries = getBinariesToSync($fUtil);  
+
+  for (my $x = 0; $x < @clusterList; $x++){
+     if ($clusterList[$x] eq $config->getThisCluster()){
+        $logger->debug("Skipping $clusterList[$x] since its the local cluster");
+        next;
+     }
+     $cluster = $clusterList[$x];
+
+     print "Synchronizing $cluster ...";
+     $startTime = time();
+     #create basedir
+     $sshExec->setStandardInputCommand(undef);
+     $sshExec->setCluster($cluster);
+     $sshExec->enableSSH();
+     $exit = $sshExec->executeCommand("/bin/mkdir -p ".$config->getBaseDir($cluster),60);
+     if ($exit != 0){
+         print " failed\n";
+         $logger->error("Unable to run ".$sshExec->getCommand().
+                               "  : ".$sshExec->getOutput());
+         
+          exit(4);
+     }
+
+     #lets upload to remote cluster to match config
+     my $remoteBinDir = $config->getBinDir($cluster)."/";
+
+     $logger->debug("Remote cluster bin dir: ".$remoteBinDir);
+
+     for (my $x = 0; $x < @binaries; $x++){
+         $res = $uploader->directUpload($binaries[$x],$remoteBinDir,$cluster);
+         if (defined($res)){
+             print " failed\n";
+             $logger->fatal("Unable to upload $binaries[$x] : $res");
+            
+             exit(3);
+         }
+     }
+
+     #upload the lib directory to parent directory of remoteBinDir
+     my $remoteBinParent = $fUtil->getDirname($remoteBinDir);
+     $res = $uploader->directUpload($libDir,$remoteBinParent,$cluster);
+ 
+     #create panfish.config and upload to directory where binaries reside
+     my @lines = $config->getConfigForCluster($cluster); 
+     for (my $x = 0; $x < @lines; $x++){
+        $lines[$x]=~s/`/\\`/g;
+        # setup echo command to invoke on remote cluster via ssh
+        if ($echoArgs eq ""){
+            $echoArgs = $lines[$x];
+        }
+        else {
+            $echoArgs .= "\\\\n$lines[$x]";
+        }
+     }
+     $sshExec->setCluster($cluster);
+     $sshExec->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
+     $sshExec->enableSSH();
+     $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --writeconfig",60);
+     if ($exit != 0){
+         print " failed\n";
+         $logger->error("Unable to run ".$sshExec->getCommand().
+                               "  : ".$sshExec->getOutput()); 
+        
+          exit(4);
+     }
+ 
+
+
+     #call panfish_setup on remote cluster to initialize database
+     initializeDatabase($sshExec,$logger,$cluster,$remoteBinDir);
+
+     $duration = time() - $startTime;
+
+     print " done.  Took $duration seconds\n";
+   }
+   exit(0);   
+}
+
+
+#
+# initializes database on remote cluster
+#
+sub initializeDatabase {
+   my $sshExec = shift;
+   my $logger = shift;
+   my $cluster = shift;
+   my $remoteBinDir = shift;
+
    $sshExec->setStandardInputCommand(undef);
    $sshExec->setCluster($cluster);
    $sshExec->enableSSH();
-   $exit = $sshExec->executeCommand("/bin/mkdir -p ".$config->getBaseDir($cluster),60);
-    if ($exit != 0){
-        $logger->error("Unable to run ".$sshExec->getCommand().
-                               "  : ".$sshExec->getOutput());
-         exit(4);
-    }
+   $logger->debug("Running $remoteBinDir/panfish_setup --setupdb");
+     $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --setupdb",60);
+     if ($exit != 0){
+          $logger->error("Unable to run ".$sshExec->getCommand().
+                                 "  : ".$sshExec->getOutput());
+          exit(4);
+     }
+   return undef;
+}
 
 
 
-   my $libDir = "";
+# 
+# Gets path to lib directory that needs to be sync'd to
+# remote clusters
+sub getLibDirToSync {
+  my $fUtil = shift;
+  my $logger = shift;
+  my $libDir = "";
    #find lib directory and upload to remote cluster
    for (my $x = 0; $x < @INC; $x++){
       if ( -d "$INC[$x]/Panfish" ){
@@ -142,12 +248,18 @@ if (defined($syncallArgValue)){
           break;
       }
    }
-   $libDir = $fUtil->getDirname($libDir);
+   return $fUtil->getDirname($libDir);
+}
 
-   #lets upload to remote cluster to match config
-   my $remoteBinDir = $config->getBinDir($cluster)."/";
-   $logger->debug("Remote cluster bin dir: ".$remoteBinDir);
-   my $localBinDir = $fUtil->getDirname($0);  
+
+#
+# Gets list of binaries that needs to be sync'd to remote
+# clusters
+#
+#
+sub getBinariesToSync {
+   my $fUtil = shift;
+   my $localBinDir = $fUtil->getDirname($0);
 
    my @binaries;
    push(@binaries,"$localBinDir/panfish");
@@ -155,54 +267,7 @@ if (defined($syncallArgValue)){
    push(@binaries,"$localBinDir/panfishstat");
    push(@binaries,"$localBinDir/panfishjobrunner");
    push(@binaries,"$localBinDir/panfish_setup");
-   for (my $x = 0; $x < @binaries; $x++){
-       $res = $uploader->directUpload($binaries[$x],$remoteBinDir,$cluster);
-       if (defined($res)){
-           $logger->fatal("Unable to upload $binaries[$x] : $res");
-           exit(3);
-       }
-   }
-
-   #upload the lib directory to parent directory of remoteBinDir
-   my $remoteBinParent = $fUtil->getDirname($remoteBinDir);
-   $res = $uploader->directUpload($libDir,$remoteBinParent,$cluster);
- 
-   #create panfish.config and upload to directory where binaries reside
-   my @lines = $config->getConfigForCluster($cluster); 
-   for (my $x = 0; $x < @lines; $x++){
-      $lines[$x]=~s/`/\\`/g;
-      # setup echo command to invoke on remote cluster via ssh
-      if ($echoArgs eq ""){
-          $echoArgs = $lines[$x];
-      }
-      else {
-          $echoArgs .= "\\\\n$lines[$x]";
-      }
-   }
-   $sshExec->setCluster($cluster);
-   $sshExec->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
-   $sshExec->enableSSH();
-    $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --writeconfig",60);
-    if ($exit != 0){
-        $logger->error("Unable to run ".$sshExec->getCommand().
-                               "  : ".$sshExec->getOutput());
-         exit(4);
-    }
- 
-
-
-   #call panfish_setup on remote cluster to initialize database
-   $sshExec->setStandardInputCommand(undef);
-   $sshExec->setCluster($cluster);
-   $sshExec->enableSSH();
-   $logger->debug("Running $remoteBinDir/panfish_setup --setupdb");
-   $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --setupdb",60);
-    if ($exit != 0){
-        $logger->error("Unable to run ".$sshExec->getCommand().
-                               "  : ".$sshExec->getOutput());
-         exit(4);
-    }
-   exit(0);   
+   return @binaries;
 }
 
 
@@ -251,10 +316,15 @@ Also the program will exit with non zero exit code if there is a problem
 =item B<--setupdb>
 Sets up Job database directory for current cluster
 
-=item B<--syncall cluster>
+=item B<--sync cluster>
 
 Synchronizes configuration to remote cluster.  This includes copying binaries
-and necessary configuration files.
+and necessary configuration files.  B<cluster>  can be a single cluster or a 
+comma delimited list of clusters
+
+=item B<--syncall>
+
+This method is the same as B<--sync> but for all clusters defined in the configuration.
 
 =item B<--writeconfig>
 
@@ -263,8 +333,8 @@ This is used to initialize the configuration on a remote cluster.
 
 =item B<--verbose>
 
-Verbose mode.  Causes B<chum> to print debugging messages.  Multiple B<--verbose> options increase
-verbosity.  The maximum is 2.
+Verbose mode.  Causes B<panfish_setup> to print debugging messages.  
+Multiple B<--verbose> options increase verbosity.  The maximum is 2.
 
 =head1 EXIT STATUS
 
