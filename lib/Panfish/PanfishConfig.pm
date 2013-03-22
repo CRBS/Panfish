@@ -39,6 +39,7 @@ sub new {
      HOST                 => "host",
      JOBS_PER_NODE        => "jobs.per.node",
      PANFISH_JOB_RUNNER   => "panfishjobrunner",
+     PANFISH_SETUP       => "panfish_setup",
      BATCHER_OVERRIDE     => "job.batcher.override.timeout",
      PANFISH_SUBMIT       => "panfishsubmit",
      PANFISH_STAT         => "panfishstat",
@@ -250,7 +251,21 @@ sub getPanfishSubmit {
            $self->{PANFISH_SUBMIT};
 }
 
+=head3 getPanfishSetup 
 
+Gets the path on the remote cluster to panfish_setup
+binary.  This method expects a cluster as a parameter
+
+my $psub = $foo->getPanfishSetup("gordon_shadow.q");
+
+=cut
+
+sub getPanfishSetup {
+ my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
+           $self->{PANFISH_SETUP};
+}
 
 
 =head3 getLineVerbosity
