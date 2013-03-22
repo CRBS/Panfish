@@ -77,7 +77,7 @@ sub directUpload {
 
     $self->{SSHExecutor}->disableSSH();
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir";
+    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=".$self->{TimeOut}." -e ssh $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
 
@@ -144,7 +144,7 @@ sub upload {
 
     $self->{SSHExecutor}->disableSSH();
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir";
+    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=".$self->{TimeOut}." -e ssh $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
        
@@ -199,7 +199,7 @@ sub download {
 
     $self->{SSHExecutor}->disableSSH();
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=180 -e ssh ".
+    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=".$self->{TimeOut}." -e ssh ".
               $self->{Config}->getHost($cluster).":$remoteDir ".$parentDir."/.";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
@@ -274,7 +274,7 @@ sub getDirectorySize {
     my $error = undef;
 
     my $panfishSetup = $self->{Config}->getPanfishSetup($cluster)." --examinedir $remoteDir";
-    my $exit = $self->{SSHExecutor}->executeCommand($panfishSetup,600);
+    my $exit = $self->{SSHExecutor}->executeCommand($panfishSetup,undef,undef);
 
     if ($exit != 0){
         $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
