@@ -103,13 +103,13 @@ for (my $x = 0; $x < @clusterList ; $x++){
         next;
     }
 
-    print "\nExamining path on $cluster";
+    print "\nExamining path on $clusterList[$x]";
    
     my $startTime = time();
 
     my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $downloader->getDirectorySize($directoryArgValue,
                                                                                              $clusterList[$x]);
-
+    $duration = time() - $startTime;
     if (defined($error)){
        print " ... failed.  Took $duration seconds.\n";
        $logger->fatal("There was an error : $error");
@@ -119,7 +119,7 @@ for (my $x = 0; $x < @clusterList ; $x++){
     print " ... done.  Took $duration seconds.  ";
     print "Found $sizeInBytes bytes in $numFiles files\n\n";
 
-    $logger->info("Directory to upload: $directoryArgValue");
+    $logger->info("Directory to download: $directoryArgValue");
     $logger->info("# of Files:  $numFiles");
     $logger->info("# of Directories:  $numDirs");
     $logger->info("# of Symlinks:  $numSymLinks");
