@@ -26,14 +26,15 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("directory=s"  => \$directoryArgValue,
-                                     "cluster=s"    => \$clusterArgValue,
-                                     "retry=i"      => \$retryArgValue,
-                                     "timeout=i"    => \$timeOutArgValue,
-                                     "dry-run"      => \$dryRunArg,
-                                     "verbose+"     => \$verboseArg,
-                                     "help|?"       => \$helpArg,
-                                     "man"          => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("directory=s"   => \$directoryArgValue,
+                                     "cluster=s"     => \$clusterArgValue,
+                                     "listchummed"   => \$listChummedArg,
+                                     "retry=i"       => \$retryArgValue,
+                                     "timeout=i"     => \$timeOutArgValue,
+                                     "dry-run"       => \$dryRunArg,
+                                     "verbose+"      => \$verboseArg,
+                                     "help|?"        => \$helpArg,
+                                     "man"           => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -129,14 +130,21 @@ if (defined($dryRunArg)){
    exit(0);
 }
 
+my $chummedClusters = "";
 
 for (my $x = 0; $x < @clusterList ; $x++){
 
     # skip this cluster cause the data does NOT need to be moved
     if ($clusterList[$x] eq $config->getThisCluster()){
         print "Skipping $clusterList[$x] cause this program is running on this cluster\n";
+        
+        if ($chummedClusters ne ""){
+           $chummedClusters .= ",";
+        }
+        $chummedClusters .= $clusterList[$x];
         next;
     }
+    
     print "Uploading to $clusterList[$x] ...";
     $startTime = time();
     $res = $uploader->upload($directoryArgValue,$clusterList[$x]);
@@ -152,6 +160,16 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }
 
     printf(" done.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
+    if ($chummedClusters ne ""){
+        $chummedClusters .= ",";
+    }
+    $chummedClusters .= $clusterList[$x];
+}
+
+# used by automated programs that want to use all clusters
+# so they know what clusters to download from.
+if (defined($listChummedArg)){
+   print "chummed.clusters=$chummedClusters\n";
 }
 
 exit(0);
@@ -189,6 +207,13 @@ Defines the directory to upload.  Any symbolic links in this directory will be i
 Defines the list of clusters (comma delimited) that the directory should be uploaded to.
 If this argument is omitted then all clusters listed in B<panfish.config::queue.list> will
 be used.  
+
+=item B<--listchummed>
+
+If set program will output a line listing what clusters the data was uploaded to.
+The format of this output will be as follows:
+
+chummed.clusters=CLUSTER1,CLUSTER2,CLUSTER3
 
 =item B<--retry count>
 
