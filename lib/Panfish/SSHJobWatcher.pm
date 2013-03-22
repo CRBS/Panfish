@@ -188,7 +188,7 @@ sub _getPsubJobStateViaSSH {
     my @rows = split("\n",$self->{SSHExecutor}->getOutput());
     for (my $x = 0; $x < @rows; $x++){
         chomp($rows[$x]);
-        if ($rows[$x]=~/^(.*):::(.*)$/){
+        if ($rows[$x]=~/^(.*)=(.*)$/){
             $state = $2;
             # if the remote state is batchedandchumed still set the
             # state to queued.  it just means on the remote side that
