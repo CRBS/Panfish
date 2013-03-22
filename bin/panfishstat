@@ -82,7 +82,7 @@ while(<STDIN>){
     else {
         $state = $job->getState();
     }
-    print $line.":::".$state."\n";
+    print $line."=".$state."\n";
     
 }  
     
