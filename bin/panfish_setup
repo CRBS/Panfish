@@ -103,8 +103,16 @@ if (defined($examineDirArg)){
 if (defined($setupDbArg)){
    $logger->info("Initializing Database ".$config->getDatabaseDir());
    my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
-   if ($jobDb->initializeDatabase($config->getThisCluster()) == 0){
-       exit(1);
+   my ($error,@clusterList) = $config->getClusterListAsArray();
+   if (defined($error)){
+      $logger->fatal("Problems getting list of clusters needed to initialize db : $error");
+      exit(1);
+   }
+   for (my $x = 0; $x < @clusterList; $x++){
+      if ($jobDb->initializeDatabase($clusterList[$x]) == 0){
+          $logger->fatal("unable to initialize database $clusterList[$x]");
+         exit(1);
+      }
    }
    exit(0);
 }
