@@ -117,6 +117,7 @@ sub _createPsubFile {
     my $cluster = shift;
     my $commandsFile = shift;
     my $name = shift;
+    my $curdir = shift;
     # take commands File and strip off .commands suffix and replace with .psub
     my $psubFile = $commandsFile;
     $psubFile=~s/$self->{COMMANDS_FILE_SUFFIX}$/$self->{PSUB_FILE_SUFFIX}/;
@@ -146,10 +147,8 @@ sub _createPsubFile {
     }
 
     my $runJobScript = $self->{Config}->getRunJobScript($cluster);
-    
-    my $jobFileDir = $self->{FileUtil}->getDirname($psubFile);
 
-    $self->{Logger}->debug("Job file dir: $jobFileDir");
+    $self->{Logger}->debug("Current Directory: $curdir");
 
     my $line = $self->{Reader}->read();
     while(defined($line)){
@@ -157,7 +156,7 @@ sub _createPsubFile {
         $line=~s/\@PANFISH_JOB_STDOUT_PATH\@/$remoteBaseDir$psubFile.stdout/g;
         $line=~s/\@PANFISH_JOB_STDERR_PATH\@/$remoteBaseDir$psubFile.stderr/g;
         $line=~s/\@PANFISH_JOB_NAME\@/$name/g;
-        $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir$jobFileDir/g;
+        $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir$curdir/g;
         $line=~s/\@PANFISH_RUN_JOB_SCRIPT\@/$runJobScript/g;
         $line=~s/\@PANFISH_JOB_FILE\@/$remoteBaseDir$commandsFile/g;
 
@@ -208,7 +207,7 @@ sub _createPsubFileForJobs {
             }
 
             $psubFile = $self->_createPsubFile($cluster,$commandsFile,
-                                               $job->getJobName());
+                                               $job->getJobName(),$job->getCurrentWorkingDir());
         }
         # set the psub file for each job
         $job->setPsubFile($psubFile);
