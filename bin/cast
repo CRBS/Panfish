@@ -22,14 +22,16 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("q=s"      => \$qArgValue,
-                                     "t=s"      => \$tArgValue,
-                                     "e=s"      => \$eArgValue,
-                                     "o=s"      => \$oArgValue,
-                                     "N=s"      => \$nArgValue,
-                                     "verbose+" => \$verboseArg,
-                                     "help|?"   => \$helpArg,
-                                     "man"      => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
+                                     "t=s"        => \$tArgValue,
+                                     "e=s"        => \$eArgValue,
+                                     "o=s"        => \$oArgValue,
+                                     "N=s"        => \$nArgValue,
+                                     "sync=s" => \$syncArgValue,
+                                     "retry=i" => \$retryArgValue,
+                                     "verbose+"   => \$verboseArg,
+                                     "help|?"     => \$helpArg,
+                                     "man"        => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -80,12 +82,21 @@ $stderr=~s/\$JOB_ID/\\\$JOB_ID/g;
 $stdout=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
 $stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
 
+my $timeout = 30;
 
 my $newArgList = "-b y -cwd -notify";
 
 if (defined($nArgValue)){
    $newArgList .= " -N $nArgValue";
 }
+
+if (defined($syncArgValue)){
+   $newArgList .= " -sync $syncArgValue";
+   if ($syncArgValue eq "y"){
+      $timeout = undef;
+   }
+}
+
 # lets build a new argument list for the qsub call
 if (defined($tArgValue)){
     $newArgList .= " -t $tArgValue";
@@ -118,9 +129,7 @@ $cmd = $config->getQsub()." $newArgList -e ".
 
 $logger->info("Running command: $cmd");
 
-my $exitCode = $exec->executeCommand($cmd,30);
-
-
+my $exitCode = $exec->executeCommand($cmd,$timeout);
 
 print $exec->getOutput();
 $logger->info("Exit Code:  ".$exec->getExitCode());
@@ -196,6 +205,10 @@ the B<#$PANFISH> directive.
 Defines list of queues this job can run under.  The queues should correspond to
 valid shadow queues.  This value can also be set within the B<command> using
 the B<#$PANFISH> directive.
+
+=item B<-sync y[es]|n[o]>
+
+Works same as B<qsub>.  Causes B<cast> to wait for the job to complete. 
 
 =item B<--verbose>
 
