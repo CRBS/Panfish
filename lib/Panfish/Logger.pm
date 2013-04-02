@@ -222,7 +222,7 @@ sub _logmessage {
 
     my $curtime = "";
     if ($self->{OutputTime} == 1){
-	$curtime = localtime();
+	$curtime = localtime()." (".time().")";
     }
 
     my ($package,$filename,$line) = caller(1);
