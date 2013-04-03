@@ -3,7 +3,7 @@
 # request Bourne shell as shell for job
 #$ -S /bin/sh
 #$ -V
-#$ -cwd
+#$ -wd @PANFISH_JOB_CWD@
 #$ -o @PANFISH_JOB_STDOUT_PATH@
 #$ -e @PANFISH_JOB_STDERR_PATH@
 #$ -N @PANFISH_JOB_NAME@
