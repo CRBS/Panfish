@@ -28,6 +28,7 @@ if (@ARGV == 0){
 
 my $cmdLineParseResult = GetOptions ("directory=s"   => \$directoryArgValue,
                                      "cluster=s"     => \$clusterArgValue,
+                                     "exclude=s"     => \@excludeArgValues,
                                      "listchummed"   => \$listChummedArg,
                                      "retry=i"       => \$retryArgValue,
                                      "timeout=i"     => \$timeOutArgValue,
@@ -147,7 +148,7 @@ for (my $x = 0; $x < @clusterList ; $x++){
     
     print "Uploading to $clusterList[$x] ...";
     $startTime = time();
-    $res = $uploader->upload($directoryArgValue,$clusterList[$x]);
+    $res = $uploader->upload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
     if (defined($res)){
        print "failed.\n";
        $logger->fatal("Unable to upload $directoryArgValue to $clusterList[$x] : $res");
@@ -214,6 +215,10 @@ If set program will output a line listing what clusters the data was uploaded to
 The format of this output will be as follows:
 
 chummed.clusters=CLUSTER1,CLUSTER2,CLUSTER3
+
+=item B<--exclude PATTERN>
+
+Defines file/dir pattern to exclude in transfer.  Works same as B<--exclude> in B<rsync>
 
 =item B<--retry count>
 

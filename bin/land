@@ -27,6 +27,7 @@ if (@ARGV == 0){
 
 
 my $cmdLineParseResult = GetOptions ("directory=s"  => \$directoryArgValue,
+                                     "exclude=s"    => \@excludeArgValues,
                                      "cluster=s"    => \$clusterArgValue,
                                      "retry=i"      => \$retryArgValue,
                                      "timeout=i"    => \$timeOutArgValue,
@@ -133,7 +134,7 @@ for (my $x = 0; $x < @clusterList ; $x++){
 
     print "Downloading from $clusterList[$x] ...";
     $startTime = time();
-    $res = $downloader->download($directoryArgValue,$clusterList[$x]);
+    $res = $downloader->download($directoryArgValue,$clusterList[$x],\@excludeArgValues);
     if (defined($res)){
        print "failed.\n";
        $logger->fatal("Unable to download $directoryArgValue to $clusterList[$x] : $res");
@@ -183,6 +184,11 @@ Defines the directory to download.
 Defines the list of clusters (comma delimited) that the directory should be downloaded from
 If this argument is omitted then all clusters listed in B<panfish.config::queue.list> will
 be used.  
+
+=item B<--exclude PATTERN>
+
+Defines files and directories that should be excluded from the transfer.  Implementation matches
+logic with B<--exclude> option in B<rsync>
 
 =item B<--retry count>
 
