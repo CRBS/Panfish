@@ -54,6 +54,7 @@ sub directUpload {
     my $pathToUpload = shift;
     my $destinationDir = shift;
     my $cluster = shift;
+    my $excludeRef = shift;
 
     if (defined($self->{Logger})){
         $self->{Logger}->debug("Uploading $pathToUpload to $cluster:$destinationDir/.");
@@ -75,9 +76,11 @@ sub directUpload {
         return "Unable to create $parentDir on $cluster";
     }
 
+    my $excludeArgs = $self->_createExcludeArgs($excludeRef);
+
     $self->{SSHExecutor}->disableSSH();
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=".$self->{TimeOut}." -e ssh $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir";
+    my $cmd = "/usr/bin/rsync -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e ssh $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
 
@@ -120,6 +123,7 @@ sub upload {
     my $self = shift;
     my $dirToUpload = shift;
     my $cluster = shift;
+    my $excludeRef = shift;
 
     if (defined($self->{Logger})){
         $self->{Logger}->debug("Directory to upload: $dirToUpload to $cluster");
@@ -143,8 +147,11 @@ sub upload {
     }
 
     $self->{SSHExecutor}->disableSSH();
+
+    my $excludeArgs = $self->_createExcludeArgs($excludeRef);
+
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=".$self->{TimeOut}." -e ssh $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir";
+    my $cmd = "/usr/bin/rsync -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e ssh $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
        
@@ -174,7 +181,7 @@ sub upload {
 Downloads path from cluster specified. The path will be prefixed with the
 basedir path for that cluster.  
 
-my $check = $rmIO->download("/some/path","cluster");
+my $check = $rmIO->download("/some/path","cluster",\@excludePatterns);
 
 =cut
 
@@ -182,6 +189,7 @@ sub download {
     my $self = shift;
     my $dirToDownload = shift;
     my $cluster = shift;
+    my $excludeRef = shift;
 
     if (defined($self->{Logger})){
         $self->{Logger}->debug("Directory to download: $dirToDownload from $cluster");
@@ -198,8 +206,11 @@ sub download {
     $self->{SSHExecutor}->setCluster($cluster);
 
     $self->{SSHExecutor}->disableSSH();
+
+    my $excludeArgs = $self->_createExcludeArgs($excludeRef);
+
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz --stats --timeout=".$self->{TimeOut}." -e ssh ".
+    my $cmd = "/usr/bin/rsync -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e ssh ".
               $self->{Config}->getHost($cluster).":$remoteDir ".$parentDir."/.";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
@@ -222,6 +233,28 @@ sub download {
     }
 
     return "Unable to download after ".$self->{RetryCount}. " tries.  Giving up";
+}
+
+
+#
+##
+##
+#
+#
+#
+sub _createExcludeArgs {
+    my $self = shift;
+    my $excludeRef = shift;
+    my $excludeArgs = "";
+    if (defined($excludeRef)){
+         for (my $x = 0; $x < @$excludeRef; $x++){
+             if (defined(@{$excludeRef}[$x])){
+                 @{$excludeRef}[$x]=~s/'/\\'/g;
+                 $excludeArgs .= "--exclude '".@{$excludeRef}[$x]."' ";
+             }
+         }
+    }
+    return $excludeArgs;
 }
 
 =head3 getDirectorySize
