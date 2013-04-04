@@ -151,7 +151,12 @@ Removes a directory and any data within that directory
 sub recursiveRemoveDir {
    my $self = shift;
    my $dir = shift;
-   return rmtree($dir);
+   my $err;
+   my $res = rmtree($dir);
+   if (defined($err)){
+       return 0;
+   }
+   return 1;
 }
 
 =head3 makeDir 
