@@ -27,6 +27,7 @@ if (@ARGV == 0){
 
 
 my $cmdLineParseResult = GetOptions ("directory=s"   => \$directoryArgValue,
+                                     "deletebefore"  => \$deleteBeforeArg,
                                      "cluster=s"     => \$clusterArgValue,
                                      "exclude=s"     => \@excludeArgValues,
                                      "listchummed"   => \$listChummedArg,
@@ -148,7 +149,12 @@ for (my $x = 0; $x < @clusterList ; $x++){
     
     print "Uploading to $clusterList[$x] ...";
     $startTime = time();
-    $res = $uploader->upload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+    if (defined($deleteBeforeArg)){
+       $res = $uploader->deleteAndUpload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+    }
+    else {
+       $res = $uploader->upload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+    }
     if (defined($res)){
        print "failed.\n";
        $logger->fatal("Unable to upload $directoryArgValue to $clusterList[$x] : $res");
@@ -208,6 +214,10 @@ Defines the directory to upload.  Any symbolic links in this directory will be i
 Defines the list of clusters (comma delimited) that the directory should be uploaded to.
 If this argument is omitted then all clusters listed in B<panfish.config::queue.list> will
 be used.  
+
+=item B<--deletebefore>
+
+Defines whether remote path is deleted before transfer is started.  Default is no.
 
 =item B<--listchummed>
 
