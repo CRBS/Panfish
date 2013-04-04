@@ -108,11 +108,49 @@ sub directUpload {
 
 }
 
+
+=head3 deleteAndUpload 
+
+Uploads path passed in to remote cluster, but first deletes
+that path on the remote cluster
+ 
+=cut
+
+sub deleteAndUpload {
+    my $self = shift;
+    my $dirToUpload = shift;
+    my $cluster = shift;
+    my $excludeRef = shift;
+
+    my $remoteDir = $self->{Config}->getBaseDir($cluster).$dirToUpload;
+
+    # invoke removedir on path
+    $self->{Logger}->debug("Attempting to delete $remoteDir on cluster $cluster");
+
+    # unset any command which is piped to the command to execute
+    $self->{SSHExecutor}->setStandardInputCommand(undef);
+    
+    $self->{SSHExecutor}->setCluster($cluster);
+
+    $self->{SSHExecutor}->enableSSH();
+
+    my $cmd = $self->{Config}->getPanfishSetup($cluster)." --removedir $remoteDir";
+   
+
+    my $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
+    if ($checkExit != 0){
+        return "Unable to run ".$self->{SSHExecutor}->getCommand().
+                               "  : ".$self->{SSHExecutor}->getOutput();
+    }
+    
+    return $self->upload($dirToUpload,$cluster,$excludeRef);
+}
+
 =head3 upload
 
-Uploads path passed in to remote cluster passed in as well.
+Uploads path passed in to remote cluster.
 
-my $status = $uppy->upload("/home/foo/data1","gordon_shadow.q");
+my $status = $uppy->upload("/home/foo/data1","gordon_shadow.q",\@excludeRef);
 
 Method returns undef upon success or string with error message
 upon failure.
