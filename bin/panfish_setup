@@ -32,6 +32,7 @@ my $cmdLineParseResult = GetOptions ("sync=s"       => \$syncArgValue,
                                      "writeconfig"  => \$writeConfigArg,
                                      "setupdb"      => \$setupDbArg,
                                      "examinedir=s" => \$examineDirArg,
+                                     "removedir=s"  => \$removeDirArg,
                                      "verbose+"     => \$verboseArg,
                                      "help|?"       => \$helpArg,
                                      "man"          => \$manArg) or pod2usage(2);
@@ -98,6 +99,39 @@ if (defined($examineDirArg)){
    print "\n";
    exit(0);
 }
+
+if (defined($removeDirArg)){
+
+   # clean up the path
+   $removeDirArg = $fUtil->standardizePath($removeDirArg);
+
+   print "Path to remove: $removeDirArg\n";
+
+   # dont let . or .. or / /// get passed to delete method
+   if ($removeDirArg =~ /\.$/ ||
+       $removeDirArg =~ /^\/+$/){
+      print STDERR "Invalid path $removeDirArg\n";
+      exit(1);
+   }
+   
+   if ( ! -e $removeDirArg){
+      print STDERR "Path $removeDirArg does not exist\n";
+      exit(0);
+   }
+
+   # dont allow any path not under base directory
+   if (index($removeDirArg,$config->getBaseDir()) != 0){
+      print STDERR "Path must be under ".$config->getBaseDir()."\n";
+      exit(1);
+   }
+
+   if ($fUtil->recursiveRemoveDir($removeDirArg) == 1){
+      exit(0);
+   }
+   print STDERR "There was an error removing $remoteDirArg\n";
+   exit(1);
+}
+
 
 # initialize the job database
 if (defined($setupDbArg)){
@@ -320,6 +354,10 @@ error=
 The AA,BB,CC,DD would be set to values for path and B<error's> value 
 would be blank unless there was a problem in which case it would be set. 
 Also the program will exit with non zero exit code if there is a problem
+
+=item B<--removedir directory>
+
+Removes directory specified.  Code will exit with 0 exit code upon success or 1 upon failure.
 
 =item B<--setupdb>
 Sets up Job database directory for current cluster
