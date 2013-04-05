@@ -105,30 +105,31 @@ if (defined($removeDirArg)){
    # clean up the path
    $removeDirArg = $fUtil->standardizePath($removeDirArg);
 
-   print "Path to remove: $removeDirArg\n";
+   $logger->info("Path to remove: $removeDirArg");
 
    # dont let . or .. or / /// get passed to delete method
    if ($removeDirArg =~ /\.$/ ||
        $removeDirArg =~ /^\/+$/){
-      print STDERR "Invalid path $removeDirArg\n";
+      $logger->fatal("Invalid path $removeDirArg");
       exit(1);
    }
    
    if ( ! -e $removeDirArg){
-      print STDERR "Path $removeDirArg does not exist\n";
+      $logger->debug("Path $removeDirArg does not exist");
       exit(0);
    }
 
    # dont allow any path not under base directory
    if (index($removeDirArg,$config->getBaseDir()) != 0){
-      print STDERR "Path must be under ".$config->getBaseDir()."\n";
+      $logger->fatal("Path must be under ".$config->getBaseDir());
       exit(1);
    }
 
    if ($fUtil->recursiveRemoveDir($removeDirArg) == 1){
+      $logger->debug("Path $removeDirArg successfully removed");
       exit(0);
    }
-   print STDERR "There was an error removing $remoteDirArg\n";
+   $logger->fatal("There was an error removing $remoteDirArg");
    exit(1);
 }
 
