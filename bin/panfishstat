@@ -19,15 +19,18 @@ use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
 use Panfish::FileJobDatabase;
 use Panfish::FileUtil;
+use Panfish::ForkExecutor;
+use Panfish::SGEJobStateHashFactory;
+use Panfish::JobState;
+
+my $cmdLineParseResult = GetOptions ("cluster=s"      => \$clusterArgValue,
+                                     "statusofjobs=s" => \$statusOfJobsArgValue,
+                                     "help|?"         => \$helpArg,
+                                     "verbose+"       => \$verboseArg,
+                                     "man"            => \$manArg) or pod2usage(2);
 
 
-my $cmdLineParseResult = GetOptions ("cluster=s" => \$clusterArgValue,
-                                     "help|?"    => \$helpArg,
-                                     "verbose+"  => \$verboseArg,
-                                     "man"       => \$manArg) or pod2usage(2);
-
-
-if ($helpArg || !defined($clusterArgValue)){
+if ($helpArg){
   pod2usage(1);
 }
 
@@ -45,6 +48,12 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
+# if the user did not set a cluster on the command just assume the
+# local cluster
+if (!defined($clusterArgValue)){
+   $clusterArgValue = $config->getThisCluster();
+}
+
 my $jobDb = Panfish::FileJobDatabase->new($reader,
                                       $config->getDatabaseDir($clusterArgValue),$logger);
 my $fUtil = Panfish::FileUtil->new($logger);
@@ -57,6 +66,68 @@ my $taskId;
 my $exitVal = 0;
 my $state;
 my $cwd = getcwd();
+
+
+# User wants us to look at file, extract job ids and 
+# let them know if those jobs are completed or still 
+# running
+if (defined($statusOfJobsArgValue)){
+  if ( ! -s $statusOfJobsArgValue){
+     $logger->fatal("$statusOfJobsArgValue is either not a file or is not of size greater then 0");
+     print "status=UNKNOWN\n";
+     exit(1);
+  }
+
+  my $res = $reader->openFile($statusOfJobsArgValue);
+  if (defined($res)){
+     $logger->fatal("Unable to open $statusOfJobsArgValue : $res");
+     print "status=UNKNOWN\n";
+     exit(1);
+  }
+  
+  if ($config->getEngine($clusterArgValue) ne "SGE"){
+     $logger->fatal("Only SGE engine currently supported. $clusterArgValue is using ".
+                    $config->getEngine($clusterArgValue));
+     print "status=UNKNOWN\n";
+     exit(1);
+  }
+  my $exec = Panfish::ForkExecutor->new();
+  my $jobStatusFactory = Panfish::SGEJobStateHashFactory->new($config,$logger,$exec);
+
+  my ($jobStatusHash,$err) = $jobStatusFactory->getJobStateHash();
+
+  if (defined($err)){
+    $logger->fatal("$err");
+    exit(1);
+  }
+
+ 
+  my $status = "DONE";
+  my $line = $reader->read();
+  while(defined($line)){
+    chomp($line);
+    # parse out job id
+    if ($line=~/Your .*has been submitted/){
+       $line=~s/ \(.*//;
+       $line=~s/^.* //;
+       $line=~s/\..*//;
+       my $jStatus = $jobStatusHash->{$line}; 
+       if (defined($jStatus)){
+          if ($jStatus ne Panfish::JobState->DONE() &&
+              $jStatus ne Panfish::JobState->FAILED()){
+             $status = "RUNNING";
+             break;
+          }
+       }
+    }
+    $line = $reader->read();
+  }
+  $reader->close();
+  print "status=$status\n";
+  exit(0);
+}
+
+
 while(<STDIN>){
     chomp();
     $line = $_;
@@ -111,10 +182,19 @@ B<panfishstat> is run on remote cluster to check status of jobs
 
 Defines cluster this program is invoked on
 
+=item B<--statusofjobs file>
+
+Takes output B<file> from B<cast> and returns status of jobs submitted by the B<cast> command.
+The resulting output in a simple one line with this format
+
+status=<JOBSTATUS>
+
+where <JOBSTATUS> is either RUNNING, DONE, or UNKNOWN.
+
 =item B<--verbose>
 
 Verbose mode.  Causes B<panfishstat> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 3.
+verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
 
