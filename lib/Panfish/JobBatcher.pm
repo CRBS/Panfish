@@ -77,15 +77,15 @@ sub batchJobs {
     
     # builds a hash where key is job id and value is an array
     # of jobs with that job id
-    my $jobHashById = $self->_buildJobHash($cluster); 
+    my $jobHashByPath = $self->_buildJobHash($cluster); 
 
     my @sortedJobs;
  
     # iterate through each job array
-    for my $jobId (keys %$jobHashById){
+    for my $jobPath (keys %$jobHashByPath){
 
         # sort the job array by task id
-        @sortedJobs = sort {$self->_sortJobsByTaskId } @{$jobHashById->{$jobId}};
+        @sortedJobs = sort {$self->_sortJobsByTaskId } @{$jobHashByPath->{$jobPath}};
 
         # check if it is okay to submit these jobs
         while ($self->_isItOkayToSubmitJobs($cluster,\@sortedJobs) eq "yes"){
@@ -360,11 +360,11 @@ sub _buildJobHash {
         return undef;
     }
    
-    my %jobHashById = ();
+    my %jobHashByPath = ();
     my $jobCnt = 0; 
     for (my $x = 0; $x < @jobs; $x++){
         if (defined($jobs[$x])){
-            push(@{$jobHashById{$jobs[$x]->getJobId()}},$jobs[$x]);
+            push(@{$jobHashByPath{$jobs[$x]->getCurrentWorkingDir()}},$jobs[$x]);
             $jobCnt++;
         }
     }
@@ -373,7 +373,7 @@ sub _buildJobHash {
         $self->{Logger}->debug("Found ".$jobCnt." job(s) seeing if they can be batched");
     }
 
-    return \%jobHashById;
+    return \%jobHashByPath;
 }
 
 
