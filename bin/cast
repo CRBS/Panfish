@@ -24,11 +24,12 @@ if (@ARGV == 0){
 
 my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "t=s"        => \$tArgValue,
+                                     "taskfile=s" => \$taskFileArgValue,
                                      "e=s"        => \$eArgValue,
                                      "o=s"        => \$oArgValue,
                                      "N=s"        => \$nArgValue,
-                                     "sync=s" => \$syncArgValue,
-                                     "retry=i" => \$retryArgValue,
+                                     "sync=s"     => \$syncArgValue,
+                                     "retry=i"    => \$retryArgValue,
                                      "verbose+"   => \$verboseArg,
                                      "help|?"     => \$helpArg,
                                      "man"        => \$manArg) or pod2usage(2);
@@ -45,6 +46,21 @@ if ($manArg){
 if (@ARGV < 1){
   pod2usage(2);
 }
+
+#only allow -t or --taskfile, but not both
+if (defined($tArgValue) && defined($taskFileArgValue)){
+  print STDERR "-t and --taskfile cannot both be defined\n";
+  pod2usage(2);
+}
+
+# dont allow -sync y[es] with --taskfile argument
+if (defined($taskFileArgValue) && 
+    defined($syncArgValue) && 
+    $syncArgValue =~/^[y|Y].*/){
+  print STDERR "-sync $syncArgValue cannot be used with --taskfile parameter\n";
+  pod2usage(2);
+}
+
 
 my $command = "";
  
@@ -70,8 +86,8 @@ my $logger = Panfish::Logger->new();
 # was passed into command
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
-my $reader = Panfish::FileReaderWriterImpl->new($logger);
-my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 
@@ -83,6 +99,8 @@ $stdout=~s/\$TASK_ID/\\\$SGE_TASK_ID/g;
 $stdout=~s/\$JOB_ID/\\\$JOB_ID/g;
 
 my $timeout = 30;
+
+my $tArgs = "";
 
 my $newArgList = "-b y -cwd -notify";
 
@@ -98,8 +116,7 @@ if (defined($syncArgValue)){
 }
 
 # lets build a new argument list for the qsub call
-if (defined($tArgValue)){
-    $newArgList .= " -t $tArgValue";
+if (defined($tArgValue) || defined($taskFileArgValue)){
     $taskIdErrVar = ".\\\$TASK_ID.err";
     $taskIdOutVar = ".\\\$TASK_ID.out";
 }
@@ -120,20 +137,117 @@ if (defined($error)){
 $newArgList .= " -q ".$cList;
 
 
-my $taskId = "";
+my $exitCode;
 
-$cmd = $config->getQsub()." $newArgList -e ".
-       $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
-       $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
-       $config->getLineCommand()."$stdout$stderr $command";
+# generate -t argument array based on arguments passed in by the user
+my @tArgArray = generateTArgumentArray($readerWriter,$logger,$tArgValue,$taskFileArgValue);
 
-$logger->info("Running command: $cmd");
+my $len = @tArgArray;
+$logger->debug("Got $len jobs to submit");
 
-my $exitCode = $exec->executeCommand($cmd,$timeout);
+for (my $x = 0; $x < @tArgArray; $x++){
 
-print $exec->getOutput();
-$logger->info("Exit Code:  ".$exec->getExitCode());
+   $cmd = $config->getQsub()." $tArgArray[$x] $newArgList -e ".
+          $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
+          $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
+          $config->getLineCommand()."$stdout$stderr $command";
+
+    $logger->info("Running command: $cmd");
+
+    $exitCode = $exec->executeCommand($cmd,$timeout);
+
+    print $exec->getOutput();
+    $logger->info("Exit Code:  ".$exitCode);
+    if ($exitCode != 0){
+      $logger->fatal("Error submitting job");
+    }
+}
 exit($exitCode);
+
+
+#
+# Given -t parameters or --taskfile parameters generate
+# an array of -t arguments to submit to qsub
+#
+sub generateTArgumentArray {
+   my $readerWriter = shift;
+   my $logger = shift;
+   my $tArgValue = shift;
+   my $taskFileArgValue = shift;
+
+   my @tArgArray;
+
+   # neither parameter is set so just push an empty string onto the
+   # array and a regular single job will be submitted
+   if (!defined($tArgValue) &&
+       !defined($taskFileArgValue)){
+     push(@tArgArray,"");
+     return @tArgArray;
+   }
+
+   # if $tArgValue is defined just use that file and push one element
+   # into array cause this is the standard way to submit a single array job
+   if (defined($tArgValue)){
+      push(@tArgArray,"-t $tArgValue");
+      return @tArgArray;
+   }
+
+   # if $taskFileArgValue is set we need to open that file
+   # sort the numbers in it and generate -t flags so that the
+   # minimum # of submits is required.  The -t flag supports
+   # n-m flag so if we have tasks 1,2,3,4,5 from the file we can
+   # call -t 1-5 in a single call.
+   if ( ! -e $taskFileArgValue ){
+      $logger->fatal("$taskFileArgValue file does not exist");
+      exit(1);
+   }
+ 
+   my $res = $readerWriter->openFile($taskFileArgValue);
+
+   if (defined($res)){
+      $logger->fatal("Error opening $taskFileArgValue : $res");
+      exit(1);
+   }
+
+   #read contents of file and put into array
+   my @ids;
+   my $line = $readerWriter->read();
+   while(defined($line)){
+      chomp($line);
+      push(@ids,$line);
+      $line = $readerWriter->read();
+   }
+   $readerWriter->close();
+
+   # sort array in numeric ascending order
+   my @sortedIds = sort { $a <=> $b } @ids;
+   
+   my $startId = $sortedIds[0];
+   my $curId = $startId;
+   my $added = 0;
+   for (my $x = 1; $x < @sortedIds; $x++){
+        
+         # if the next id is only 1 larger then the current
+         # set $curId to that value
+         # If the value is not one larger then
+         # we need to add an entry to the tArgArray and 
+         # set $startId to $sortedIds
+         if ($curId+1 == $sortedIds[$x]){
+             $curId = $sortedIds[$x];
+         }
+         else {
+             push(@tArgArray,"-t ".$startId."-".$curId);
+             $startId = $sortedIds[$x];
+             $curId = $startId;
+             
+         }
+   }
+
+   push(@tArgArray,"-t ".$startId."-".$curId);
+   
+   return @tArgArray;
+}
+
 1;
 
 __END__
@@ -172,6 +286,26 @@ described as follows.
 =item B<-t [-m[:s]]>
 
 Submits an array job with the environment variable B<SGE_TASK_ID> set to index number of job.   
+
+=item B<--taskfile path>
+
+Submits task array jobs with ranges based on values in B<path> specified as an argument to this
+parameter.  This method assumes the file contains integers, one per line denoting task id's to
+submit.  B<Cast> will first sort the values in this file and attempt to batch the jobs into
+as few submits as possible.  
+
+Example file:
+
+1
+2
+3
+5
+6
+7
+
+In the above file B<cast> will submit two array jobs one with a range of 1-3 and another with
+a range of 5-7.  The code does not check for duplicate ids and non numerical values in the file
+will have unknown consequences.  Also this flag cannot be used with B<-t> or B<-sync y[es]> flags.
 
 =item B<-e path,...>
 
