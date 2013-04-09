@@ -131,16 +131,47 @@ sub getSummaryForCluster {
     # basically get # of files in each directory and report it
     # in a string
     my $outStr = "";
+
+    my $summaryHashRef = $self->getHashtableSummaryForCluster($cluster);
+ 
+    my @states = Panfish::JobState->getAllStates();
+    for (my $x = 0; $x < @states; $x++){
+        $outStr .= " (".$summaryHashRef->{$states[$x]}.") $states[$x]";
+    }
+    
+    return $outStr;
+}
+
+=head3 getHashtableSummaryForCluster
+
+This method builds a hashtable containing counts of jobs in all states for a 
+given cluster.  The hashtable's key is the state and the value is the number
+of jobs in that state.  The hashtable is returned as a reference and
+should be accessed like so:
+
+my $hTable = $db->getHashtableSummaryForCluster($cluster);
+
+print $hTable->{Panfish::JobState->RUNNING()}." jobs in state ".Panfish::JobState->RUNNING()." on cluster $cluster\n";
+
+=cut
+
+sub getHashtableSummaryForCluster {
+    my $self = shift;
+    my $cluster = shift;
+    my %summaryHash = ();
+    # basically get # of files in each directory and report it
+    #     # in a string
+    my $outStr = "";
     my @states = Panfish::JobState->getAllStates();
     my $count = 0;
     for (my $x = 0; $x < @states; $x++){
         $count = $self->{FileUtil}->getNumberFilesInDirectory($self->{SubmitDir}.
                                                               "/".$cluster.
                                                               "/".$states[$x]);
-        $outStr .= " ($count) $states[$x]";
+        $summaryHash{$states[$x]} = $count;
     }
-    
-    return $outStr;
+
+    return \%summaryHash;
 }
 
 =head3 insert
