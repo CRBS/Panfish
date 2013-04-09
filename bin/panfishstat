@@ -23,11 +23,12 @@ use Panfish::ForkExecutor;
 use Panfish::SGEJobStateHashFactory;
 use Panfish::JobState;
 
-my $cmdLineParseResult = GetOptions ("cluster=s"      => \$clusterArgValue,
-                                     "statusofjobs=s" => \$statusOfJobsArgValue,
-                                     "help|?"         => \$helpArg,
-                                     "verbose+"       => \$verboseArg,
-                                     "man"            => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("cluster=s"         => \$clusterArgValue,
+                                     "statusofjobs=s"    => \$statusOfJobsArgValue,
+                                     "jobstatusreport=s" => \$jobStatusReportArgValue,
+                                     "help|?"            => \$helpArg,
+                                     "verbose+"          => \$verboseArg,
+                                     "man"               => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -67,6 +68,30 @@ my $exitVal = 0;
 my $state;
 my $cwd = getcwd();
 
+# prints out a summary report of all non failed, non completed
+# jobs in Panfish Database
+# Format of output
+# Cluster  submitted  queued  batched  batchedandchummed  running  done  failed
+# gordon_shadow.q
+if (defined($jobStatusReportArgValue)){
+
+    if ($jobStatusReportArgValue eq "list"){
+         my @states = Panfish::JobState->getAllStates();
+         my ($error,@cList) = $config->getClusterListAsArray();
+         for (my $x = 0; $x < @cList; $x++){
+              my $summaryHash = $jobDb->getHashtableSummaryForCluster($cList[$x]);
+              for (my $y = 0; $y < @states; $y++){
+                   print "$cList[$x].".$states[$y]."=".$summaryHash->{$states[$y]}."\n";
+              }
+         }
+    }
+    else {
+       $logger->fatal("$jobStatusReportArgValue not valid output format for --jobstatusreport flag");
+       exit(1);
+    }
+    exit(0);
+
+}
 
 # User wants us to look at file, extract job ids and 
 # let them know if those jobs are completed or still 
@@ -190,6 +215,11 @@ The resulting output in a simple one line with this format
 status=<JOBSTATUS>
 
 where <JOBSTATUS> is either RUNNING, DONE, or UNKNOWN.
+
+=item B<--jobstatusreport type>
+
+If set B<panfishstat> outputs a summary report of jobs.  The B<type> value defines format of
+output.  Currently B<list> is the only supported format.
 
 =item B<--verbose>
 
