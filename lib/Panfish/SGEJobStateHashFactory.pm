@@ -89,8 +89,10 @@ sub getJobStateHash {
         #} 
         $realJobId = $subSplit[0];
         $rawState = $subSplit[4];
-        $self->{Logger}->debug("Setting hash ".$realJobId." => ($rawState) -> ".$self->_convertStateToJobState($rawState));
-        $jobStatusHash{$realJobId}=$self->_convertStateToJobState($rawState);
+        if (!defined($jobStatusHash{$realJobId})){
+           $self->{Logger}->debug("Setting hash ".$realJobId." => ($rawState) -> ".$self->_convertStateToJobState($rawState));
+           $jobStatusHash{$realJobId}=$self->_convertStateToJobState($rawState);
+        }
         
     }
     return (\%jobStatusHash,undef);
