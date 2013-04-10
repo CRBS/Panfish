@@ -57,6 +57,28 @@ sub new {
    return $blessedself;
 }
 
+=head3 setSGEJobStateHashFactory
+
+Sets alternate SGEJobStateHashFactory.
+
+=cut
+
+sub setSGEJobStateHashFactory {
+   my $self = shift;
+   $self->{SGEJobStateHashFactory} = shift;
+}
+
+=head3 setPBSJobStateHashFactory
+
+Sets alternate PBSJobStateHashFactory.
+
+=cut
+
+sub setPBSJobStateHashFactory {
+   my $self = shift;
+   $self->{PBSJobStateHashFactory} = shift;
+}
+
 =head3 checkJobs
 
 This method takes a cluster as a parameter and looks for jobs in 
@@ -137,7 +159,7 @@ sub checkJobs {
             
             $self->{Logger}->debug("Changing state for job ".${$jobArrayRef}[$x]->getJobAndTaskId().
                                  " (".${$jobArrayRef}[$x]->getRealJobId()." real id) from ".
-                                 {$jobArrayRef}[$x]->getState()." to ".$newState);
+                                 ${$jobArrayRef}[$x]->getState()." to ".$newState);
 
              ${$jobArrayRef}[$x]->setState($newState);
             $self->{JobDb}->update(${$jobArrayRef}[$x]);
