@@ -244,7 +244,7 @@ sub _buildJobHash {
         if (defined($jobs[$x])){
             $psubFile = $jobs[$x]->getPsubFile();
             if (!defined($psubFile) || ! -f $psubFile){
-                $self->{Logger}->error("Job $x missing psub file...");
+                $self->{Logger}->error("Job $x missing psub file...: ".$jobs[$x]->getJobAsString());
                 return undef;
             }
             $psubFile=~s/^.*\///;
