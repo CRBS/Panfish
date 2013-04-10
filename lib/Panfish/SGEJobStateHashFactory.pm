@@ -55,11 +55,12 @@ of statuses for each job.
 
 sub getJobStateHash {
     my $self = shift;
-    my $jobArrayRef = shift;
     my %jobStatusHash = ();
    
-    my $qstatCmd = $self->{Config}->getQstat()." -u \"*\"";
-    
+    my $qstatCmd = $self->{Config}->getQstat()." -u \"*\" 2>&1";
+
+
+    $self->{Logger}->debug("Running $qstatCmd");    
     my $exit = $self->{Executor}->executeCommand($qstatCmd,60);
     if ($exit != 0){
        $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
