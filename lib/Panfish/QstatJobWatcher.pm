@@ -99,17 +99,25 @@ sub checkJobs {
     # get status of all jobs on cluster
     # get back a hash where {qstat job id} => { JobState}
     my $jobStatusHash;
-  
+    my $error;  
     if ($self->{Config}->getEngine() eq "SGE"){
-        $jobStatusHash = $self->{SGEJobStateHashFactory}->getJobStateHash();
+        ($jobStatusHash,$error) = $self->{SGEJobStateHashFactory}->getJobStateHash();
     }
     elsif ($self->{Config}->getEngine() eq "PBS") {
 
-        $jobStatusHash = $self->{PBSJobStateHashFactory}->getJobStateHash();
+        ($jobStatusHash,$error) = $self->{PBSJobStateHashFactory}->getJobStateHash();
     }
     else {
         return "Engine ".$self->{Config}->getEngine()." not supported";
     }
+
+    # Just return if there was an error querying for job stats cause we don't know what
+    # is going on
+    if (defined($error)){
+       $self->{Logger}->error("Unable to get updated Job State Hash.  Not updating any jobs");
+       return $error;
+    }
+
     my $jobCount = 0;
   
     my $newState;
@@ -119,13 +127,18 @@ sub checkJobs {
         
         $newState = $jobStatusHash->{${$jobArrayRef}[$x]->getRealJobId()};
         if (!defined($newState)){
-          # couldnt find job lets assume its done
-          ${$jobArrayRef}[$x]->setState(Panfish::JobState->DONE());
-          $self->{JobDb}->update(${$jobArrayRef}[$x]);
-          $jobCount++;
+           $self->{Logger}->debug("Job ".${$jobArrayRef}[$x]->getRealJobId().
+                                 " (".${$jobArrayRef}[$x]->getJobAndTaskId()." shadow id) not found in hash.  Assuming completion.");
+           $newState = Panfish::JobState->DONE();
         }
-        elsif ($newState ne ${$jobArrayRef}[$x]->getState() && 
+        
+        if ($newState ne ${$jobArrayRef}[$x]->getState() && 
             $newState ne Panfish::JobState->UNKNOWN()){
+            
+            $self->{Logger}->debug("Changing state for job ".${$jobArrayRef}[$x]->getJobAndTaskId().
+                                 " (".${$jobArrayRef}[$x]->getRealJobId()." real id) from ".
+                                 {$jobArrayRef}[$x]->getState()." to ".$newState);
+
              ${$jobArrayRef}[$x]->setState($newState);
             $self->{JobDb}->update(${$jobArrayRef}[$x]);
             $jobCount++;
