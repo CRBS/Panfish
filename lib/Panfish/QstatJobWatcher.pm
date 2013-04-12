@@ -111,11 +111,11 @@ sub checkJobs {
    
  
     if (!defined($jobArrayRef) || @{$jobArrayRef} <= 0){
-       $self->{Logger}->debug("No jobs found");
+       $self->{Logger}->debug("No jobs found on $cluster");
        return undef;
     }
     
-    $self->{Logger}->debug("Found ".@{$jobArrayRef}." jobs ");
+    $self->{Logger}->debug("Found ".@{$jobArrayRef}." jobs on $cluster");
                           
     
     # get status of all jobs on cluster
@@ -184,12 +184,12 @@ sub _getJobsInQueuedAndRunningStates {
     my @jobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
                 Panfish::JobState->QUEUED());
 
-    $self->{Logger}->debug("Found ".@jobs." in queued state");
+    $self->{Logger}->debug("Found ".@jobs." in queued state on $cluster");
 
     my @rJobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
                 Panfish::JobState->RUNNING());
 
-    $self->{Logger}->debug("Found ".@rJobs." in running state");    
+    $self->{Logger}->debug("Found ".@rJobs." in running state on $cluster");    
 
     push(@jobs,@rJobs);
 
