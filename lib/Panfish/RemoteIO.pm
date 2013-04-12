@@ -345,6 +345,7 @@ sub getDirectorySize {
     my $error = undef;
 
     my $panfishSetup = $self->{Config}->getPanfishSetup($cluster)." --examinedir $remoteDir";
+    $self->{Logger}->debug("Running $panfishSetup");
     my $exit = $self->{SSHExecutor}->executeCommand($panfishSetup,undef,undef);
 
     if ($exit != 0){
@@ -352,7 +353,7 @@ sub getDirectorySize {
                                "  : ".$self->{SSHExecutor}->getOutput());
          return (0,0,0,0,$self->{SSHExecutor}->getOutput());
     }
-    $self->{Logger}->debug($self->{SSHExecutor}->getOutput());
+    $self->{Logger}->debug("Output : ".$self->{SSHExecutor}->getOutput());
     my @rows = split("\n",$self->{SSHExecutor}->getOutput());
     for (my $x = 0; $x < @rows; $x++){
        chomp($rows[$x]); 
