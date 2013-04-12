@@ -25,6 +25,7 @@ sub new {
         NotificationLevel   => undef,
         NotificationSubject => "Panfish Log Message",
         Email               => undef,
+        Prefix              => "",
 	LogFile             => undef
     };
     $self->{Level} = $self->{ERROR}.",".$self->{FATAL}.",".$self->{WARN};
@@ -48,6 +49,23 @@ sub setLevelBasedOnVerbosity {
 }
 
 
+}
+
+=head3 setPrefix
+
+Sets a prefix string to be output before each log message.  undef means no output
+
+=cut
+
+sub setPrefix {
+  my $self = shift;
+  my $prefix = shift;
+  if (!defined($prefix)){
+    $self->{Prefix} = "";
+  }
+  else {
+    $self->{Prefix} = $prefix;
+  }
 }
 
 sub setNotificationSubject {
@@ -227,7 +245,7 @@ sub _logmessage {
 
     my ($package,$filename,$line) = caller(1);
 
-    my $logmessage = $curtime." ".$level." [$package:$line] ".$message."\n";
+    my $logmessage = $self->{Prefix}.$curtime." ".$level." [$package:$line] ".$message."\n";
 
     if (!defined($self->{OUT})){
 	print $logmessage;
