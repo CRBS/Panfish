@@ -344,14 +344,15 @@ sub getJobBatcherOverrideTimeout {
 =head3 getCommaDelimitedClusterList
 
 Gets a comma delimited list of clusters from the configuration filtered by
-the list of clusters passed in to this method.  If the cluster list passed in
-has invalid values then an error is returned otherwise $error below is set to undef.
+the list of clusters passed in to this method.  
 
-my ($error,$cList) = $config->getCommaDelimitedClusterList();
+
+
+my ($skippedClusters,$cList) = $config->getCommaDelimitedClusterList();
 
 or
 
-my ($error,$cList) = $config->getCommaDelimitedClusterList("lion_shadow.q,pokey_shadow.q");
+my ($skippedClusters,$cList) = $config->getCommaDelimitedClusterList("lion_shadow.q,pokey_shadow.q");
 
 =cut
 
@@ -359,11 +360,7 @@ sub getCommaDelimitedClusterList {
     my $self = shift;
     my $clusterList = shift;
 
-    my ($error,@cArray) = $self->getClusterListAsArray($clusterList);
-    
-    if (defined($error)){
-       return ($error,undef);
-    }
+    my ($skippedClusters,@cArray) = $self->getClusterListAsArray($clusterList);
 
     my $cList = "";
     for (my $x = 0; $x < @cArray; $x++){
@@ -374,27 +371,27 @@ sub getCommaDelimitedClusterList {
             $cList .= ",$cArray[$x]";
         }
     }
-    return (undef,$cList);
+    return ($skippedClusters,$cList);
 }
 
 =head3 getClusterListAsArray
 
 Gets array of clusters from the configuration filtered by
 the list of clusters passed in to this method.  If the cluster list passed in
-has invalid values then an error is returned otherwise $error below is set to undef.
+has invalid values then those invalid clusters are set in $skippedClusters separated by commas
 
-my ($error,$cArray) = $config->getCommaDelimitedClusterList();
+my ($skippedClusters,$cArray) = $config->getClusterListAsArray();
 
 or
 
-my ($error,@cArray) = $config->getCommaDelimitedClusterList("lion_shadow.q,pokey_shadow.q");
+my ($skippedClusters,@cArray) = $config->getClusterListAsArray("lion_shadow.q,pokey_shadow.q");
 
 =cut
 
 sub getClusterListAsArray {
     my $self = shift;
     my $clusterList = shift;
-
+    my $skippedClusters = undef;
     my @cArray = split(",",$self->_getValueFromConfig($self->{CLUSTER_LIST},""));
 
     if (!defined($clusterList)){
@@ -418,10 +415,15 @@ sub getClusterListAsArray {
             push(@finalArray,$cArrayFromParam[$x]);
         }
         else {
-           return ("$cArrayFromParam[$x] is not a valid cluster",undef);
+           if (!defined($skippedClusters)){
+              $skippedClusters = $cArrayFromParam[$x];
+           }
+           else {
+              $skippedClusters .= ",".$cArrayFromParam[$x];
+           }
         }
     }
-    return (undef,@finalArray);
+    return ($skippedClusters,@finalArray);
 }
 
 =head3 getLineCommand
