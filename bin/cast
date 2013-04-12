@@ -127,11 +127,16 @@ else {
 
 # verify the list of queues specified is valid
 #
-my ($error,$cList) = $config->getCommaDelimitedClusterList($qArgValue);
+my ($skippedClusters,$cList) = $config->getCommaDelimitedClusterList($qArgValue);
 $logger->debug("Cluster list: $cList");
-if (defined($error)){
-    $logger->fatal("Invalid queue/cluster list set via -q flag : $error");
-    exit(1);
+if (defined($skippedClusters)){
+    $logger->warn("Ignoring these clusters since they are not in the configuration: $skippedClusters");
+}
+
+# Verify we got at least one queue otherwise bail
+if ($cList eq ""){
+   $logger->fatal("No queues specified to submit jobs to.  Please add queues to cluster.list parameter in configuration");
+   exit(1);
 }
 
 $newArgList .= " -q ".$cList;
