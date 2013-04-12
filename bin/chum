@@ -71,7 +71,6 @@ my $logger = Panfish::Logger->new();
 
 # tab indent all logging messages
 $logger->setPrefix("\t");
-
 # sets the logging level based on number of times verbose flag 
 # was passed into command
 $logger->setLevelBasedOnVerbosity($verboseArg);
@@ -103,11 +102,6 @@ $directoryArgValue = $fUtil->standardizePath($directoryArgValue);
 # Uploading to (cluster) ... (status)
 # (log messages)
 
-my $logOutputStr;
-my $logFh;
-open $logFh,'>',\$logOutputStr;
-$logger->setOutput($logFh);
-
 
 # let user know we don't take into account exclude arguments when getting directory sizes yet
 if (@excludeArgValues){
@@ -116,6 +110,9 @@ if (@excludeArgValues){
 
 
 print "\nExamining ... $directoryArgValue";
+if (defined($verboseArg)){
+  print "\n";
+}
 my $startTime = time();
 my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($directoryArgValue);
 
@@ -123,23 +120,11 @@ my $duration = time() - $startTime;
 
 if (defined($error)){
    print " ... failed.  Took $duration seconds.\n";
-   # closing logging file handle
-   print $logOutputStr;
-   close($logFh);
-   $logger->setOutput(undef);
-  
    $logger->fatal("There was an error : $error");
    exit(1);
 }
 
 print " ... done.  Took $duration seconds.\n";
-
-# closing logging file handle
-print $logOutputStr;
-close($logFh);
-$logger->setOutput(undef);
-
-
 
 print "Found $sizeInBytes bytes in $numFiles files\n\n";
 
@@ -182,16 +167,10 @@ for (my $x = 0; $x < @clusterList ; $x++){
         next;
     }
    
-    # Temporarily set logger to log to a String cause we want to have
-    # a clean output like this:
-    # Uploading to (cluster) ... (status)
-    #  (log messages)
-    my $logOutputStr;
-    my $logFh;
-    open $logFh,'>',\$logOutputStr; 
-    $logger->setOutput($logFh);
-
     print "Uploading to $clusterList[$x] ...";
+    if (defined($verboseArg)){
+        print "\n";
+    }
     $startTime = time();
     if (defined($deleteBeforeArg)){
        $res = $uploader->deleteAndUpload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
@@ -201,11 +180,6 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }
     if (defined($res)){
        print "failed.\n";
-       if (defined($logOutputStr) && $logOutputStr ne ""){
-          print $logOutputStr;
-       }
-       close($logFh);
-       $logger->setOutput(undef);
        $logger->fatal("Unable to upload $directoryArgValue to $clusterList[$x] : $res");
        exit(2);
     }
@@ -216,13 +190,6 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }
 
     printf(" done.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
-
-    # closing logging file handle
-    if (defined($logOutputStr) && $logOutputStr ne ""){
-        print $logOutputStr;
-    }
-    close($logFh);
-    $logger->setOutput(undef);
 
     if ($chummedClusters ne ""){
         $chummedClusters .= ",";
