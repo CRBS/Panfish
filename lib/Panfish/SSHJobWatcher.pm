@@ -224,7 +224,7 @@ sub _buildJobHash {
                 Panfish::JobState->QUEUED());
 
     if (!@jobs){
-        $self->{Logger}->debug("No jobs in ".Panfish::JobState->QUEUED()."state");
+        $self->{Logger}->debug("No jobs in ".Panfish::JobState->QUEUED()."state for $cluster");
     }   
     
 
@@ -232,7 +232,7 @@ sub _buildJobHash {
                 Panfish::JobState->RUNNING());
 
     if (!@rJobs){
-        $self->{Logger}->error("No jobs in ".Panfish::JobState->RUNNING()." state");
+        $self->{Logger}->debug("No jobs in ".Panfish::JobState->RUNNING()." state for $cluster");
     }
     else {
         push(@jobs,@rJobs);

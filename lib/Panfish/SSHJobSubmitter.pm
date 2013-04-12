@@ -85,18 +85,18 @@ sub submitJobs {
     }
     
     if (@psubArray <= 0){
-       $self->{Logger}->debug("No jobs found");
+       $self->{Logger}->debug("No jobs found in ".Panfish::JobState->BATCHEDANDCHUMMED()." state for $cluster");
        return undef;
     }
     
     $self->{Logger}->debug("Found ".@psubArray." psub files containing ".
-                          $jobCount." jobs");
+                          $jobCount." jobs for $cluster");
     
     # submit array of psub files
     my $submittedPsubFilesRef = $self->_submitPsubFilesViaSSH($cluster,\@psubArray);
     
     if (@{$submittedPsubFilesRef} <= 0){
-        $self->{Logger}->warn("No psub files submitted hmmm...");
+        $self->{Logger}->warn("No psub files submitted hmmm... for $cluster");
         return undef;
     }
 
@@ -104,7 +104,7 @@ sub submitJobs {
     my $psubFile;
 
     # update database with new status
-    $self->{Logger}->debug("Submit succeeded updating database");
+    $self->{Logger}->debug("Submit succeeded updating database for $cluster");
  
     for (my $x = 0; $x < @{$submittedPsubFilesRef}; $x++){
         $psubFile = ${$submittedPsubFilesRef}[$x];
@@ -159,7 +159,7 @@ sub _submitPsubFilesViaSSH {
     }
 
     if ($echoArgs eq ""){
-        $self->{Logger}->debug("No jobs to submit");
+        $self->{Logger}->debug("No jobs to submit for $cluster");
         return \@noJobs;
     }
 
@@ -210,9 +210,9 @@ sub _buildJobHash {
                 Panfish::JobState->BATCHEDANDCHUMMED());
 
     if (!@jobs){
-            $self->{Logger}->error("Error getting jobs from database");
         return undef;
     }
+
     my %jobHashByPsubFile = ();
     my $psubFile;
     for (my $x = 0; $x < @jobs; $x++){
