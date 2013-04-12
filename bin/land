@@ -29,6 +29,7 @@ if (@ARGV == 0){
 my $cmdLineParseResult = GetOptions ("directory=s"  => \$directoryArgValue,
                                      "exclude=s"    => \@excludeArgValues,
                                      "cluster=s"    => \$clusterArgValue,
+                                     "deleteafter"  => \$deleteAfterArg,
                                      "retry=i"      => \$retryArgValue,
                                      "timeout=i"    => \$timeOutArgValue,
                                      "dry-run"      => \$dryRunArg,
@@ -81,7 +82,11 @@ my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $downloader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
-my ($error,@clusterList) = $config->getClusterListAsArray($clusterArgValue);
+my ($skippedClusters,@clusterList) = $config->getClusterListAsArray($clusterArgValue);
+
+if (defined($skippedClusters)){
+  $logger->warn("Skipping following clusters since they are no longer in the remote cluster list in config: $skippedClusters");
+}
 
 my $fUtil = Panfish::FileUtil->new($logger);
 
