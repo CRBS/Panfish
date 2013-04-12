@@ -47,7 +47,8 @@ sub new {
      CURRENT_DIR_KEY   => "current.working.dir",
      COMMANDS_FILE_KEY => "commands.file",
      PSUB_FILE_KEY     => "psub.file",
-     REAL_JOB_ID_KEY   => "real.job.id"
+     REAL_JOB_ID_KEY   => "real.job.id",
+     FAIL_REASON_KEY   => "fail.reason"
    };
 
    if (!defined($self->{FileReaderWriter})){
@@ -229,6 +230,7 @@ sub insert {
    if (defined($job->getCurrentWorkingDir())){
       $self->{FileReaderWriter}->write($self->{CURRENT_DIR_KEY}."=".$job->getCurrentWorkingDir()."\n");
    }
+
    if (defined($job->getJobName())){
        $self->{FileReaderWriter}->write($self->{JOB_NAME_KEY}."=".$job->getJobName()."\n");
    }
@@ -236,6 +238,7 @@ sub insert {
    if (defined($job->getCommand())){
      $self->{FileReaderWriter}->write($self->{COMMAND_KEY}."=".$job->getCommand()."\n");
    }
+
    if (defined($job->getCommandsFile())){
        $self->{FileReaderWriter}->write($self->{COMMANDS_FILE_KEY}."=".$job->getCommandsFile()."\n");
    }
@@ -243,9 +246,13 @@ sub insert {
    if (defined($job->getPsubFile())){
        $self->{FileReaderWriter}->write($self->{PSUB_FILE_KEY}."=".$job->getPsubFile()."\n");
    }
+
    if (defined($job->getRealJobId())){
        $self->{FileReaderWriter}->write($self->{REAL_JOB_ID_KEY}."=".$job->getRealJobId()."\n");
+   }
 
+   if (defined($job->getFailReason())){
+      $self->{FileReaderWriter}->write($self->{FAIL_REASON_KEY}."=".$job->getFailReason()."\n");
    }
 
    $self->{FileReaderWriter}->close();
@@ -520,7 +527,8 @@ sub _getJobFromJobFile {
                             $self->{FileUtil}->getModificationTimeOfFile($jobFile),
                             $config->getParameterValue($self->{COMMANDS_FILE_KEY}),
                             $config->getParameterValue($self->{PSUB_FILE_KEY}),
-                            $config->getParameterValue($self->{REAL_JOB_ID_KEY}));
+                            $config->getParameterValue($self->{REAL_JOB_ID_KEY}),
+                            $config->getParameterValue($self->{FAIL_REASON_KEY}));
 }
 
 
