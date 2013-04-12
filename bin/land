@@ -71,6 +71,9 @@ if (defined($retryArgValue)){
 
 my $logger = Panfish::Logger->new();
 
+# tab indent all log messages
+$logger->setPrefix("\t");
+
 # sets the logging level based on number of times verbose flag 
 # was passed into command
 $logger->setLevelBasedOnVerbosity($verboseArg);
@@ -110,7 +113,9 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }
 
     print "\nExamining path on $clusterList[$x]";
-   
+    if (defined($verboseArg)){
+       print "\n";
+    }   
     my $startTime = time();
 
     my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $downloader->getDirectorySize($directoryArgValue,
@@ -138,6 +143,11 @@ for (my $x = 0; $x < @clusterList ; $x++){
 
 
     print "Downloading from $clusterList[$x] ...";
+
+    if (defined($verboseArg)){
+       print "\n";
+    }
+
     $startTime = time();
     $res = $downloader->download($directoryArgValue,$clusterList[$x],\@excludeArgValues);
     if (defined($res)){
