@@ -395,7 +395,7 @@ sub getNumberOfJobsInState {
 
     my @files = $self->{FileUtil}->getFilesInDirectory($searchDir);
     if (!@files){
-       $self->{Logger}->debug("didnt find any jobs");
+       $self->{Logger}->debug("Did not find any jobs in state $state on cluster $cluster");
        return 0;
     }
     my $len = @files;
