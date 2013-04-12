@@ -35,7 +35,8 @@ sub new {
      ModificationTime  => shift,
      CommandsFile      => shift,
      PsubFile          => shift,
-     RealJobId         => shift
+     RealJobId         => shift,
+     FailReason        => shift
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -103,6 +104,9 @@ sub equals {
        return $notEqual;
     }
 
+    if ($self->_safeCompare($job->getFailReason(),$self->getFailReason()) == 0){
+       return $notEqual;
+    }
 
     return $equal;
 }
@@ -303,6 +307,28 @@ sub getJobAndTaskId {
     return undef;
 }
 
+=head3 setFailReason
+
+Sets reason, if any, for failure of job
+
+=cut
+
+sub setFailReason {
+   my $self = shift;
+   $self->{FailReason} = shift;
+}
+
+=head3 getFailReason
+
+Gets reason, if any, for failure of job
+
+=cut
+
+sub getFailReason {
+   my $self = shift;
+   return $self->{FailReason};
+}
+
 
 =head3 getJobAsString
 
@@ -319,7 +345,7 @@ ModificationTime:  12313433
 CommandsFile:      undef
 PsubFile:          undef
 RealJobId:         undef
-
+FailReason:        undef
 
 =cut
 
