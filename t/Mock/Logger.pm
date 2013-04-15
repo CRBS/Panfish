@@ -9,7 +9,7 @@ sub new {
    my $class = shift;
    my $self = {
      Logs => undef,
-     DebugEnabled = > undef
+     DebugEnabled => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -24,35 +24,35 @@ sub setIsDebugEnabled {
 sub info {
   my $self = shift;
    my $val = shift;
-   push(@{$self->{Logs},"INFO ".$val);
+   push(@{$self->{Logs}},"INFO ".$val);
 
 }
 
 sub debug {
   my $self = shift;
    my $val = shift;
-   push(@{$self->{Logs},"DEBUG ".$val);
+   push(@{$self->{Logs}},"DEBUG ".$val);
 
 }
 
 sub warn {
   my $self = shift;
    my $val = shift;
-   push(@{$self->{Logs},"WARN ".$val);
+   push(@{$self->{Logs}},"WARN ".$val);
 
 }
 
 sub error {
   my $self = shift;
    my $val = shift;
-   push(@{$self->{Logs},"ERROR ".$val);
+   push(@{$self->{Logs}},"ERROR ".$val);
 
 }
 
 sub fatal {
    my $self = shift;
    my $val = shift;
-   push(@{$self->{Logs},"FATAL ".$val);
+   push(@{$self->{Logs}},"FATAL ".$val);
 }
 
 sub isDebugEnabled {
@@ -64,3 +64,7 @@ sub getLogs {
   my $self = shift;
   return $self->{Logs};
 }
+
+1;
+
+__END__
