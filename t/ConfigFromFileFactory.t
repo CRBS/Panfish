@@ -7,25 +7,21 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
+use lib $Bin;
 
 use Test::More tests => 8;
 use Panfish::FileReaderWriterImpl;
 use Panfish::ConfigFromFileFactory;
 use Panfish::Config;
 use Panfish::FileUtil;
-use Panfish::Logger;
+use Mock::Logger;
 #########################
 
 
 # Test opening an invalid non existant file
 {
-  my $logoutput;
-   my $foo;
-   open $foo,'>',\$logoutput;
 
-   my $blog = Panfish::Logger->new();
-   $blog->setLevelBasedOnVerbosity(2);
-   $blog->setOutput($foo);
+   my $blog = Mock::Logger->new(1);
 
  
   my $fr = Panfish::FileReaderWriterImpl->new($blog);
@@ -34,20 +30,13 @@ use Panfish::Logger;
   my $config = $cFac->getConfig($Bin."/asdfljasdljasdfljksadlj;f");
 
   ok(!defined($config));
-  close($foo);
 }
 
 # Test opening an empty file
 {
    my $testdir = $Bin."/testConfigFromFileFactory";
-   
-   my $logoutput;
-   my $foo;
-   open $foo,'>',\$logoutput;
 
-   my $blog = Panfish::Logger->new();
-   $blog->setLevelBasedOnVerbosity(2);
-   $blog->setOutput($foo);
+   my $blog = Mock::Logger->new(1);
 
    my $fUtil = Panfish::FileUtil->new($blog);
    $fUtil->recursiveRemoveDir($testdir);
@@ -60,7 +49,6 @@ use Panfish::Logger;
 
    my $config = $cFac->getConfig("$testdir/empty");
    ok(defined($config));  
-   close($foo);
 }
 
 
@@ -71,8 +59,6 @@ use Panfish::Logger;
     my $testdir = $Bin."/testConfigFromFileFactory";
     `perl -MExtUtils::Command -e rm_rf $testdir`;
     `perl -MExtUtils::Command -e mkpath $testdir`;
-
-
 
     my $writer = Panfish::FileReaderWriterImpl->new();
     
@@ -94,7 +80,5 @@ use Panfish::Logger;
     ok($config->getParameterValue("key2") eq "val2");
     ok($config->getParameterValue("key3") eq "val3");
     ok($config->getParameterValue("key4") eq "val4=val5");
-
-    
 }
 
