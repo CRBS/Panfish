@@ -7,10 +7,11 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
+use lib $Bin;
 
 use Test::More tests => 21;
 use Panfish::SGEJobStateHashFactory;
-use Panfish::MockExecutor;
+use Mock::Executor;
 use Panfish::ForkExecutor;
 use Panfish::Logger;
 use Panfish::PanfishConfig;
@@ -52,7 +53,7 @@ sub getLogger {
 
     my $config = Panfish::PanfishConfig->new($baseConfig);
     
-    my $mockexec = Panfish::MockExecutor->new();
+    my $mockexec = Mock::Executor->new();
     $mockexec->add_expected_result("qstat -u \"*\" 2>&1","",0,$timeout,undef);
 
     my $hashFactory = Panfish::SGEJobStateHashFactory->new($config,$logger,$mockexec);
@@ -88,7 +89,7 @@ ARGUMENTS
 
     my $config = Panfish::PanfishConfig->new($baseConfig);
     
-    my $mockexec = Panfish::MockExecutor->new();
+    my $mockexec = Mock::Executor->new();
 
     $mockexec->add_expected_result("qstat -u \"*\" 2>&1",getThreeRunningJobs(),0,$timeout,undef);
 
@@ -131,7 +132,7 @@ ARGUMENTS
 
     my $config = Panfish::PanfishConfig->new($baseConfig);
 
-    my $mockexec = Panfish::MockExecutor->new();
+    my $mockexec = Mock::Executor->new();
 
     $mockexec->add_expected_result("qstat -u \"*\" 2>&1",getOneQueuedJobAndOneHeldJob(),0,$timeout,undef);
 
