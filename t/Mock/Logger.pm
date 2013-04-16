@@ -62,7 +62,7 @@ sub isDebugEnabled {
 
 sub getLogs {
   my $self = shift;
-  return $self->{Logs};
+  return @{$self->{Logs}};
 }
 
 1;
