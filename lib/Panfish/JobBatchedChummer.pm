@@ -101,15 +101,20 @@ sub chumBatchedJobs {
         else {
             $self->{Logger}->debug("No upload necessary updating database");
         }
-        #need to update state
+
+        # need to update state
         for (my $x = 0; $x < @{$jobHashByPsubDir->{$psubDir}}; $x++){
             ${$jobHashByPsubDir->{$psubDir}}[$x]->setState(Panfish::JobState->BATCHEDANDCHUMMED());
-            $self->{JobDb}->update(${$jobHashByPsubDir->{$psubDir}}[$x]);
-        } 
+            $res = $self->{JobDb}->update(${$jobHashByPsubDir->{$psubDir}}[$x]);
+            if (defined($res)){
+               $self->{Logger}->error("Unable to update job (".
+                                      ${$jobHashByPsubDir->{$psubDir}}[$x]->getJobAndTaskId().") in database : $res");
+            }
+        }
         $self->{Logger}->info("Chummed ".
                               @{$jobHashByPsubDir->{$psubDir}}.
                               " batched jobs on $cluster for path ".
-                              $self->{FileUtil}->getDirname($psubDir)); 
+                              $self->{FileUtil}->getDirname($psubDir));
     }
     return undef;
 }
@@ -143,9 +148,9 @@ sub _buildJobHash {
     for (my $x = 0; $x < @jobs; $x++){
         if (defined($jobs[$x])){
             $psubFile = $jobs[$x]->getPsubFile();
-            if (!defined($psubFile) || ! -f $psubFile){
-                $self->{Logger}->error("Job $x missing psub file...");
-                return undef;
+            if (!defined($psubFile) || ! $self->{FileUtil}->runFileTest("-f",$psubFile)){
+                $self->{Logger}->error("Job (".$jobs[$x]->getJobAndTaskId().") missing psub file... skipping job");
+                next;
             }
             push(@{$jobHashByPsubDir{$self->{FileUtil}->getDirname($psubFile)}},$jobs[$x]);
             $jobCnt++;
