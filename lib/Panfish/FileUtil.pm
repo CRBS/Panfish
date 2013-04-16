@@ -90,6 +90,25 @@ sub createLock {
 }
 
 
+=head3 runFileTest
+
+Wrapper for -X FILEHANDLE|EXPR|DIRHANDLE tests that
+let caller test various paths.  
+
+$fu->runFileTest("-f","/home/foo");
+
+=cut
+
+sub runFileTest {
+   my $self = shift;
+   my $flag = shift;
+   my $path = shift;
+
+   if ($flag eq "-f"){
+      return -f $path;
+   }
+}
+
 =head3 removeLock
 
 Deletes lock file 1 for success or 0 for failure.
