@@ -134,6 +134,13 @@ $logger->info("# of Directories:  $numDirs");
 $logger->info("# of Symlinks:  $numSymLinks");
 $logger->info("Size in Bytes:  $sizeInBytes");
 
+# if $directoryArgValue points to a file just use directUpload
+my $isFile = 0;
+if ($fUtil->runFileTest("-f",$directoryArgValue)){
+   $isFile = 1;
+}
+
+
 if (defined($dryRunArg)){
    print "Dry run set, above path would be uploaded to: ";
    for (my $x = 0; $x < @clusterList; $x++){
@@ -173,7 +180,12 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }
     $startTime = time();
     if (defined($deleteBeforeArg)){
-       $res = $uploader->deleteAndUpload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+       if ($isFile == 1){
+          $res = $uploader->upload($directoryArgValue,$clusterList[$x],\@exludeArgValues);
+       }
+       else {
+          $res = $uploader->deleteAndUpload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+       }
     }
     else {
        $res = $uploader->upload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
