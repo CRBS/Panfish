@@ -25,9 +25,10 @@ my $verboseArg;
 my $helpArg;
 my $manArg;
 
-my $cmdLineParseResult = GetOptions ("verbose+" => \$verboseArg,
-                                     "help|?"   => \$helpArg,
-                                     "man"      => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("parallel=i" => \$parallelCommandsArg,
+                                     "verbose+"       => \$verboseArg,
+                                     "help|?"         => \$helpArg,
+                                     "man"            => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -54,13 +55,34 @@ if (defined($res)){
     exit(1);
 }
 
-my @pidarray;
-my @pidCmds;
-my $cnt = 0;
-
+my @cmdArray;
 my $cmd = $reader->read();
 while($cmd){
    chomp($cmd);
+   push(@cmdArray,$cmd);
+   $cmd = $reader->read();
+}
+$reader->close();
+
+$logger->debug("Found ".@cmdArray." commands to run");
+
+if (!defined($parallelCommandsArg)){
+  $parallelCommandsArg = @cmdArray;
+}
+elsif ($parallelCommandsArg <= 0){
+  $logger->fatal("Value passed to --parallel must be greater then 0");
+  exit(1);
+}
+
+$logger->debug("Running $parallelCommandsArg commands at a time");
+
+my %pidHash;
+my $exitCode;
+my $childFailed = 0;
+
+for (my $x = 0; $x < @cmdArray;$x++){
+
+   # create child process
    my $pid = fork();
 
    if (!defined($pid)){ # fork failed
@@ -68,33 +90,51 @@ while($cmd){
        exit(1); #figure this is bad so we will just bail
    }
    elsif($pid == 0){ # I am the child
-       my $ret = system($cmd);
+       my $ret = system($cmdArray[$x]);
        exit($ret);
    }
 
-   #if i am here I am the parent
-   $pidCmds[$cnt]=$cmd;
-   $pidarray[$cnt++]=$pid; #add child pid to array
-   
-   $cmd = $reader->read();
+   # if i am here I am the parent
+   $pidHash{$pid} = $x; # just set the value to index of command in @cmdArray
+
+   $logger->debug("Waiting for process id: $pid which corresponds to this command : ".$cmdArray[$x]);
+
+   $jobFinished = 0;
+   # Wait for jobs to finish if we have too many
+   # running.
+   while (keys(%pidHash) >= $parallelCommandsArg){
+       for my $cpid ( keys %pidHash){
+          if (waitpid($cpid,WNOHANG) != 0){
+             $exitCode = $?;
+             if ($exitCode != 0){
+                $logger->error("Process $cpid : ".$cmdArray[$pidHash{$cpid}].
+                               " : exited with nonzero exit code : $exitCode");
+                $childFailed = 20;
+             }
+             delete $pidHash{$cpid};
+             $jobFinished = 1;
+          }
+       }
+
+       # if no jobs completed sleep 10 seconds before checking again
+       if ($jobFinished == 0){
+          sleep 10;
+       }
+   }
 }
 
-$reader->close();
-
-$logger->info("Waiting for ".@pidarray." commands to complete");
-
-my $exitCode;
-
-my $childFailed = 0;
-
 #only the parent reaches this
-#wait for all the children threads to complete
-for (my $x = 0; $x < @pidarray; $x++){
-  $logger->debug("Waiting for $x process id: $pidarray[$x]");
-  waitpid($pidarray[$x],0);
+
+$logger->debug("No more commands to submit.  Waiting for children commands to complete");
+
+#wait for any children threads to complete
+
+for my $cpid (keys %pidHash){
+  waitpid($cpid,0);
   $exitCode = $?;
   if ($exitCode != 0){
-     $logger->error("Process $x : $pidCmds[$x] : exited with nonzero exit code : $exitCode");
+     $logger->error("Process $cpid : ".$cmdArray[$pidHash{$cpid}].
+                    " : exited with nonzero exit code : $exitCode");
      $childFailed = 20;
   }
 }
@@ -127,6 +167,11 @@ As of now there are no options, but there should be :)
 
 =over 4
 
+=item B<--parallel #>
+
+Defines number of commands to run in parallel.  If unset all the commands set in the command file
+will be run in parallel.
+
 =item B<--help>
 
 Displays help.
@@ -137,8 +182,8 @@ Displays man page.
 
 =item B<--verbose>
 
-Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 3.
+Verbose mode.  Causes B<panfishjobrunner> to print debugging messages.  Multiple B<--verbose> increase
+verbosity.  The maximum is 2.
 
 =back
 
