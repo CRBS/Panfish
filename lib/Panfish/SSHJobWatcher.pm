@@ -10,7 +10,7 @@ use Panfish::Logger;
 use Panfish::FileJobDatabase;
 use Panfish::JobState;
 use Panfish::Job;
-
+use Panfish::JobHashFactory;
 =head1 SYNOPSIS
    
   Panfish::SSHJobWatcher -- Watches actual jobs on clusters for completion via ssh calls
@@ -32,11 +32,12 @@ Creates new instance of Job object
 sub new {
    my $class = shift;
    my $self = {
-     Config       => shift,
-     JobDb        => shift,
-     Logger       => shift,
-     FileUtil     => shift,
-     SSHExecutor  => shift,
+     Config         => shift,
+     JobDb          => shift,
+     Logger         => shift,
+     FileUtil       => shift,
+     SSHExecutor    => shift,
+     JobHashFactory => shift
    };
  
    if (!defined($self->{Logger})){
@@ -238,21 +239,8 @@ sub _buildJobHash {
         push(@jobs,@rJobs);
     }
 
-    my %jobHashByPsubJobId = ();
-    my $psubFile;
-    for (my $x = 0; $x < @jobs; $x++){
-        if (defined($jobs[$x])){
-            $psubFile = $jobs[$x]->getPsubFile();
-            if (!defined($psubFile) || ! -f $psubFile){
-                $self->{Logger}->error("Job $x missing psub file...: ".$jobs[$x]->getJobAsString());
-                return undef;
-            }
-            $psubFile=~s/^.*\///;
-            $psubFile=~s/\.psub//;
-            push(@{$jobHashByPsubJobId{$psubFile}},$jobs[$x]);
-        }
-    }
-    return \%jobHashByPsubJobId;
+    my ($jobHashByPsubId,$error) = $self->{JobHashFactory}->getJobHash(\@jobs);
+    return $jobHashByPsubId;
 }
 
 
