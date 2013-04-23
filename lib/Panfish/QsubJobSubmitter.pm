@@ -10,6 +10,7 @@ use Panfish::Logger;
 use Panfish::FileJobDatabase;
 use Panfish::JobState;
 use Panfish::Job;
+use Panfish::JobHashFactory;
 
 =head1 SYNOPSIS
    
@@ -32,11 +33,12 @@ Creates new instance of QsubJobSubmitter
 sub new {
    my $class = shift;
    my $self = {
-     Config    => shift,
-     JobDb     => shift,
-     Logger    => shift,
-     FileUtil  => shift,
-     Executor  => shift
+     Config         => shift,
+     JobDb          => shift,
+     Logger         => shift,
+     FileUtil       => shift,
+     Executor       => shift,
+     JobHashFactory => shift
    };
  
    if (!defined($self->{Logger})){
@@ -79,9 +81,94 @@ sub submitJobs {
         $self->{Logger}->debug("$runningJobCount jobs running which exceeds ".
                                $self->{Config}->getMaximumNumberOfRunningJobs()." not submitting any jobs");
     }
-
-    my $res;
     
+    my $jobHashByPsub = $self->_buildJobHash($cluster);   
+    my $jobCount = 0;
+    for my $psubFile (keys %$jobHashByPsub){
+ 
+       if ($runningJobCount >= $self->{Config}->getMaximumNumberOfRunningJobs()){
+           $self->{Logger}->debug("Readched maximum number of jobs that can be run on cluster $cluster");
+           last;
+       }
+       # submit array of psub files
+       my $realJobId = $self->_submitJobViaQsub($psubFile);
+
+       if (defined($realJobId)){
+          $self->{Logger}->debug("Submit succeeded updating database");
+
+          my $jobArrayRef = $jobHashByPsub->{$psubFile};
+          $jobCount+= @{$jobArrayRef};
+          for (my $x = 0; $x < @{$jobArrayRef}; $x++){
+             ${$jobArrayRef}[$x]->setRealJobId($realJobId);
+             ${$jobArrayRef}[$x]->setState(Panfish::JobState->QUEUED());
+             $self->{JobDb}->update(${$jobArrayRef}[$x]);
+          }
+          $runningJobCount++;
+       }
+       else {
+          $self->{Logger}->error("Unable to submit job ".$psubFile);
+       }
+       $self->{Logger}->info("Submitted ".$jobCount." jobs"); 
+    }
+
+    return undef;
+}
+
+
+#
+# 
+#
+#
+#
+sub _submitJobViaQsub {
+    my $self = shift;
+    my $psubFile = shift;
+    my $qsubCmd = $self->{Config}->getQsub();
+    my $realJobId;
+    my $exit;
+
+    my $cmd = "$qsubCmd ".$psubFile;
+    $exit = $self->{Executor}->executeCommand($cmd,60);
+    if ($exit != 0){
+         $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
+                               "  : ".$self->{Executor}->getOutput());
+         return undef;
+    }
+    else {
+       #need to parse out the job id from output and set it in the job somehow
+       # example SGE output:
+       # Your job 661 ("line") has been submitted
+            
+       if ($self->{Config}->getEngine() eq "SGE"){
+           my @rows = split("\n",$self->{Executor}->getOutput());
+           $realJobId = $rows[0];
+           $realJobId=~s/^Your job //;
+           $realJobId=~s/ \(.*//;      
+       }
+       elsif ($self->{Config}->getEngine() eq "PBS"){
+           # example output PBS on gordon
+           # 580504.gordon-fe2.local
+           my @rows = split("\n",$self->{Executor}->getOutput());
+           $realJobId = $rows[0];
+           $realJobId=~s/\..*//;     
+       }
+    }
+    
+    return $realJobId;
+}
+
+
+#
+# Builds a hash of jobs where the key is the psub file and value is array of jobs
+# with that psub file
+#
+
+sub _buildJobHash {
+    my $self = shift;
+    my $cluster = shift;
+
+   my $res;
+
     $self->{Logger}->debug("Looking for jobs in ".Panfish::JobState->BATCHEDANDCHUMMED().
                            " state for $cluster");
 
@@ -92,84 +179,12 @@ sub submitJobs {
         $self->{Logger}->debug("No jobs");
         return undef;
     }
-    
+
     $self->{Logger}->debug("Found ".@jobs." jobs  ");
 
-    #sort those jobs so oldest are first
-    
-    
-    # submit array of psub files
-    my $submittedJobsRef = $self->_submitJobsViaQsub(\@jobs,$self->{Config}->getMaximumNumberOfRunningJobs()-$runningJobCount);
-    
-    if (@{$submittedJobsRef} <= 0){
-        $self->{Logger}->debug("No jobs submitted hmmm...");
-        return undef;
-    }
+    my ($jobHashByPath,$error) = $self->{JobHashFactory}->getJobHash(\@jobs);
 
-    # update database with new status
-    $self->{Logger}->debug("Submit succeeded updating database");
- 
-    for (my $x = 0; $x < @{$submittedJobsRef}; $x++){
-        ${$submittedJobsRef}[$x]->setState(Panfish::JobState->QUEUED());
-        $self->{JobDb}->update(${$submittedJobsRef}[$x]);
-          
-    }
-    $self->{Logger}->info("Submitted ".@{$submittedJobsRef}." jobs"); 
-    
-    return undef;
-}
-
-
-#
-# 
-#
-#
-#
-sub _submitJobsViaQsub {
-    my $self = shift;
-    my $jobsArrayRef = shift;
-    my $jobsThatCanBeSubmitted = shift;
-    my $qsubCmd = $self->{Config}->getQsub();
-    my @submittedJobs;
-    my $exit;
-    my $cmd;
-
-    for (my $x = 0; $x < @{$jobsArrayRef}; $x++){
-        if ($x+1 > $jobsThatCanBeSubmitted){
-            return \@submittedJobs;
-        }
-        $cmd = "$qsubCmd ".${$jobsArrayRef}[$x]->getPsubFile();
-        $exit = $self->{Executor}->executeCommand($cmd,60);
-        if ($exit != 0){
-            $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
-                               "  : ".$self->{Executor}->getOutput());
-        }
-        else {
-            #need to parse out the job id from output and set it in the job somehow
-            # example SGE output:
-            # Your job 661 ("line") has been submitted
-            my $realJobId;
-            if ($self->{Config}->getEngine() eq "SGE"){
-               my @rows = split("\n",$self->{Executor}->getOutput());
-               $realJobId = $rows[0];
-               $realJobId=~s/^Your job //;
-               $realJobId=~s/ \(.*//;
-               ${$jobsArrayRef}[$x]->setRealJobId($realJobId);
-            }
-            elsif ($self->{Config}->getEngine() eq "PBS"){
-               # example output PBS on gordon
-               # 580504.gordon-fe2.local
-               my @rows = split("\n",$self->{Executor}->getOutput());
-               $realJobId = $rows[0];
-               $realJobId=~s/\..*//;
-               ${$jobsArrayRef}[$x]->setRealJobId($realJobId);
-            }
-
-            push(@submittedJobs,${$jobsArrayRef}[$x]);
-        }
-    }
-    
-    return \@submittedJobs;
+    return $jobHashByPath;
 }
 
 
