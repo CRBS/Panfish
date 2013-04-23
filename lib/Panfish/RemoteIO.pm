@@ -178,8 +178,9 @@ sub upload {
     $self->{SSHExecutor}->setCluster($cluster);
 
     $self->{SSHExecutor}->enableSSH();
-
-    my $checkExit = $self->{SSHExecutor}->executeCommand("/bin/mkdir -p $remoteParentDir",30);
+    my $mkdirCmd = "/bin/mkdir -p $remoteParentDir";
+    $self->{Logger}->debug($mkdirCmd);
+    my $checkExit = $self->{SSHExecutor}->executeCommand($mkdirCmd,30);
     if ($checkExit != 0){
         return "Unable to create $remoteParentDir on $cluster";
     }
@@ -205,7 +206,7 @@ sub upload {
         if ($checkExit == 0){
             return undef;
         }
-        $self->{Logger}->error("Try # $tryCount received error when attempting upload : ".
+        $self->{Logger}->error("Try # $tryCount received error exit code : $checkExit : when attempting upload : ".
                                $self->{SSHExecutor}->getOutput());
         
         $tryCount++;
