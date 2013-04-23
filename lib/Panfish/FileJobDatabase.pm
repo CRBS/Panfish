@@ -48,7 +48,8 @@ sub new {
      COMMANDS_FILE_KEY => "commands.file",
      PSUB_FILE_KEY     => "psub.file",
      REAL_JOB_ID_KEY   => "real.job.id",
-     FAIL_REASON_KEY   => "fail.reason"
+     FAIL_REASON_KEY   => "fail.reason",
+     BATCH_FACTOR_KEY  => "batch.factor"
    };
 
    if (!defined($self->{FileReaderWriter})){
@@ -254,6 +255,11 @@ sub insert {
    if (defined($job->getFailReason())){
       $self->{FileReaderWriter}->write($self->{FAIL_REASON_KEY}."=".$job->getFailReason()."\n");
    }
+
+   if (defined($job->getBatchFactor())){
+      $self->{FileReaderWriter}->write($self->{BATCH_FACTOR_KEY}."=".$job->getBatchFactor()."\n");
+   }
+
 
    $self->{FileReaderWriter}->close();
 
@@ -528,7 +534,8 @@ sub _getJobFromJobFile {
                             $config->getParameterValue($self->{COMMANDS_FILE_KEY}),
                             $config->getParameterValue($self->{PSUB_FILE_KEY}),
                             $config->getParameterValue($self->{REAL_JOB_ID_KEY}),
-                            $config->getParameterValue($self->{FAIL_REASON_KEY}));
+                            $config->getParameterValue($self->{FAIL_REASON_KEY}),
+                            $config->getParameterValue($self->{BATCH_FACTOR_KEY}));
 }
 
 
