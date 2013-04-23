@@ -62,6 +62,9 @@ sub isDebugEnabled {
 
 sub getLogs {
   my $self = shift;
+  if (!defined($self->{Logs})){
+     return undef;
+  }
   return @{$self->{Logs}};
 }
 
