@@ -45,6 +45,7 @@ if (@ARGV == 0){
 my $cmdLineParseResult = GetOptions ("e=s"      => \$eArgValue,
                                      "o=s"      => \$oArgValue,
                                      "c=s"      => \$cArgValue,
+                                     "batchfactor=i" => \$batchFactorArgValue,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
 
@@ -55,10 +56,6 @@ if ($helpArg){
 
 if ($manArg){
   pod2usage(-exitstatus => 0, -verbose => 2);
-}
-
-if (@ARGV < 1){
-  pod2usage(2);
 }
 
 # force auto flush of stderr and standard out
@@ -84,7 +81,11 @@ else {
     $stdout = "need something here";
 }
 
-my $rawCommand = shift @ARGV;
+if (!defined($cArgValue)){
+  $logger->fatal("Must define -c <command> parameter");
+  exit(1);
+}
+my $rawCommand = $cArgValue;
 
 my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
@@ -131,7 +132,10 @@ my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
                 
 
 # Save job to database
-my $job = Panfish::Job->new($cluster,$jobId,$taskId,$jobName,getcwd(),$command,Panfish::JobState->SUBMITTED());
+my $job = Panfish::Job->new($cluster,$jobId,$taskId,$jobName,getcwd(),$command,
+                            Panfish::JobState->SUBMITTED(),undef,undef,undef,undef,undef,
+                            $batchFactorArgValue);
+
 my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
 
 my $res = $jobDb->insert($job);
@@ -265,6 +269,13 @@ retrieve the data from the remote cluster once the job completes.
 Lots of options here
 
 =over 4
+
+=item B<-batchfactor integer X>
+
+Defines a multiplier known as a batch job factor which causes jobs to be batched by X times on each node and run through
+in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
+run 8 jobs in parallel and a batch factor of 2 is set then a panfish job submitted to that compute node will be given 16 jobs
+to run in 8 jobs batches.  
 
 =item B<-c command>
 

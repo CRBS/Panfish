@@ -30,6 +30,7 @@ my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "N=s"        => \$nArgValue,
                                      "sync=s"     => \$syncArgValue,
                                      "retry=i"    => \$retryArgValue,
+                                     "batchfactor=i" => \$batchFactorArgValue,
                                      "verbose+"   => \$verboseArg,
                                      "help|?"     => \$helpArg,
                                      "man"        => \$manArg) or pod2usage(2);
@@ -61,11 +62,21 @@ if (defined($taskFileArgValue) &&
   pod2usage(2);
 }
 
+my $batchFactorArg = "";
+if (defined($batchFactorArgValue)){
+   $batchFactorArg = "--batchfactor $batchFactorArgValue";
+}
+
 
 my $command = "";
  
 for (my $x = 0; $x < @ARGV; $x++){
-   $command .= " $ARGV[$x]";  
+   if ($command eq ""){
+       $command = $ARGV[$x];
+   }
+   else {
+      $command .= " $ARGV[$x]";  
+   }
 }
 
 my $stderr = "";
@@ -155,7 +166,7 @@ for (my $x = 0; $x < @tArgArray; $x++){
    $cmd = $config->getQsub()." $tArgArray[$x] $newArgList -e ".
           $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
           $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
-          $config->getLineCommand()."$stdout$stderr $command";
+          $config->getLineCommand()."$stdout$stderr $batchFactorArg -c '$command'";
 
     $logger->info("Running command: $cmd");
 
@@ -356,6 +367,12 @@ verbosity.  The maximum is 3.
 
 NOTE:  This is not an option in B<qsub>.
 
+=item B<--batchfactor integer X>
+
+Defines a multiplier known as a batch job factor which causes jobs to be batched by X times on each node and run through
+in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
+run 8 jobs in parallel and a batch factor of 2 is set then a panfish job submitted to that compute node will be given 16 jobs
+to run in 8 jobs batches.  
 
 =item B<command>
 
