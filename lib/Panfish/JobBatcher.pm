@@ -11,7 +11,8 @@ use Panfish::FileJobDatabase;
 use Panfish::JobState;
 use Panfish::Job;
 use Panfish::FileReaderWriterImpl;
-
+use Panfish::JobHashFactory;
+use Panfish::CurrentWorkingDirHashKeyGenerator;
 =head1 SYNOPSIS
    
   Panfish::JobBatcher -- Batches individual jobs to prepare them for running on remote clusters
@@ -26,7 +27,7 @@ Batches Panfish Jobs
 
 Creates new instance of Job object
 
-my $job = Panfish::Job->new()
+my $job = Panfish::JobBatcher->new()
 
 =cut
 
@@ -39,6 +40,7 @@ sub new {
      FileUtil            => shift,
      Reader              => shift,
      Writer              => shift,
+     JobHashFactory      => shift,
      COMMANDS_FILE_SUFFIX => ".commands",
      PSUB_FILE_SUFFIX    => ".psub"
    };
@@ -146,7 +148,7 @@ sub _createPsubFile {
        $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
     }
 
-    my $runJobScript = $self->{Config}->getRunJobScript($cluster);
+    my $runJobScript = $self->{Config}->getRunJobScript($cluster)." --parallel ".$self->{Config}->getJobsPerNode($cluster);
 
     $self->{Logger}->debug("Current Directory: $curdir");
 
@@ -238,8 +240,17 @@ sub _createBatchableArrayOfJobs {
     # pop off from the jobsArrayRef until we hit jobs per node limit
     # OR we run out of jobs in the array reference.
     my $job = shift @{$jobsArrayRef};
+    my $jobCount = 0;
+    my $batchFactor;
     my @batchableJobs;
-    while(defined($job) && @batchableJobs < $jobsPerNode){
+    while(defined($job) && $jobCount < $jobsPerNode){
+        $batchFactor = $job->getBatchFactor();
+        if (!defined($batchFactor) || $batchFactor <= 0){
+           $batchFactor = 1;
+        }
+           
+        $jobCount += 1/$batchFactor;
+
         push(@batchableJobs,$job);
         $job = shift @{$jobsArrayRef};
     }
@@ -307,12 +318,39 @@ sub _isItOkayToSubmitJobs {
     my $cluster = shift;
     my $jobs = shift;
     
-    
-    if (@{$jobs} >= $self->{Config}->getJobsPerNode($cluster)){
-        return "yes";
-    }
+   
+    # if there are no jobs then just bail 
     if (@{$jobs} <= 0){
+        $self->{Logger}->debug("There are no jobs to submit");
         return "no";
+    }
+
+
+    # look at each job and examine its batch factor if a job has a batch factor of 2
+    # then 2 jobs count as one cause they run fast
+    my $jobCount = 0;
+    my $batchFactor;
+    for (my $x = 0; $x < @{$jobs}; $x++){
+          $batchFactor = ${$jobs}[$x]->getBatchFactor();
+          if (!defined($batchFactor) || $batchFactor <= 0){
+             $self->{Logger}->debug("Batch factor for job (".
+                                    ${$jobs}[$x]->getJobAndTaskId().
+                                    ") is not set.  Using default of 1");
+             $batchFactor = 1;
+          }
+          else {
+             $self->{Logger}->debug("Batch factor for job (".
+                                    ${$jobs}[$x]->getJobAndTaskId().
+                                    ") is $batchFactor");
+          }
+          $jobCount += 1/$batchFactor;
+    }
+
+    if ($jobCount >= $self->{Config}->getJobsPerNode($cluster)){
+        $self->{Logger}->debug("Job count: $jobCount exceeds threshold of ".
+                               $self->{Config}->getJobsPerNode($cluster).
+                               " for cluster $cluster.  Allowing jobs to be submitted");
+        return "yes";
     }
     
     my $curTimeInSec = time();
@@ -339,11 +377,11 @@ sub _isItOkayToSubmitJobs {
 
 #
 # Builds a hash of jobs where the key is
-# the job id and the value in the hash is
-# all job objects who share that job id stored
+# the current working dir and the value in the hash is
+# all job objects who share that dir stored
 # in an array
 # Ex:
-#   $hash{"123445"} => {Panfish::Job,Panfish::Job,Panfish::Job};
+#   $hash{jobdir} => {Panfish::Job,Panfish::Job,Panfish::Job};
 #
 #
 sub _buildJobHash {
@@ -359,21 +397,10 @@ sub _buildJobHash {
             $self->{Logger}->debug("no jobs");
         return undef;
     }
+
+    my ($jobHashByPath,$error) = $self->{JobHashFactory}->getJobHash(\@jobs);
    
-    my %jobHashByPath = ();
-    my $jobCnt = 0; 
-    for (my $x = 0; $x < @jobs; $x++){
-        if (defined($jobs[$x])){
-            push(@{$jobHashByPath{$jobs[$x]->getCurrentWorkingDir()}},$jobs[$x]);
-            $jobCnt++;
-        }
-    }
-
-    if ($jobCnt > 0){
-        $self->{Logger}->debug("Found ".$jobCnt." job(s) seeing if they can be batched");
-    }
-
-    return \%jobHashByPath;
+    return $jobHashByPath;
 }
 
 
