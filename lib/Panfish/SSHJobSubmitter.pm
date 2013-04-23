@@ -10,7 +10,8 @@ use Panfish::Logger;
 use Panfish::FileJobDatabase;
 use Panfish::JobState;
 use Panfish::Job;
-
+use Panfish::JobHashFactory;
+use Panfish::PsubHashKeyGenerator;
 =head1 SYNOPSIS
    
   Panfish::SSHJobSubmitter -- Submits actual jobs to clusters via ssh
@@ -32,11 +33,12 @@ Creates new instance of Job object
 sub new {
    my $class = shift;
    my $self = {
-     Config       => shift,
-     JobDb        => shift,
-     Logger       => shift,
-     FileUtil     => shift,
-     SSHExecutor  => shift,
+     Config         => shift,
+     JobDb          => shift,
+     Logger         => shift,
+     FileUtil       => shift,
+     SSHExecutor    => shift,
+     JobHashFactory => shift
    };
  
    if (!defined($self->{Logger})){
@@ -213,19 +215,9 @@ sub _buildJobHash {
         return undef;
     }
 
-    my %jobHashByPsubFile = ();
-    my $psubFile;
-    for (my $x = 0; $x < @jobs; $x++){
-        if (defined($jobs[$x])){
-            $psubFile = $jobs[$x]->getPsubFile();
-            if (!defined($psubFile) || ! -f $psubFile){
-                $self->{Logger}->error("Job $x missing psub file...");
-                return undef;
-            }
-            push(@{$jobHashByPsubFile{$psubFile}},$jobs[$x]);
-        }
-    }
-    return \%jobHashByPsubFile;
+    my ($jobHashByPsub,$error) = $self->{JobHashFactory}->getJobHash(\@jobs);
+
+    return $jobHashByPsub;
 }
 
 
