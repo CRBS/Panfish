@@ -132,7 +132,7 @@ my $psubJobHashFac = Panfish::JobHashFactory->new($psubKeyGen,$logger);
 my $sshSubmitter = Panfish::SSHJobSubmitter->new($config,$jobDb,$logger,
                                            $fUtil,$sshExec,$psubJobHashFac);
 
-my $psubIdKeyGen = Panfish::PsubIdHashKeyGenerator->new($psubKeyGen,$logger);
+my $psubIdKeyGen = Panfish::PsubIdHashKeyGenerator->new($logger,$psubKeyGen);
 
 my $psubIdJobHashFac = Panfish::JobHashFactory->new($psubIdKeyGen,$logger);
 
