@@ -10,6 +10,8 @@ use Panfish::Logger;
 use Panfish::FileJobDatabase;
 use Panfish::JobState;
 use Panfish::Job;
+use Panfish::JobHashFactory;
+
 
 =head1 SYNOPSIS
    
@@ -32,11 +34,12 @@ my $job = PanfishJobBatchedChummer;
 sub new {
    my $class = shift;
    my $self = {
-     Config    => shift,
-     JobDb     => shift,
-     Logger    => shift,
-     FileUtil  => shift,
-     RemoteIO  => shift,
+     Config         => shift,
+     JobDb          => shift,
+     Logger         => shift,
+     FileUtil       => shift,
+     RemoteIO       => shift,
+     JobHashFactory => shift
    };
  
    if (!defined($self->{Logger})){
@@ -134,7 +137,11 @@ sub chumBatchedJobs {
 sub _buildJobHash {
     my $self = shift;
     my $cluster = shift;
-    
+   
+    if (!defined($self->{JobHashFactory})){
+       $self->{Logger}->error("JobHashFactory is not defined");
+    }
+ 
     my @jobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
                 Panfish::JobState->BATCHED());
 
@@ -142,25 +149,10 @@ sub _buildJobHash {
             $self->{Logger}->debug("No jobs");
         return undef;
     }
-    my %jobHashByPsubDir = ();
-    my $psubFile;
-    my $jobCnt = 0;
-    for (my $x = 0; $x < @jobs; $x++){
-        if (defined($jobs[$x])){
-            $psubFile = $jobs[$x]->getPsubFile();
-            if (!defined($psubFile) || ! $self->{FileUtil}->runFileTest("-f",$psubFile)){
-                $self->{Logger}->error("Job (".$jobs[$x]->getJobAndTaskId().") missing psub file... skipping job");
-                next;
-            }
-            push(@{$jobHashByPsubDir{$self->{FileUtil}->getDirname($psubFile)}},$jobs[$x]);
-            $jobCnt++;
-        }
-    }
+    
+    my ($jobHashByPsubDir,$error) = $self->{JobHashFactory}->getJobHash(\@jobs);
 
-    if ($jobCnt > 0){
-        $self->{Logger}->debug("Found $jobCnt job(s) that need to be chummed");
-    }
-    return \%jobHashByPsubDir;
+    return $jobHashByPsubDir;
 }
 
 
