@@ -192,8 +192,8 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }
     if (defined($res)){
        print "failed.\n";
-       $logger->fatal("Unable to upload $directoryArgValue to $clusterList[$x] : $res");
-       exit(2);
+       $logger->error("Unable to upload $directoryArgValue to $clusterList[$x] : $res");
+       next;
     }
     $duration = time() - $startTime;
 
