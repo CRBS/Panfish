@@ -9,8 +9,10 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 62;
+use Test::More tests => 56;
 use Panfish::JobBatchedChummer;
+use Panfish::JobHashFactory;
+use Mock::HashKeyGenerator;
 use Mock::Executor;
 use Mock::Logger;
 use Mock::FileUtil;
@@ -39,8 +41,7 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 #
 {
    my $logger = Mock::Logger->new(1);
-   
-   my $chummer = Panfish::JobBatchedChummer->new($config,undef,$logger,undef,undef);
+   my $chummer = Panfish::JobBatchedChummer->new($config,undef,$logger,undef,undef,undef);
    ok($chummer->chumBatchedJobs() eq "Cluster is not set");
 
    my @logs = $logger->getLogs();
@@ -54,8 +55,10 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 {
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
-   
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,undef,undef);
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
+ 
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,undef,undef,$hashFac);
 
    ok(!defined($chummer->chumBatchedJobs($CLUSTER)));
 
@@ -66,28 +69,27 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 }
 
 #
-# Test where only job is missing psub file
+# Test where only job isn't returnable from HashFactory
 #
 {
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new($CLUSTER,"1","2","name","cwd","command",
                                        Panfish::JobState->BATCHED(),1,undef,"psub",undef,undef);
+
    $db->addGetJobsByClusterAndStateResult($CLUSTER,Panfish::JobState->BATCHED(),\@clusterJobs);
 
-   my $fu = Mock::FileUtil->new();
+   $keyGen->addGetKeyResult($clusterJobs[0],undef);
 
-   # called to check for existance of psub file which should come back as a failure
-   $fu->addRunFileTestResult("-f","psub","");
-
-
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,undef);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,undef,$hashFac);
    ok(!defined($chummer->chumBatchedJobs($CLUSTER)));
 
    my @logs = $logger->getLogs();
    ok(@logs == 2);
-   ok($logs[0] =~/ERROR Job \(1.2\) missing psub file... skipping job/);
+   ok($logs[0] =~/WARN Unable to get key from key generator for job 1.2/);
    ok($logs[1] =~/DEBUG Looking for jobs in batchedandchummed state for $CLUSTER/);
 }
 
@@ -98,31 +100,29 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
    my $remote = Mock::RemoteIO->new();
+ 
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
+
 
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new("foo2","1","2","name","cwd","command",
                                        Panfish::JobState->BATCHED(),1,undef,"psub",undef,undef);
    $db->addGetJobsByClusterAndStateResult("foo2",Panfish::JobState->BATCHED(),\@clusterJobs);
 
-   my $fu = Mock::FileUtil->new();
-
-   $fu->addRunFileTestResult("-f","psub",1);
-   $fu->addGetDirnameResult("psub","psubdir");
-   $fu->addGetDirnameResult("psubdir","dirpsubdir");
-
    $remote->addUploadResult("psubdir","foo2",undef,"uploadfail");
 
+   $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
-   ok(@logs == 5);
-   ok($logs[0] =~/DEBUG Found 1 job\(s\) that need to be chummed/);
-   ok($logs[1] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
-   ok($logs[2] =~/DEBUG Found 1 jobs with dir : psubdir/);
-   ok($logs[3] =~/DEBUG Uploading psubdir to foo2/);
-   ok($logs[4] =~/ERROR Problem uploading psubdir to foo2 : uploadfail/);
+   ok(@logs == 4);
+   ok($logs[0] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
+   ok($logs[1] =~/DEBUG Found 1 jobs with dir : psubdir/);
+   ok($logs[2] =~/DEBUG Uploading psubdir to foo2/);
+   ok($logs[3] =~/ERROR Problem uploading psubdir to foo2 : uploadfail/);
 }
 
 #
@@ -132,6 +132,8 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
    my $remote = Mock::RemoteIO->new();
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
 
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new("foo2","1","2","name","cwd","command",
@@ -141,25 +143,24 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 
    my $fu = Mock::FileUtil->new();
 
-   $fu->addRunFileTestResult("-f","psub",1);
-   $fu->addGetDirnameResult("psub","psubdir");
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
+
+   $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
 
    $remote->addUploadResult("psubdir","foo2",undef,undef);
 
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
-   ok(@logs == 7);
-   ok($logs[0] =~/DEBUG Found 1 job\(s\) that need to be chummed/);
-   ok($logs[1] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
-   ok($logs[2] =~/DEBUG Found 1 jobs with dir : psubdir/);
-   ok($logs[3] =~/DEBUG Uploading psubdir to foo2/);
-   ok($logs[4] =~/DEBUG Upload succeeded updating database/);
-   ok($logs[5] =~/ERROR Unable to update job \(1.2\) in database : someerror/);
-   ok($logs[6] =~/INFO Chummed 1 batched jobs on foo2 for path dirpsubdir/);
+   ok(@logs == 6);
+   ok($logs[0] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
+   ok($logs[1] =~/DEBUG Found 1 jobs with dir : psubdir/);
+   ok($logs[2] =~/DEBUG Uploading psubdir to foo2/);
+   ok($logs[3] =~/DEBUG Upload succeeded updating database/);
+   ok($logs[4] =~/ERROR Unable to update job \(1.2\) in database : someerror/);
+   ok($logs[5] =~/INFO Chummed 1 batched jobs on foo2 for path dirpsubdir/);
 }
 
 #
@@ -169,6 +170,9 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
    my $remote = Mock::RemoteIO->new();
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
+
 
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new("foo2","1","2","name","cwd","command",
@@ -177,25 +181,23 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 
    my $fu = Mock::FileUtil->new();
 
-   $fu->addRunFileTestResult("-f","psub",1);   
-   $fu->addGetDirnameResult("psub","psubdir");
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
+   $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
 
    $remote->addUploadResult("psubdir","foo2",undef,undef);
 
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
    
-   ok(@logs == 6);
-   ok($logs[0] =~/DEBUG Found 1 job\(s\) that need to be chummed/);
-   ok($logs[1] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
-   ok($logs[2] =~/DEBUG Found 1 jobs with dir : psubdir/);
-   ok($logs[3] =~/DEBUG Uploading psubdir to foo2/);
-   ok($logs[4] =~/DEBUG Upload succeeded updating database/);
-   ok($logs[5] =~/INFO Chummed 1 batched jobs on foo2 for path dirpsubdir/);
+   ok(@logs == 5);
+   ok($logs[0] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
+   ok($logs[1] =~/DEBUG Found 1 jobs with dir : psubdir/);
+   ok($logs[2] =~/DEBUG Uploading psubdir to foo2/);
+   ok($logs[3] =~/DEBUG Upload succeeded updating database/);
+   ok($logs[4] =~/INFO Chummed 1 batched jobs on foo2 for path dirpsubdir/);
 }
 
 #
@@ -204,6 +206,8 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 {
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
 
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new($CLUSTER,"1","2","name","cwd","command",
@@ -212,22 +216,19 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 
    my $fu = Mock::FileUtil->new();
 
-   $fu->addRunFileTestResult("-f","psub",1);
-   $fu->addGetDirnameResult("psub","psubdir");
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
 
+  $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
 
-
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,undef);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,undef,$hashFac);
    ok(!defined($chummer->chumBatchedJobs($CLUSTER)));
 
    my @logs = $logger->getLogs();
-   ok(@logs == 5);
-   ok($logs[0] =~/DEBUG Found 1 job\(s\) that need to be chummed/);
-   ok($logs[1] =~/DEBUG Looking for jobs in batchedandchummed state for foo/);
-   ok($logs[2] =~/DEBUG Found 1 jobs with dir : psubdir/);
-   ok($logs[3] =~/DEBUG No upload necessary updating database/);
-   ok($logs[4] =~/INFO Chummed 1 batched jobs on foo for path dirpsubdir/);
+   ok(@logs == 4);
+   ok($logs[0] =~/DEBUG Looking for jobs in batchedandchummed state for foo/);
+   ok($logs[1] =~/DEBUG Found 1 jobs with dir : psubdir/);
+   ok($logs[2] =~/DEBUG No upload necessary updating database/);
+   ok($logs[3] =~/INFO Chummed 1 batched jobs on foo for path dirpsubdir/);
 }
 
 #
@@ -237,6 +238,8 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
    my $remote = Mock::RemoteIO->new();
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
 
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new("foo2","1","2","name","cwd","command",
@@ -252,28 +255,24 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 
    my $fu = Mock::FileUtil->new();
 
-   $fu->addRunFileTestResult("-f","psub",1);
-   $fu->addRunFileTestResult("-f","psub.1",1);
-   $fu->addRunFileTestResult("-f","psub.2",1);
-   $fu->addGetDirnameResult("psub.1","psubdir");
-   $fu->addGetDirnameResult("psub","psubdir");
-   $fu->addGetDirnameResult("psub.2","psubdir");
+   $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
+   $keyGen->addGetKeyResult($clusterJobs[1],"psubdir");
+   $keyGen->addGetKeyResult($clusterJobs[2],"psubdir");
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
 
    $remote->addUploadResult("psubdir","foo2",undef,undef);
 
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
-   ok(@logs == 6);
-   ok($logs[0] =~/DEBUG Found 3 job\(s\) that need to be chummed/);
-   ok($logs[1] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
-   ok($logs[2] =~/DEBUG Found 3 jobs with dir : psubdir/);
-   ok($logs[3] =~/DEBUG Uploading psubdir to foo2/);
-   ok($logs[4] =~/DEBUG Upload succeeded updating database/);
-   ok($logs[5] =~/INFO Chummed 3 batched jobs on foo2 for path dirpsubdir/);
+   ok(@logs == 5);
+   ok($logs[0] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
+   ok($logs[1] =~/DEBUG Found 3 jobs with dir : psubdir/);
+   ok($logs[2] =~/DEBUG Uploading psubdir to foo2/);
+   ok($logs[3] =~/DEBUG Upload succeeded updating database/);
+   ok($logs[4] =~/INFO Chummed 3 batched jobs on foo2 for path dirpsubdir/);
 }
 
 #
@@ -284,6 +283,8 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
    my $remote = Mock::RemoteIO->new();
+   my $keyGen = Mock::HashKeyGenerator->new();
+   my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
 
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new("foo2","1","2","name","cwd","command",
@@ -302,14 +303,11 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 
    my $fu = Mock::FileUtil->new();
 
-   $fu->addRunFileTestResult("-f","psub",1);
-   $fu->addRunFileTestResult("-f","psub.1",1);
-   $fu->addRunFileTestResult("-f","psub.2",1);
-   $fu->addRunFileTestResult("-f","psub.3",1);
-   $fu->addGetDirnameResult("psub.1","psubdir");
-   $fu->addGetDirnameResult("psub","psubdir");
-   $fu->addGetDirnameResult("psub.2","psubdir");
-   $fu->addGetDirnameResult("psub.3","psubdir3");
+   $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
+   $keyGen->addGetKeyResult($clusterJobs[1],"psubdir");
+   $keyGen->addGetKeyResult($clusterJobs[2],"psubdir");
+   $keyGen->addGetKeyResult($clusterJobs[3],"psubdir3");
+
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
    $fu->addGetDirnameResult("psubdir3","dirpsubdir3");
 
@@ -317,23 +315,19 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $remote->addUploadResult("psubdir3","foo2",undef,undef);
 
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
-   ok(@logs == 10);
-   ok($logs[0] =~/DEBUG Found 4 job\(s\) that need to be chummed/);
-   ok($logs[1] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
-   ok($logs[2] =~/DEBUG Found 1 jobs with dir : psubdir3/);
-   ok($logs[3] =~/DEBUG Uploading psubdir3 to foo2/);
-   ok($logs[4] =~/DEBUG Upload succeeded updating database/);
-   ok($logs[5] =~/INFO Chummed 1 batched jobs on foo2 for path dirpsubdir3/);
-   ok($logs[6] =~/DEBUG Found 3 jobs with dir : psubdir/);
-   ok($logs[7] =~/DEBUG Uploading psubdir to foo2/);
-   ok($logs[8] =~/DEBUG Upload succeeded updating database/);
-   ok($logs[9] =~/INFO Chummed 3 batched jobs on foo2 for path dirpsubdir/);
+   ok(@logs == 9);
+   ok($logs[0] =~/DEBUG Looking for jobs in batchedandchummed state for foo2/);
+   ok($logs[1] =~/DEBUG Found 1 jobs with dir : psubdir3/);
+   ok($logs[2] =~/DEBUG Uploading psubdir3 to foo2/);
+   ok($logs[3] =~/DEBUG Upload succeeded updating database/);
+   ok($logs[4] =~/INFO Chummed 1 batched jobs on foo2 for path dirpsubdir3/);
+   ok($logs[5] =~/DEBUG Found 3 jobs with dir : psubdir/);
+   ok($logs[6] =~/DEBUG Uploading psubdir to foo2/);
+   ok($logs[7] =~/DEBUG Upload succeeded updating database/);
+   ok($logs[8] =~/INFO Chummed 3 batched jobs on foo2 for path dirpsubdir/);
 }
-
-
-
 
