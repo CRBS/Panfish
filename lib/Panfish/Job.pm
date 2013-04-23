@@ -36,7 +36,8 @@ sub new {
      CommandsFile      => shift,
      PsubFile          => shift,
      RealJobId         => shift,
-     FailReason        => shift
+     FailReason        => shift,
+     BatchFactor       => shift
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -105,6 +106,10 @@ sub equals {
     }
 
     if ($self->_safeCompare($job->getFailReason(),$self->getFailReason()) == 0){
+       return $notEqual;
+    }
+  
+    if ($self->_safeCompare($job->getBatchFactor(),$self->getBatchFactor()) == 0){
        return $notEqual;
     }
 
@@ -327,6 +332,30 @@ Gets reason, if any, for failure of job
 sub getFailReason {
    my $self = shift;
    return $self->{FailReason};
+}
+
+=head3 setBatchFactor
+
+Sets Batch Factor which defines how many jobs should be batched into a single panfish job.  This factor
+is multipled by the jobs per node value for the destination cluster.
+
+=cut
+
+sub setBatchFactor {
+    my $self = shift;
+    $self->{BatchFactor} = shift;
+}
+
+=head3 getBatchFactor
+
+Gets Batch Factor which defines how many jobs should be batched into a single panfish job.  This factor
+is multipled by the jobs per node value for the destination cluster.
+
+=cut
+
+sub getBatchFactor {
+   my $self = shift;
+   return $self->{BatchFactor};
 }
 
 
