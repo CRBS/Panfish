@@ -27,6 +27,13 @@ use Panfish::SSHJobWatcher;
 use Panfish::QsubJobSubmitter;
 use Panfish::QstatJobWatcher;
 
+use Panfish::JobHashFactory;
+use Panfish::CurrentWorkingDirHashKeyGenerator;
+use Panfish::PsubDirnameHashKeyGenerator;
+use Panfish::PsubHashKeyGenerator;
+use Panfish::PsubIdHashKeyGenerator;
+
+
 my $cmdLineParseResult = GetOptions ("daemon=s"     => \$daemonArgValue,
                                      "cluster=s"    => \$clusterArgValue,
                                      "log=s"        => \$logArgValue,
@@ -106,18 +113,33 @@ my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
 my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$logger);
 
-my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer);
+my $curDirKeyGen = Panfish::CurrentWorkingDirHashKeyGenerator->new($logger);
+my $curDirJobHashFac = Panfish::JobHashFactory->new($curDirKeyGen,$logger);
+
+my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer,$curDirJobHashFac);
+
+my $psubKeyGen = Panfish::PsubHashKeyGenerator->new($logger,$fUtil);
+
+my $psubDirKeyGen = Panfish::PsubDirnameHashKeyGenerator->new($logger,$psubKeyGen,$fUtil);
+
+my $psubDirJobHashFac = Panfish::JobHashFactory->new($psubDirKeyGen,$logger);
 
 my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
-                                                   $logger,$fUtil,$uploader);
+                                                   $logger,$fUtil,$uploader,$psubDirJobHashFac);
+
+my $psubJobHashFac = Panfish::JobHashFactory->new($psubKeyGen,$logger);
 
 my $sshSubmitter = Panfish::SSHJobSubmitter->new($config,$jobDb,$logger,
-                                           $fUtil,$sshExec);
+                                           $fUtil,$sshExec,$psubJobHashFac);
+
+my $psubIdKeyGen = Panfish::PsubIdHashKeyGenerator->new($psubKeyGen,$logger);
+
+my $psubIdJobHashFac = Panfish::JobHashFactory->new($psubIdKeyGen,$logger);
 
 my $sshWatcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
-                                       $fUtil,$sshExec);
+                                       $fUtil,$sshExec,$psubIdJobHashFac);
 
-my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec);
+my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec,$psubJobHashFac);
 
 my $qstatWatcher = Panfish::QstatJobWatcher->new($config,$jobDb,$logger,
                                                  $fUtil,$exec);
