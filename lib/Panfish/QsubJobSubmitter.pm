@@ -87,7 +87,7 @@ sub submitJobs {
     for my $psubFile (keys %$jobHashByPsub){
  
        if ($runningJobCount >= $self->{Config}->getMaximumNumberOfRunningJobs()){
-           $self->{Logger}->debug("Readched maximum number of jobs that can be run on cluster $cluster");
+           $self->{Logger}->debug("Reached maximum number of jobs that can be run on cluster $cluster");
            last;
        }
        # submit array of psub files
