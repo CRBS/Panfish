@@ -33,6 +33,9 @@ sub new {
      Config          => shift,
      SSHExecutor     => shift,
      Logger          => shift,
+     RsyncBin        => "/usr/bin/rsync",
+     SshBin          => "/usr/bin/ssh",
+     MkdirBin        => "/bin/mkdir",
      ConnectTimeOut  => 360,
      RetryCount      => 10,
      RetrySleep      => 10,
@@ -71,7 +74,7 @@ sub directUpload {
 
     $self->{SSHExecutor}->enableSSH();
 
-    my $checkExit = $self->{SSHExecutor}->executeCommand("/bin/mkdir -p $parentDir",30);
+    my $checkExit = $self->{SSHExecutor}->executeCommand($self->{MkdirBin}." -p $parentDir",30);
     if ($checkExit != 0){
         return "Unable to create $parentDir on $cluster";
     }
@@ -80,7 +83,7 @@ sub directUpload {
 
     $self->{SSHExecutor}->disableSSH();
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e ssh $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir";
+    my $cmd = $self->{RsyncBin}." -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e \"".$self->{SshBin}."\" $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir 2>&1";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
 
@@ -178,7 +181,7 @@ sub upload {
     $self->{SSHExecutor}->setCluster($cluster);
 
     $self->{SSHExecutor}->enableSSH();
-    my $mkdirCmd = "/bin/mkdir -p $remoteParentDir";
+    my $mkdirCmd = $self->{MkdirBin}." -p $remoteParentDir";
     $self->{Logger}->debug($mkdirCmd);
     my $checkExit = $self->{SSHExecutor}->executeCommand($mkdirCmd,30);
     if ($checkExit != 0){
@@ -190,7 +193,7 @@ sub upload {
     my $excludeArgs = $self->_createExcludeArgs($excludeRef);
 
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e ssh $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir";
+    my $cmd = $self->{RsyncBin}." -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e \"".$self->{SshBin}."\" $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir 2>&1";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
        
@@ -206,7 +209,7 @@ sub upload {
         if ($checkExit == 0){
             return undef;
         }
-        $self->{Logger}->error("Try # $tryCount received error exit code : $checkExit : when attempting upload : ".
+        $self->{Logger}->error("Try # $tryCount received error exit code : $checkExit : when attempting to run : ".$self->{SSHExecutor}->getCommand()." : ".
                                $self->{SSHExecutor}->getOutput());
         
         $tryCount++;
@@ -249,8 +252,8 @@ sub download {
     my $excludeArgs = $self->_createExcludeArgs($excludeRef);
 
     my $tryCount = 1;
-    my $cmd = "/usr/bin/rsync -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e ssh ".
-              $self->{Config}->getHost($cluster).":$remoteDir ".$parentDir."/.";
+    my $cmd = $self->{RsyncBin}." -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e \"".$self->{SshBin}."\" ".
+              $self->{Config}->getHost($cluster).":$remoteDir ".$parentDir."/. 2>&1";
     $self->{Logger}->debug("Running $cmd");
     while ($tryCount <= $self->{RetryCount}){
 
