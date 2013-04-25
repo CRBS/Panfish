@@ -111,6 +111,39 @@ sub directUpload {
 
 }
 
+=head3 delete
+
+Deletes path on remote cluster
+
+=cut
+
+sub delete {
+    my $self = shift;
+    my $dirToDelete = shift;
+    my $cluster = shift;
+   
+    my $remoteDir = $self->{Config}->getBaseDir($cluster).$dirToDelete;
+
+    # invoke removedir on path
+    $self->{Logger}->debug("Attempting to delete $remoteDir on cluster $cluster");
+
+    # unset any command which is piped to the command to execute
+    $self->{SSHExecutor}->setStandardInputCommand(undef);
+
+    $self->{SSHExecutor}->setCluster($cluster);
+
+    $self->{SSHExecutor}->enableSSH();
+
+    my $cmd = $self->{Config}->getPanfishSetup($cluster)." --removedir $remoteDir";
+
+
+    my $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
+    if ($checkExit != 0){
+        return "Unable to run ".$self->{SSHExecutor}->getCommand().
+                               "  : ".$self->{SSHExecutor}->getOutput();
+    }
+    return undef;
+}
 
 =head3 deleteAndUpload 
 
@@ -125,25 +158,9 @@ sub deleteAndUpload {
     my $cluster = shift;
     my $excludeRef = shift;
 
-    my $remoteDir = $self->{Config}->getBaseDir($cluster).$dirToUpload;
-
-    # invoke removedir on path
-    $self->{Logger}->debug("Attempting to delete $remoteDir on cluster $cluster");
-
-    # unset any command which is piped to the command to execute
-    $self->{SSHExecutor}->setStandardInputCommand(undef);
-    
-    $self->{SSHExecutor}->setCluster($cluster);
-
-    $self->{SSHExecutor}->enableSSH();
-
-    my $cmd = $self->{Config}->getPanfishSetup($cluster)." --removedir $remoteDir";
-   
-
-    my $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
-    if ($checkExit != 0){
-        return "Unable to run ".$self->{SSHExecutor}->getCommand().
-                               "  : ".$self->{SSHExecutor}->getOutput();
+    my $res = $self->delete($dirToUpload,$cluster);
+    if (defined($res)){
+        return $res;
     }
     
     return $self->upload($dirToUpload,$cluster,$excludeRef);
