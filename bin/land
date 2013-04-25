@@ -29,7 +29,7 @@ if (@ARGV == 0){
 my $cmdLineParseResult = GetOptions ("directory=s"  => \$directoryArgValue,
                                      "exclude=s"    => \@excludeArgValues,
                                      "cluster=s"    => \$clusterArgValue,
-                                     "deleteafter"  => \$deleteAfterArg,
+                                     "deleteonly"   => \$deleteOnlyArg,
                                      "retry=i"      => \$retryArgValue,
                                      "timeout=i"    => \$timeOutArgValue,
                                      "dry-run"      => \$dryRunArg,
@@ -101,6 +101,13 @@ if ($directoryArgValue eq "."){
    $directoryArgValue = getcwd();  
 }
 
+# if user has set both --exclude and --deleteonly fail with a message
+# cause deleteonly does not exclude anything
+if (@excludeArgValues && defined($deleteOnlyArg)){
+  $logger->error("--exclude not supported with --deleteonly argument");
+  exit(1);
+}
+
 # clean up the directory path
 $directoryArgValue = $fUtil->standardizePath($directoryArgValue);
 
@@ -120,7 +127,8 @@ for (my $x = 0; $x < @clusterList ; $x++){
 
     my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $downloader->getDirectorySize($directoryArgValue,
                                                                                              $clusterList[$x]);
-    $duration = time() - $startTime;
+    $duration = getDuration($startTime);
+
     if (defined($error)){
        print " ... failed.  Took $duration seconds.\n";
        $logger->fatal("There was an error : $error");
@@ -141,30 +149,56 @@ for (my $x = 0; $x < @clusterList ; $x++){
           next;
     }
 
+    # user wishes to remove remote path only
+    if (defined($deleteOnlyArg)){
+       print "Deleting from $clusterList[$x] ...";
 
-    print "Downloading from $clusterList[$x] ...";
+       if (defined($verboseArg)){
+          print "\n";
+       }
 
-    if (defined($verboseArg)){
-       print "\n";
+       $startTime = time();
+       $res = $downloader->delete($directoryArgValue,$clusterList[$x]);
+       $duration = getDuration($startTime);
+       if (defined($res)){
+          $logger->error("Unable to delete $directoryArgValue on $clusterList[$x] : $res");
+          print "failed.\n";
+          next;
+       }
+       print " ... done.  Took $duration seconds.\n";
+
     }
+    else {
+       print "Downloading from $clusterList[$x] ...";
 
-    $startTime = time();
-    $res = $downloader->download($directoryArgValue,$clusterList[$x],\@excludeArgValues);
-    if (defined($res)){
-       print "failed.\n";
-       $logger->fatal("Unable to download $directoryArgValue to $clusterList[$x] : $res");
-       exit(2);
+       if (defined($verboseArg)){
+          print "\n";
+       }
+
+       $startTime = time();
+       $res = $downloader->download($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+       if (defined($res)){
+          $logger->fatal("Unable to download $directoryArgValue to $clusterList[$x] : $res");
+          print "failed.\n";
+          next;
+       }
+       $duration = getDuration($startTime);
+
+       printf(" done.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
     }
-    $duration = time() - $startTime;
-
-    if ($duration == 0){
-       $duration = 1;
-    }
-
-    printf(" done.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
 }
 
 exit(0);
+
+sub getDuration {
+   my $startTime = shift;
+   my $duration = time() - $startTime;
+   if ($duration == 0){
+      $duration = 1;
+   }
+   return $duration;
+}
+
 1;
 
 __END__
@@ -219,6 +253,11 @@ Default is 30 seconds.
 
 If set, the program will NOT transfer any data, instead the program will merely state what it 
 would transfer.
+
+=item B<--deleteonly>
+
+If set the path defined in B<--directory> will be deleted on the remote clusters.  This parameter
+cannot be used with --exclude.
 
 =item B<--verbose>
 
