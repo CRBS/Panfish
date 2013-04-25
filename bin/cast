@@ -31,6 +31,7 @@ my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "sync=s"     => \$syncArgValue,
                                      "retry=i"    => \$retryArgValue,
                                      "batchfactor=i" => \$batchFactorArgValue,
+                                     "listclusters" => \$listClustersArg,
                                      "verbose+"   => \$verboseArg,
                                      "help|?"     => \$helpArg,
                                      "man"        => \$manArg) or pod2usage(2);
@@ -44,7 +45,7 @@ if ($manArg){
   pod2usage(-exitstatus => 0, -verbose => 2);
 }
 
-if (@ARGV < 1){
+if (@ARGV < 1 && !defined($listClustersArg)){
   pod2usage(2);
 }
 
@@ -101,6 +102,13 @@ my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
 my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
+
+
+# output the list of clusters panfish is configured with and exit
+if (defined($listClustersArg)){
+    print $config->getCommaDelimitedClusterList()."\n";
+    exit(0);
+}
 
 # escape any $ for TASK_ID and JOB_ID
 # also change TASK_ID to SGE_TASK_ID
@@ -373,6 +381,10 @@ Defines a multiplier known as a batch job factor which causes jobs to be batched
 in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
 run 8 jobs in parallel and a batch factor of 2 is set then a panfish job submitted to that compute node will be given 16 jobs
 to run in 8 jobs batches.  
+
+=item B<--listclusters>
+
+If defined B<cast> will output the current cluster list in a comma delimited string and exit.  
 
 =item B<command>
 
