@@ -184,6 +184,15 @@ if ($job->getState() eq Panfish::JobState->FAILED()){
    exit(1);
 }
 
+# if state is done just remove the job from the database
+#if ($job->getState() eq Panfish::JobState->DONE()){
+#   $logger->debug("Removing job from database");
+#   my $res = $jobDb->delete($job);
+#   if (defined($res)){
+#       $logger->error("Unable to delete job from database : $res");
+#   }
+#}
+
 exit(0);
 
 
