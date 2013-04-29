@@ -26,11 +26,12 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("directory=s"   => \$directoryArgValue,
+my $cmdLineParseResult = GetOptions ("path=s"        => \$pathArgValue,
                                      "deletebefore"  => \$deleteBeforeArg,
                                      "cluster=s"     => \$clusterArgValue,
                                      "exclude=s"     => \@excludeArgValues,
                                      "listchummed"   => \$listChummedArg,
+                                     "listexists"    => \$listExistsArg,
                                      "retry=i"       => \$retryArgValue,
                                      "timeout=i"     => \$timeOutArgValue,
                                      "dry-run"       => \$dryRunArg,
@@ -47,23 +48,26 @@ if ($manArg){
   pod2usage(-exitstatus => 0, -verbose => 2);
 }
 
-if (!defined($directoryArgValue) ||
-    ! -d $directoryArgValue){
-
-   pod2usage(-message => "\nValid directory must be set via the --directory flag\n",
+if (!defined($pathArgValue)){
+   pod2usage(-message => "\n --path argument must be set\n",
              -verbose => 1,
              -exitval => 2);
+}
 
+if (! -e $pathArgValue){
+   pod2usage(-message => "\nPath set with --path must exist on filesystem\n",
+             -verbose => 1,
+             -exitval => 2);
 }
 
 # NOT IMPLEMENTED ARGS
 if (defined($timeOutArgValue)){
-  print STDERR "-timeout flag not implemented yet.  Please omit this argument. Sorry.\n";
+  print STDERR "--timeout flag not implemented yet.  Please omit this argument. Sorry.\n";
   exit(100);
 }
 
 if (defined($retryArgValue)){
-  print STDERR "-retry flag not implemented yet.  Please omit this argument. Sorry.\n";
+  print STDERR "--retry flag not implemented yet.  Please omit this argument. Sorry.\n";
   exit(100);
 }
 
@@ -90,12 +94,12 @@ my $fUtil = Panfish::FileUtil->new($logger);
 local $| = 1;
 
 # if current dir is specified use it.
-if ($directoryArgValue eq "."){
-   $directoryArgValue = getcwd();  
+if ($pathArgValue eq "."){
+   $pathArgValue = getcwd();  
 }
 
 # clean up the directory path
-$directoryArgValue = $fUtil->standardizePath($directoryArgValue);
+$pathArgValue = $fUtil->standardizePath($pathArgValue);
 
 # Temporarily set logger to log to a String cause we want to have
 # a clean output like this:
@@ -109,12 +113,12 @@ if (@excludeArgValues){
 }
 
 
-print "\nExamining ... $directoryArgValue";
+print "\nExamining ... $pathArgValue";
 if (defined($verboseArg)){
   print "\n";
 }
 my $startTime = time();
-my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($directoryArgValue);
+my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($pathArgValue);
 
 my $duration = time() - $startTime;
 
@@ -128,15 +132,20 @@ print " ... done.  Took $duration seconds.\n";
 
 print "Found $sizeInBytes bytes in $numFiles files\n\n";
 
-$logger->info("Directory to upload: $directoryArgValue");
+if (defined($listExistsArg)){
+   $logger->info("Path to check: $pathArgValue");
+}
+else {
+   $logger->info("Path to upload: $pathArgValue");
+}
 $logger->info("# of Files:  $numFiles");
 $logger->info("# of Directories:  $numDirs");
 $logger->info("# of Symlinks:  $numSymLinks");
 $logger->info("Size in Bytes:  $sizeInBytes");
 
-# if $directoryArgValue points to a file just use directUpload
+# if $pathArgValue points to a file just use directUpload
 my $isFile = 0;
-if ($fUtil->runFileTest("-f",$directoryArgValue)){
+if ($fUtil->runFileTest("-f",$pathArgValue)){
    $isFile = 1;
 }
 
@@ -174,6 +183,46 @@ for (my $x = 0; $x < @clusterList ; $x++){
         next;
     }
    
+    # if --listexists was set just remotely -examine path and if it exists add to cluster list
+    # and go to the next cluster
+    if (defined($listExistsArg)){
+       print "Checking path on $clusterList[$x]";
+       if (defined($verboseArg)){
+          print "\n";
+       }
+       $startTime = time();
+       my ($numFilesR,$numDirsR,$numSymLinksR,$sizeInBytesR,$errorR) = $uploader->getDirectorySize($pathArgValue,
+                                                                                              $clusterList[$x]);
+
+       $duration = time() - $startTime;
+
+       if (defined($errorR)){
+           print " ... failed.  Took $duration seconds.  : $errorR\n";
+           next;
+       }
+
+       $logger->info("Remote # of Files:  $numFilesR");
+       $logger->info("Remote # of Directories:  $numDirsR");
+       $logger->info("Remote # of Symlinks:  $numSymLinksR");
+       $logger->info("Remote Size in Bytes:  $sizeInBytesR");
+
+       print " ... done.  Took $duration seconds.  ";
+       print "Found $sizeInBytesR bytes in $numFilesR files";
+
+       if (($numFilesR > 0 && $numFiles > 0) ||
+           ($numDirsR > 0 && $numDirs > 0)){
+           if ($chummedClusters ne ""){
+              $chummedClusters .= ",";
+           }
+           $chummedClusters .= $clusterList[$x];
+           print " which meets exists criteria.  Adding cluster to list\n\n";
+       }
+       else {
+          print " which does NOT meet exists criteria.  Skipping cluster\n\n";
+       }
+       next;
+    }
+
     print "Uploading to $clusterList[$x] ...";
     if (defined($verboseArg)){
         print "\n";
@@ -181,18 +230,18 @@ for (my $x = 0; $x < @clusterList ; $x++){
     $startTime = time();
     if (defined($deleteBeforeArg)){
        if ($isFile == 1){
-          $res = $uploader->upload($directoryArgValue,$clusterList[$x],\@exludeArgValues);
+          $res = $uploader->upload($pathArgValue,$clusterList[$x],\@exludeArgValues);
        }
        else {
-          $res = $uploader->deleteAndUpload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+          $res = $uploader->deleteAndUpload($pathArgValue,$clusterList[$x],\@excludeArgValues);
        }
     }
     else {
-       $res = $uploader->upload($directoryArgValue,$clusterList[$x],\@excludeArgValues);
+       $res = $uploader->upload($pathArgValue,$clusterList[$x],\@excludeArgValues);
     }
     if (defined($res)){
        print "failed.\n";
-       $logger->error("Unable to upload $directoryArgValue to $clusterList[$x] : $res");
+       $logger->error("Unable to upload $pathArgValue to $clusterList[$x] : $res");
        next;
     }
     $duration = time() - $startTime;
@@ -211,7 +260,7 @@ for (my $x = 0; $x < @clusterList ; $x++){
 
 # used by automated programs that want to use all clusters
 # so they know what clusters to download from.
-if (defined($listChummedArg)){
+if (defined($listChummedArg) || defined($listExistsArg)){
    print "chummed.clusters=$chummedClusters\n";
 }
 
@@ -241,9 +290,11 @@ file.
 
 =over 4
 
-=item B<--directory path>
+=item B<--path path>
 
-Defines the directory to upload.  Any symbolic links in this directory will be ignored.
+Defines path to data to upload.  If this is a symbolic link the code will follow the link until a real
+file or directory is found and upload the data within.  Any symbolic links under that path will not be
+followed.
 
 =item B<--cluster cluster_list,..>
 
@@ -261,6 +312,11 @@ If set program will output a line listing what clusters the data was uploaded to
 The format of this output will be as follows:
 
 chummed.clusters=CLUSTER1,CLUSTER2,CLUSTER3
+
+=item B<--listexists>
+
+If set program will output a line listing what clusters the directory specified path exists.  The
+matching rules only verify both local and remote contain 1 or more files or directories.
 
 =item B<--exclude PATTERN>
 
