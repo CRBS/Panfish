@@ -409,9 +409,21 @@ sub getDirectorySize {
         return (1,0,0,$size,undef);
     }
     
-    # this is a symlink
+    # this is a symlink invoke readlink up to 100 times to find a file or directory otherwise
+    # give up
     if (-l $path){
-        return (0,0,1,0,undef);
+        
+        my $linkCount=1;
+        my $origPath = $path;
+        while (-l $path && $linkCount < 100){
+          $linkCount++;
+          $path = readlink($path);
+        }  
+        if ($linkCount >= 100){
+            $self->{Logger}->error("Encountered too many symbolic links with path : $origPath");
+            return (0,0,0,0,"Encountered too many symbolic links with path : $origPath");
+        }
+        return $self->getDirectorySize($path);
     }
 
     # this is a directory
