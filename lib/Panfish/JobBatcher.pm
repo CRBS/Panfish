@@ -368,6 +368,9 @@ sub _isItOkayToSubmitJobs {
        }
 
        if ((abs($curTimeInSec - ${$jobs}[$x]->getModificationTime())) < $overrideTimeout){
+           $self->{Logger}->debug("Job ".${$jobs}[$x]->getJobAndTaskId()." age is ".
+                                  abs($curTimeInSec - ${$jobs}[$x]->getModificationTime()).
+                                  " seconds which less then override timeout of $overrideTimeout not releasing jobs.");
            return "no";
        }
     }
