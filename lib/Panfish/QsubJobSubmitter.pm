@@ -141,9 +141,14 @@ sub _submitJobViaQsub {
             
        if ($self->{Config}->getEngine() eq "SGE"){
            my @rows = split("\n",$self->{Executor}->getOutput());
-           $realJobId = $rows[0];
-           $realJobId=~s/^Your job //;
-           $realJobId=~s/ \(.*//;      
+           for (my $x = 0; $x < @rows; $x++){
+              if ($rows[$x]=~/^Your job/){
+                $realJobId = $rows[$x];
+                $realJobId=~s/^Your job //;
+                $realJobId=~s/ \(.*//;
+                last;
+              }
+           }
        }
        elsif ($self->{Config}->getEngine() eq "PBS"){
            # example output PBS on gordon
