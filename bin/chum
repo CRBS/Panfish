@@ -250,7 +250,7 @@ for (my $x = 0; $x < @clusterList ; $x++){
        $duration = 1;
     }
 
-    printf(" done.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
+    printf(" done.  Transfer took $duration seconds.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
 
     if ($chummedClusters ne ""){
         $chummedClusters .= ",";
