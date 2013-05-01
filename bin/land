@@ -26,7 +26,7 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("directory=s"  => \$directoryArgValue,
+my $cmdLineParseResult = GetOptions ("path|directory=s"  => \$directoryArgValue,
                                      "exclude=s"    => \@excludeArgValues,
                                      "cluster=s"    => \$clusterArgValue,
                                      "deleteonly"   => \$deleteOnlyArg,
@@ -184,7 +184,7 @@ for (my $x = 0; $x < @clusterList ; $x++){
        }
        $duration = getDuration($startTime);
 
-       printf(" done.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
+       printf(" done.  Took $duration seconds.  Rate: %.2f Mb/sec.\n",(($sizeInBytes/1000000.0)/$duration));
     }
 }
 
@@ -224,7 +224,7 @@ file.
 
 =over 4
 
-=item B<--directory path>
+=item B<--directory|--path path>
 
 Defines the directory to download.  
 
