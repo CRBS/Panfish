@@ -209,7 +209,7 @@ sub insert {
       if (defined($self->getJobByClusterAndId($job->getCluster(),
                                               $job->getJobId(),
                                               $job->getTaskId()))){
-         return "Job already exists in database unable to insert";
+         return "Job ".$job->getJobAndTaskId()." already exists in database unable to insert";
       }
    }
 
