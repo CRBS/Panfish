@@ -246,7 +246,7 @@ if (defined($syncArgValue) || defined($syncallArg)){
 
      $duration = time() - $startTime;
 
-     print " done.  Took $duration seconds\n";
+     print " done.  Took $duration seconds.\n";
    }
    exit(0);   
 }
