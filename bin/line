@@ -46,6 +46,7 @@ my $cmdLineParseResult = GetOptions ("e=s"      => \$eArgValue,
                                      "o=s"      => \$oArgValue,
                                      "c=s"      => \$cArgValue,
                                      "batchfactor=i" => \$batchFactorArgValue,
+                                     "writeoutputlocal" => \$writeOutputLocalArg,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
 
@@ -72,13 +73,15 @@ if (defined($eArgValue)){
     $stderr = $eArgValue;
 }
 else {
-    $stderr = "need something here";
+    $logger->fatal("-e flag must be set to define stderr file path");
+    exit(1);
 }
 if (defined($oArgValue)){
     $stdout = $oArgValue;
 }
 else {
-    $stdout = "need something here";
+    $logger->fatal("-o flag must be set to define stdout file path");
+    exit(1);
 }
 
 if (!defined($cArgValue)){
@@ -125,10 +128,13 @@ if ($cluster ne $config->getThisCluster()){
 
 my $scratch = $config->getScratchDir($cluster);
 
+
+my $stdErrOut = getStandardErrorOutput($stdout,$stderr,$writeOutputLocalArg);
+
 my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
               "export PANFISH_SCRATCH=\"".$scratch."\";".
               "export JOB_ID=\"".$jobId."\";export SGE_TASK_ID=\"".$taskId."\";".
-              "\$PANFISH_BASEDIR".$rawCommand." > \$PANFISH_BASEDIR$stdout 2> \$PANFISH_BASEDIR$stderr";
+              "\$PANFISH_BASEDIR".$rawCommand." $stdErrOut";
                 
 
 # Save job to database
@@ -247,6 +253,41 @@ sub handleSignal {
     }
 }
 
+#
+# Generates correct redirects of standard error and output
+# If writeOutputLocalArg is not defined just redirect stderr and stdout to files specified by the user with $PANFISH_BASEDIR prefix
+# If writeOutputLocalArg is defined then redirect stderr and stdout to files under $PANFISH_SCRATCH and add
+# mv commands to put them in the correct location upon script completion.  If stdout or stderr is /dev/null
+# The $PANFISH_SCRATCH and PANFISH_BASEDIR is skipped and so is the mv command.
+#
+
+sub getStandardErrorOutput {
+    my $stdout = shift;
+    my $stderr = shift;
+    my $writeOutputLocalArg = shift;
+
+    my ($stdOutRedirect,$stdOutMv) = getRedirectOutput(">",$stdout,"out",$writeOutputLocalArg);
+    my ($stdErrRedirect,$stdErrMv) = getRedirectOutput("2>",$stderr,"err",$writeOutputLocalArg);
+
+    return $stdOutRedirect." ".$stdErrRedirect.$stdOutMv.$stdErrMv;
+}
+
+sub getRedirectOutput {
+   my $redirectSymbol = shift;
+   my $outFile = shift;
+   my $suffix = shift;
+   my $writeOutputLocalArg = shift;
+
+   if ($outFile eq "/dev/null"){
+      return ($redirectSymbol." ".$outFile,"");
+   }
+
+   if (!defined($writeOutputLocalArg)){
+      return ($redirectSymbol." \$PANFISH_BASEDIR".$outFile,"");
+   }
+
+   return ($redirectSymbol." \$PANFISH_SCRATCH/\$JOB_ID.\$SGE_TASK_ID.$suffix",";/bin/mv \$PANFISH_SCRATCH/\$JOB_ID.\$SGE_TASK_ID.$suffix \$PANFISH_BASEDIR$outFile");
+}
 
 
 1;
@@ -279,7 +320,7 @@ Lots of options here
 
 =over 4
 
-=item B<-batchfactor integer X>
+=item B<--batchfactor integer X>
 
 Defines a multiplier known as a batch job factor which causes jobs to be batched by X times on each node and run through
 in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
@@ -339,10 +380,16 @@ Defines path of standard output stream.  See B<-e> description for allowed
 variables in B<path>  This value can also be set within the B<command> using
 the B<#$PANFISH> directive.
 
+=item B<--writeoutputlocal>
+
+If set, directs users program to write stderr and stdout files to $PANFISH_SCRATCH folder naming them 
+JOBID.TASKID.out/err.  When the users program completes the output files are copied to destination specified
+by B<-e> and B<-o> parameters
+
 =item B<--verbose>
 
 Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 3.
+verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
 
