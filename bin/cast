@@ -32,6 +32,7 @@ my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "retry=i"    => \$retryArgValue,
                                      "batchfactor=i" => \$batchFactorArgValue,
                                      "listclusters" => \$listClustersArg,
+                                     "writeoutputlocal" => \$writeOutputLocalArg,
                                      "verbose+"   => \$verboseArg,
                                      "help|?"     => \$helpArg,
                                      "man"        => \$manArg) or pod2usage(2);
@@ -65,7 +66,7 @@ if (defined($taskFileArgValue) &&
 
 my $batchFactorArg = "";
 if (defined($batchFactorArgValue)){
-   $batchFactorArg = "--batchfactor $batchFactorArgValue";
+   $batchFactorArg = " --batchfactor $batchFactorArgValue";
 }
 
 
@@ -144,6 +145,11 @@ else {
     $taskIdOutVar = ".out";
 }
 
+my $writeOutputLocal = "";
+if (defined($writeOutputLocalArg)){
+  $writeOutputLocal = " --writeoutputlocal";
+}
+
 # verify the list of queues specified is valid
 #
 my ($skippedClusters,$cList) = $config->getCommaDelimitedClusterList($qArgValue);
@@ -161,6 +167,8 @@ if ($cList eq ""){
 $newArgList .= " -q ".$cList;
 
 
+
+
 my $exitCode;
 
 # generate -t argument array based on arguments passed in by the user
@@ -174,7 +182,7 @@ for (my $x = 0; $x < @tArgArray; $x++){
    $cmd = $config->getQsub()." $tArgArray[$x] $newArgList -e ".
           $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
           $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
-          $config->getLineCommand()."$stdout$stderr $batchFactorArg -c \"'$command'\"";
+          $config->getLineCommand().$stdout.$stderr.$batchFactorArg.$writeOutputLocal." -c \"'$command'\"";
 
     $logger->info("Running command: $cmd");
 
@@ -368,10 +376,16 @@ the B<#$PANFISH> directive.
 
 Works same as B<qsub>.  Causes B<cast> to wait for the job to complete. 
 
+=item B<--writeoutputlocal>
+
+If set, directs users program to write stderr and stdout files to $PANFISH_SCRATCH folder naming them 
+JOBID.TASKID.out/err.  When the users program completes the output files are copied to destination specified
+by B<-e> and B<-o> parameters
+
 =item B<--verbose>
 
 Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 3.
+verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
 
