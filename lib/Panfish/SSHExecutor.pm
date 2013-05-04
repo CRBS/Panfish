@@ -225,6 +225,47 @@ sub executeCommand {
     return $self->{Executor}->executeCommand($cmd,$timeout,$resetTimeoutOnOutput);
 }
 
+=head3 executeCommandWithRetry 
+
+Executes command with automatic retry and sleep between retries if command fails
+with non zero exit code
+
+my $exitcode = $exec->executeCommandWithRetry($numretries,$retrysleep,$cmd,$timeout,$resetOnOutput);
+
+=cut
+
+sub executeCommandWithRetry {
+   my $self = shift;
+   my $numRetries = shift;
+   my $retrySleep = shift;
+   my $command = shift;
+   my $timeout = shift;
+   my $resetTimeoutOnOutput = shift;
+
+   my $exit = -1;
+   my $tryCount = 1;
+
+   while ($tryCount <= $numRetries){
+      if ($tryCount > 1){
+         $self->{Logger}->debug("Sleeping $retrySleep seconds and trying again");
+         sleep $retrySleep;
+      }
+
+      $exit = $self->executeCommand($command,$timeout,$resetTimeoutOnOutput);
+   
+      # if we succeeded break out of while loop 
+      if ($exit == 0){
+         last;
+      }
+      $self->{Logger}->warn("Failed to run command on try # $tryCount : ".
+                             $self->getOutput());
+           
+      $tryCount++;
+   }
+   return $exit;
+}
+
+
 1;
 
 __END__
