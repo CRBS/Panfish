@@ -134,10 +134,10 @@ use Panfish::Job;
    ok($job->equals($jobFromDb));
    
    #attempt to insert same job twice regardless of state
-   ok($jobDb->insert($job) eq "Job already exists in database unable to insert");
+   ok($jobDb->insert($job) eq "Job 1 already exists in database unable to insert");
 
    $job = Panfish::Job->new("gee","1",undef,undef,undef,undef,Panfish::JobState->QUEUED());
-   ok($jobDb->insert($job) eq "Job already exists in database unable to insert");
+   ok($jobDb->insert($job) eq "Job 1 already exists in database unable to insert");
  
    $job = Panfish::Job->new("gee","2","1",undef,undef,undef,Panfish::JobState->QUEUED());
    ok(!defined($jobDb->insert($job)));
@@ -147,7 +147,7 @@ use Panfish::Job;
    ok(!defined($jobDb->insert($job)));
 
    $job = Panfish::Job->new("gee","2","1",undef,undef,undef,Panfish::JobState->DONE());
-   ok($jobDb->insert($job) eq "Job already exists in database unable to insert");
+   ok($jobDb->insert($job) eq "Job 2.1 already exists in database unable to insert");
 
    close($foo);
 }
