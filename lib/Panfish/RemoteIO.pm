@@ -68,13 +68,11 @@ sub directUpload {
 
     my $parentDir = dirname($destinationDir); 
 
-    
-
     $self->{SSHExecutor}->setCluster($cluster);
 
     $self->{SSHExecutor}->enableSSH();
 
-    my $checkExit = $self->{SSHExecutor}->executeCommand($self->{MkdirBin}." -p $parentDir",30);
+    my $checkExit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},$self->{MkdirBin}." -p $parentDir",30);
     if ($checkExit != 0){
         return "Unable to create $parentDir on $cluster";
     }
@@ -82,33 +80,17 @@ sub directUpload {
     my $excludeArgs = $self->_createExcludeArgs($excludeRef);
 
     $self->{SSHExecutor}->disableSSH();
-    my $tryCount = 1;
     my $cmd = $self->{RsyncBin}." -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e \"".$self->{SshBin}."\" $pathToUpload ".$self->{Config}->getHost($cluster).":$destinationDir 2>&1";
     $self->{Logger}->debug("Running $cmd");
-    while ($tryCount <= $self->{RetryCount}){
 
-        if ($tryCount > 1){
-            $self->{Logger}->debug("Sleeping ".$self->{RetrySleep});
-            sleep $self->{RetrySleep};
-        }
+    # okay lets try the upload now 
+    $checkExit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},$cmd);
 
-        # okay lets try the upload now 
-        $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
-
-
-        if ($checkExit == 0){
-            return undef;
-        }
-        $self->{Logger}->error("Try # $tryCount received error when attempting upload : ".
-                               $self->{SSHExecutor}->getOutput());
-
-        $tryCount++;
+    if ($checkExit == 0){
+        return undef;
     }
 
     return "Unable to upload after ".$self->{RetryCount}. " tries.  Giving up";
-
-
-
 }
 
 =head3 delete
@@ -137,7 +119,7 @@ sub delete {
     my $cmd = $self->{Config}->getPanfishSetup($cluster)." --removedir $remoteDir";
 
 
-    my $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
+    my $checkExit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},$cmd);
     if ($checkExit != 0){
         return "Unable to run ".$self->{SSHExecutor}->getCommand().
                                "  : ".$self->{SSHExecutor}->getOutput();
@@ -198,9 +180,12 @@ sub upload {
     $self->{SSHExecutor}->setCluster($cluster);
 
     $self->{SSHExecutor}->enableSSH();
+
     my $mkdirCmd = $self->{MkdirBin}." -p $remoteParentDir";
+
     $self->{Logger}->debug($mkdirCmd);
-    my $checkExit = $self->{SSHExecutor}->executeCommand($mkdirCmd,30);
+
+    my $checkExit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},$mkdirCmd,30);
     if ($checkExit != 0){
         return "Unable to create $remoteParentDir on $cluster";
     }
@@ -212,24 +197,12 @@ sub upload {
     my $tryCount = 1;
     my $cmd = $self->{RsyncBin}." -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e \"".$self->{SshBin}."\" $dirToUpload ".$self->{Config}->getHost($cluster).":$remoteParentDir 2>&1";
     $self->{Logger}->debug("Running $cmd");
-    while ($tryCount <= $self->{RetryCount}){
-       
-        if ($tryCount > 1){
-            $self->{Logger}->debug("Sleeping ".$self->{RetrySleep});
-            sleep $self->{RetrySleep};
-        }
         
-        # okay lets try the upload now 
-        $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
-
+    # okay lets try the upload now 
+    $checkExit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},$cmd);
   
-        if ($checkExit == 0){
-            return undef;
-        }
-        $self->{Logger}->error("Try # $tryCount received error exit code : $checkExit : when attempting to run : ".$self->{SSHExecutor}->getCommand()." : ".
-                               $self->{SSHExecutor}->getOutput());
-        
-        $tryCount++;
+    if ($checkExit == 0){
+       return undef;
     }
 
     return "Unable to upload after ".$self->{RetryCount}. " tries.  Giving up";
@@ -254,7 +227,6 @@ sub download {
         $self->{Logger}->debug("Directory to download: $dirToDownload from $cluster");
     }
 
-
     # unset any command which is piped to the command to execute
     $self->{SSHExecutor}->setStandardInputCommand(undef);
 
@@ -272,23 +244,12 @@ sub download {
     my $cmd = $self->{RsyncBin}." -rtpz $excludeArgs --stats --timeout=".$self->{TimeOut}." -e \"".$self->{SshBin}."\" ".
               $self->{Config}->getHost($cluster).":$remoteDir ".$parentDir."/. 2>&1";
     $self->{Logger}->debug("Running $cmd");
-    while ($tryCount <= $self->{RetryCount}){
 
-        if ($tryCount > 1){
-            $self->{Logger}->debug("Sleeping ".$self->{RetrySleep});
-            sleep $self->{RetrySleep};
-        }
-
-        # okay lets try the upload now 
-        my $checkExit = $self->{SSHExecutor}->executeCommand($cmd);
-
-
-        if ($checkExit == 0){
-            return undef;
-        }
-        $self->{Logger}->error("Try # $tryCount received error when attempting download : ".
-                               $self->{Config}->getHost($cluster).":$remoteDir ");
-       $tryCount++;
+    # okay lets try the upload now 
+    my $checkExit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},$cmd);
+        
+    if ($checkExit == 0){
+       return undef;
     }
 
     return "Unable to download after ".$self->{RetryCount}. " tries.  Giving up";
@@ -367,13 +328,17 @@ sub getDirectorySize {
 
     my $panfishSetup = $self->{Config}->getPanfishSetup($cluster)." --examinedir $remoteDir";
     $self->{Logger}->debug("Running $panfishSetup");
-    my $exit = $self->{SSHExecutor}->executeCommand($panfishSetup,undef,undef);
 
+    my $exit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},
+                                                          $panfishSetup,undef,undef);
+ 
+    # if we get a non zero exit code bail
     if ($exit != 0){
-        $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
+       $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
                                "  : ".$self->{SSHExecutor}->getOutput());
-         return (0,0,0,0,$self->{SSHExecutor}->getOutput());
+       return (0,0,0,0,$self->{SSHExecutor}->getOutput());
     }
+
     $self->{Logger}->debug("Output : ".$self->{SSHExecutor}->getOutput());
     my @rows = split("\n",$self->{SSHExecutor}->getOutput());
     for (my $x = 0; $x < @rows; $x++){
