@@ -41,55 +41,6 @@ sub new {
    return $blessedself;
 }
 
-
-=head3 createLock 
-
-This method creates a lock file using the path 
-given by first looking for the existance of the file
-and reading the pid within the file.  If that pid matches
-a process that exists then the lock fails.  If not a 
-new pid file is created with the pid of this process.
-
-my ($error,$status) = $fUtil->createLock("/foo/my.lock");
-
-If there is a problem $error will be set to a message otherwise undef.
-
-If another process is running then $status will be set to 0 otherwise if
-success then $status will be set to 1.
-
-=cut
-
-sub createLock {
-   my $self = shift;
-   my $lockFile = shift;
-   my $script = $lockFile;
-   
-   if (!defined($lockFile)){
-      return("Lock File not defined",0);
-   }
-
-   $script=~s/^.*\///;
-
-   if ( -f $lockFile){
-      my $process_exists = 0;
-
-      chomp ( my $lockFilePid = qx( /bin/cat $lockFile ) );
-      foreach my $proc (grep { /$script\s*/ } `/bin/ps ax`){
-           last if (!defined($PID) || $PID eq "");
-          
-           my ($checkPid, @temp) = split(/\s+/, $proc);
-           if($lockFilePid == $checkPid){
-               return(undef,0);
-           }
-      }
-   }
-
-   qx( /bin/echo $$ > $lockFile );
-
-   return (undef,1);
-}
-
-
 =head3 runFileTest
 
 Wrapper for -X FILEHANDLE|EXPR|DIRHANDLE tests that
