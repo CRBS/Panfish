@@ -214,7 +214,7 @@ if (defined($syncArgValue) || defined($syncallArg)){
      #upload the lib directory to parent directory of remoteBinDir
      my $remoteBinParent = $fUtil->getDirname($remoteBinDir);
      $res = $uploader->directUpload($libDir,$remoteBinParent,$cluster);
- 
+     my $echoArgs = "";
      #create panfish.config and upload to directory where binaries reside
      my @lines = $config->getConfigForCluster($cluster); 
      for (my $x = 0; $x < @lines; $x++){
@@ -238,7 +238,7 @@ if (defined($syncArgValue) || defined($syncallArg)){
         
           exit(4);
      }
- 
+     $logger->debug("Ran ".$sshExec->getCommand()); 
 
 
      #call panfish_setup on remote cluster to initialize database
