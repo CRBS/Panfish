@@ -32,7 +32,7 @@ use Panfish::CurrentWorkingDirHashKeyGenerator;
 use Panfish::PsubDirnameHashKeyGenerator;
 use Panfish::PsubHashKeyGenerator;
 use Panfish::PsubIdHashKeyGenerator;
-
+use Panfish::FileLock;
 
 my $cmdLineParseResult = GetOptions ("daemon=s"     => \$daemonArgValue,
                                      "cluster=s"    => \$clusterArgValue,
@@ -74,41 +74,32 @@ my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($config->getPanfishVerbosity());
 
 my $fUtil = Panfish::FileUtil->new($logger);
+my $writer = Panfish::FileReaderWriterImpl->new($logger);
+my $exec = Panfish::ForkExecutor->new();
+my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
+
 my $lockFile = "";
 
 # if cron flag was set verify this is the only instance of this program running
 # by looking at the lock file
-if (defined($cronArg)){
+if (defined($cronArg) || defined($iterationArgValue)){
    my $scriptName = $0;
    $scriptName=~s/^.*\///;
    $lockFile = $config->getDatabaseDir($clusterArgValue)."/".$scriptName;
 
    $logger->debug("Looking for lock file $lockFile");
-   my ($error,$status) = $fUtil->createLock($lockFile);
+   my $fLock = Panfish::FileLock->new($logger,$fUtil,$exec,$reader);
+   my $error = $fLock->create($lockFile,$$);
    if (defined($error)){
       $logger->fatal("Unable to create lock file : $error");
       exit(1);
    }
 
- # bail if there is a valid lock file already which means there is another
- # instance running so just exit.
-   if ($status != 1){
-     $logger->info("Lock file: $lockFile already exists with valid pid. Exiting...");
-     exit(0);
-   }
    if (!defined($iterationArgValue)){
       $iterationArgValue = 1;
    }
 }
 
-
-
-
-my $writer = Panfish::FileReaderWriterImpl->new($logger);
-my $fUtil = Panfish::FileUtil->new($logger);
-
-my $exec = Panfish::ForkExecutor->new();
-my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
 my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$logger);
