@@ -88,6 +88,12 @@ if (!defined($cArgValue)){
   $logger->fatal("Must define -c <command> parameter");
   exit(1);
 }
+
+if (defined($batchFactorArgValue) && $batchFactorArgValue <= 0){
+  $logger->fatal("--batchfactor flag must be an integer greater then zero");
+  exit(1);
+}
+
 my $rawCommand = $cArgValue;
 
 my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
@@ -100,6 +106,8 @@ my $cluster = $ENV{"QUEUE"};
 my $jobId = $ENV{"JOB_ID"};
 my $taskId = $ENV{"SGE_TASK_ID"};
 my $jobName = $ENV{"JOB_NAME"};
+my $taskStepSize = $ENV{"SGE_TASK_STEPSIZE"};
+my $taskLast = $ENV{"SGE_TASK_LAST"};
 
 if (!defined($taskId)){
    $taskId = $ENV{"GE_TASK_ID"};
@@ -133,7 +141,10 @@ my $stdErrOut = getStandardErrorOutput($stdout,$stderr,$writeOutputLocalArg);
 
 my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
               "export PANFISH_SCRATCH=\"".$scratch."\";".
-              "export JOB_ID=\"".$jobId."\";export SGE_TASK_ID=\"".$taskId."\";".
+              "export JOB_ID=\"".$jobId."\";".
+              "export SGE_TASK_ID=\"".$taskId."\";".
+              "export SGE_TASK_STEPSIZE=\"".$taskStepSize."\";".
+              "export SGE_TASK_LAST=\"".$taskLast."\";".
               "\$PANFISH_BASEDIR".$rawCommand." $stdErrOut";
                 
 
@@ -151,20 +162,37 @@ if (defined($res)){
    exit(1);
 }
 
-#
 my $sleepTime = $config->getLineSleepTime();
-
-
 
 # Wait for the above file to move into done or failed directory
 $job = getJob($jobDb,$sleepTime,$logger,$cluster,$jobId,$taskId);
 
 my $lastState = Panfish::JobState->UNKNOWN();
 
+my $runPsubCheck = 1;
+
 while ($job->getState() ne Panfish::JobState->DONE() &&
        $job->getState() ne Panfish::JobState->FAILED()){
        
     handleSignal($jobDb,$job,$logger);
+    
+    # if a psub file is set then check the job id and task id from it
+    # if those values do NOT match the job id and task id of this job
+    # then exit cause this isn't what is considered the base job
+    if ($runPsubCheck == 1){
+       my $psubFile = $job->getPsubFile();
+       if (defined($psubFile)){
+          $psubFile=~s/^.*\///;
+          $psubFile=~s/\.psub//;
+         
+          if ($job->getJobAndTaskId() ne $psubFile){
+             $logger->info("Job and Task Id do not match that in psub file job is running under ($psubFile).  Exiting to prevent too many shadow jobs");
+             exit(0);
+          }
+          $runPsubCheck = 0;
+          $logger->info("Job and Task Id matches that of psub file ($psubFile).");
+       }
+    }
 
     # append to log at info level when the job changes states
     if ($lastState ne $job->getState()){
@@ -325,7 +353,7 @@ Lots of options here
 Defines a multiplier known as a batch job factor which causes jobs to be batched by X times on each node and run through
 in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
 run 8 jobs in parallel and a batch factor of 2 is set then a panfish job submitted to that compute node will be given 16 jobs
-to run in 8 jobs batches.  
+to run in 8 job batches.
 
 =item B<-c command>
 
