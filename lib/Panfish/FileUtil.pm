@@ -58,6 +58,20 @@ sub runFileTest {
    if ($flag eq "-f"){
       return -f $path;
    }
+   
+   if ($flag eq "-M"){
+      return -M $path;
+   }
+
+   if ($flag eq "-A"){
+      return -A $path;
+   }
+
+   if ($flag eq "-C"){
+      return -C $path;
+   }
+
+   die "unsupported flag : $flag";
 }
 
 =head3 removeLock
