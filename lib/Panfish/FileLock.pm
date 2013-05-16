@@ -83,6 +83,7 @@ sub create {
 
     # if we got a pid file just return saying we can't make a lock
     if (defined($pidFromLockFile)){
+       chomp($pidFromLockFile);
        $self->{Logger}->debug("Lock file $lockFile with pid $pidFromLockFile found.  Unable to create lock");
        return "Lock file $lockFile with pid $pidFromLockFile found.  Unable to create lock";
     }
