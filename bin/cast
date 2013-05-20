@@ -137,11 +137,9 @@ if (defined($syncArgValue)){
 
 # lets build a new argument list for the qsub call
 if (defined($tArgValue) || defined($taskFileArgValue)){
-    $taskIdErrVar = ".\\\$TASK_ID.err";
     $taskIdOutVar = ".\\\$TASK_ID.out";
 }
 else {
-    $taskIdErrVar = ".err";
     $taskIdOutVar = ".out";
 }
 
@@ -177,11 +175,19 @@ my @tArgArray = generateTArgumentArray($readerWriter,$logger,$tArgValue,$taskFil
 my $len = @tArgArray;
 $logger->debug("Got $len jobs to submit");
 
+my $lineStdOutPath;
+if ($config->getLineStandardOutPath() eq "/dev/null"){
+   $lineStdOutPath = $config->getLineStandardOutPath();
+}
+else {
+   $lineStdOutPath = $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar;
+}
+
+
 for (my $x = 0; $x < @tArgArray; $x++){
 
-   $cmd = $config->getQsub()." $tArgArray[$x] $newArgList -e ".
-          $config->getLineStandardErrorPath()."/\\\$JOB_ID".$taskIdErrVar." -o ".
-          $config->getLineStandardOutPath()."/\\\$JOB_ID".$taskIdOutVar." ".
+   $cmd = $config->getQsub()." $tArgArray[$x] $newArgList -j y -o ".
+          $lineStdOutPath." ".
           $config->getLineCommand().$stdout.$stderr.$batchFactorArg.$writeOutputLocal." -c \"'$command'\"";
 
     $logger->info("Running command: $cmd");
