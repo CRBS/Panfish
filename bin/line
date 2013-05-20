@@ -164,106 +164,61 @@ if (defined($res)){
 
 my $sleepTime = $config->getLineSleepTime();
 
+$logger->debug("Sleeping $sleepTime after job insertion");
+
+sleep $sleepTime;
+
 # Wait for the above file to move into done or failed directory
-$job = getJob($jobDb,$sleepTime,$logger,$cluster,$jobId,$taskId);
+$jobState = $jobDb->getJobStateByClusterAndId($cluster,$jobId,$taskId);
 
 my $lastState = Panfish::JobState->UNKNOWN();
 
-my $runPsubCheck = 1;
-
-while ($job->getState() ne Panfish::JobState->DONE() &&
-       $job->getState() ne Panfish::JobState->FAILED()){
+while ($jobState ne Panfish::JobState->DONE() &&
+       $jobState ne Panfish::JobState->FAILED()){
        
     handleSignal($jobDb,$job,$logger);
     
-    # if a psub file is set then check the job id and task id from it
-    # if those values do NOT match the job id and task id of this job
-    # then exit cause this isn't what is considered the base job
-    if ($runPsubCheck == 1){
-       my $psubFile = $job->getPsubFile();
-       if (defined($psubFile)){
-          $psubFile=~s/^.*\///;
-          $psubFile=~s/\.psub//;
-         
-          if ($job->getJobAndTaskId() ne $psubFile){
-             $logger->info("Job and Task Id do not match that in psub file job is running under ($psubFile).  Exiting to prevent too many shadow jobs");
-             exit(0);
-          }
-          $runPsubCheck = 0;
-          $logger->info("Job and Task Id matches that of psub file ($psubFile).");
-       }
-    }
 
     # append to log at info level when the job changes states
-    if ($lastState ne $job->getState()){
-        $logger->info("Job has switched state from $lastState to ".$job->getState());
-        $lastState = $job->getState();
+    if ($lastState ne $jobState){
+        $logger->info("Job has switched state from $lastState to ".$jobState);
+        $lastState = $jobState;
     }
 
     # in debug mode log every check
-    $logger->debug("Sleeping $sleepTime seconds cause job state is: ".$job->getState());
+    $logger->debug("Sleeping $sleepTime seconds cause job state is: ".$jobState);
 
     sleep $sleepTime;
 
     handleSignal($jobDb,$job,$logger);
 
-    $job = getJob($jobDb,$sleepTime,$logger,$cluster,$jobId,$taskId);
+    $jobState = $jobDb->getJobStateByClusterAndId($cluster,$jobId,$taskId);
 }
 
-$logger->info("Real job exited in state... ".$job->getState());
+$logger->info("Real job exited in state... ".$jobState);
 
-#if state
-if ($job->getState() eq Panfish::JobState->FAILED()){
+#if state failed log a message saying so
+if ($jobState eq Panfish::JobState->FAILED()){
    $logger->error("Job exited in failed state");
    exit(1);
 }
 
 # if state is done just remove the job from the database
-#if ($job->getState() eq Panfish::JobState->DONE()){
-#   $logger->debug("Removing job from database");
-#   my $res = $jobDb->delete($job);
-#   if (defined($res)){
-#       $logger->error("Unable to delete job from database : $res");
-#   }
-#}
+if ($jobState eq Panfish::JobState->DONE()){
+   $logger->debug("Removing job from database");
+   $job->setState($jobState);
+   my $res = $jobDb->delete($job);
+   if (defined($res)){
+       $logger->error("Unable to delete job from database : $res");
+   }
+}
 
 exit(0);
 
 
-# If we get a signal catch it and exit, but first notifiy Panfish by dropping a file
-# in the deleted folder
-
-# exit
-
 #
-# uses the JobDatabase to get the job kick.
-# 
 #
-sub getJob {
-   my $jobDb = shift;
-   my $sleepTime = shift;
-   my $logger = shift;
-   my $cluster = shift;
-   my $jobId = shift;
-   my $taskId = shift;
-
-   my $job = $jobDb->getJobByClusterAndId($cluster,$jobId,$taskId);
-   if (!defined($job)){
-
-       $logger->warn("Unable to find job : $cluster,$jobId,$taskId.".
-                     "  Sleeping $sleepTime seconds before trying again cause this could just be a temporary problem");
-
-       $job = $jobDb->getJobByClusterAndId($cluster,$jobId,$taskId);
-
-       if (!defined($job)){
-           $logger->fatal("Unable to find job : $cluster,$jobId,$taskId  : Exiting");
-           exit(2);
-       }    
-   }
-   return $job;
-}
-
-
+#
 sub handleSignal {
     my $jobDb = shift;
     my $job = shift;
