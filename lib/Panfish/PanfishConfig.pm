@@ -31,7 +31,6 @@ sub new {
      PANFISH_VERBOSITY    => "panfish.log.verbosity",
      PANFISHSUBMIT_VERBOSITY => "panfishsubmit.log.verbosity",
      LINE_SLEEP_TIME      => "line.sleep.time",
-     LINE_STDERR_PATH     => "line.stderr.path",
      LINE_STDOUT_PATH     => "line.stdout.path",
      JOB_TEMPLATE_DIR     => "job.template.dir",
      LINE_COMMAND         => "line",
@@ -436,19 +435,6 @@ sub getLineCommand {
     my $self = shift; # technically don't need to bother to do this
     return "$Bin/".$self->{LINE_COMMAND};
 }
-
-=head3 getLineStandardErrorPath 
-
-Gets the Standard error directory for line command
-
-=cut
-
-sub getLineStandardErrorPath {
-    my $self = shift;
-    my $cluster = shift;
-    return $self->_getValueFromConfig($self->{LINE_STDERR_PATH},$cluster);
-}
-
 
 =head3 getLineStandardOutPath 
 
