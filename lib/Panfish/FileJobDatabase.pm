@@ -441,14 +441,54 @@ sub getJobByClusterAndId {
    if (defined($self->{Logger})){
       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
    } 
-   
-   my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName,Panfish::JobState->KILL());
+
+   my ($state,$jobFile) = $self->_findJobFile($searchDir,$jobFileName);
+
    if (!defined($jobFile)){
      return undef;
    }
 
    return $self->_getJobFromJobFile($jobFile,$cluster);
 }
+
+sub _findJobFile {
+   my $self = shift;
+   my $prefixDir = shift;
+   my $fileName = shift;
+   
+   my @jobStates = Panfish::JobState->getAllStates();
+   for (my $x = 0; $x < @jobStates; $x++){
+      if ($self->{FileUtil}->runFileTest("-e",$prefixDir."/".$jobStates[$x]."/".$fileName)){
+         return ($jobStates[$x],$prefixDir."/".$jobStates[$x]."/".$fileName);
+      }
+   }
+   return undef,undef;
+}
+
+=head3 getJobStateByClusterAndId
+
+Given cluster, job id/task return current state of job
+
+my $db->getJobStateByClusterAndId($cluster,$jobId,$taskId);
+
+=cut
+
+sub getJobStateByClusterAndId {
+    my $self = shift;
+    my $cluster = shift;
+    my $jobId = shift;
+    my $taskId = shift;
+  
+    my $jobFileName = "$jobId".$self->_getTaskSuffix($taskId);
+    my $searchDir = $self->{SubmitDir}."/".$cluster;
+    if (defined($self->{Logger})){
+       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
+    }
+    my ($state,$jobFile) = $self->_findJobFile($searchDir,$jobFileName);
+   
+    return $state;
+}
+
 
 =head3 getJobByClusterAndStateAndId
 
@@ -472,7 +512,7 @@ sub getJobByClusterAndStateAndId {
        $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
     }
 
-    my $jobFile = $self->{FileUtil}->findFile($searchDir,$jobFileName,Panfish::JobState->KILL());
+    my $jobFile = $self->_findJobFile($searchDir,$jobFileName);
     if (!defined($jobFile)){
        return undef;
     }
