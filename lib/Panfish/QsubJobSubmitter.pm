@@ -38,7 +38,8 @@ sub new {
      Logger         => shift,
      FileUtil       => shift,
      Executor       => shift,
-     JobHashFactory => shift
+     JobHashFactory => shift,
+     PathSorter     => shift
    };
  
    if (!defined($self->{Logger})){
@@ -84,7 +85,10 @@ sub submitJobs {
     
     my $jobHashByPsub = $self->_buildJobHash($cluster);   
     my $jobCount = 0;
-    for my $psubFile (keys %$jobHashByPsub){
+    my @keys = keys %$jobHashByPsub;
+    my @sortedJobPaths = $self->{PathSorter}->sort(\@keys);
+    my $psubFile;
+    foreach $psubFile (@sortedJobPaths){
  
        if ($runningJobCount >= $self->{Config}->getMaximumNumberOfRunningJobs()){
            $self->{Logger}->debug("Reached maximum number of jobs that can be run on cluster $cluster");

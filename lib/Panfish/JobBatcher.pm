@@ -41,6 +41,7 @@ sub new {
      Reader              => shift,
      Writer              => shift,
      JobHashFactory      => shift,
+     PathSorter          => shift,
      COMMANDS_FILE_SUFFIX => ".commands",
      PSUB_FILE_SUFFIX    => ".psub"
    };
@@ -82,9 +83,11 @@ sub batchJobs {
     my $jobHashByPath = $self->_buildJobHash($cluster); 
 
     my @sortedJobs;
- 
+    my @keys = keys %$jobHashByPath; 
+    my @sortedJobPaths = $self->{PathSorter}->sort(\@keys);
+    my $jobPath;
     # iterate through each job array
-    for my $jobPath (keys %$jobHashByPath){
+    foreach $jobPath (@sortedJobPaths){
 
         # sort the job array by task id
         @sortedJobs = sort {$self->_sortJobsByTaskId } @{$jobHashByPath->{$jobPath}};

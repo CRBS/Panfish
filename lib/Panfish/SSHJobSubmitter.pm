@@ -38,7 +38,8 @@ sub new {
      Logger         => shift,
      FileUtil       => shift,
      SSHExecutor    => shift,
-     JobHashFactory => shift
+     JobHashFactory => shift,
+     PathSorter     => shift
    };
  
    if (!defined($self->{Logger})){
@@ -79,9 +80,13 @@ sub submitJobs {
 
     my $jobCount = 0;
     my @psubArray;
+    my @keys = keys %$jobHashByPsubFile;
+    my @sortedJobPaths = $self->{PathSorter}->sort(\@keys);    
+
+    my $psubFile;
     # Iterate through hash and get list of psub files
     # put into array and pass to submitter
-    for my $psubFile (keys %$jobHashByPsubFile){
+    foreach $psubFile (@sortedJobPaths){
         $jobCount +=  @{$jobHashByPsubFile->{$psubFile}};
         push(@psubArray,$psubFile);
     }
@@ -103,7 +108,6 @@ sub submitJobs {
     }
 
     $jobCount = 0;
-    my $psubFile;
 
     # update database with new status
     $self->{Logger}->debug("Submit succeeded updating database for $cluster");

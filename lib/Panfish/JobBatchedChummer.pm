@@ -39,7 +39,8 @@ sub new {
      Logger         => shift,
      FileUtil       => shift,
      RemoteIO       => shift,
-     JobHashFactory => shift
+     JobHashFactory => shift,
+     PathSorter     => shift
    };
  
    if (!defined($self->{Logger})){
@@ -72,7 +73,9 @@ sub chumBatchedJobs {
         $self->{Logger}->error("Cluster is not set");
         return "Cluster is not set";
     }
-    
+    if (!defined($self->{PathSorter})){
+        return "Path Sorter not set";
+    }
     my $res;
     
     # builds a hash where key is base dir where psub and commands
@@ -84,9 +87,13 @@ sub chumBatchedJobs {
                            " state for $cluster");
     
     my $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
- 
+
+    my @keys = keys %$jobHashByPsubDir;
+    my @sortedJobPaths = $self->{PathSorter}->sort(\@keys);
+
+    my $psubDir; 
     # iterate through each job array
-    for my $psubDir (keys %$jobHashByPsubDir){
+    foreach $psubDir (@sortedJobPaths){
         
         $self->{Logger}->debug("Found ".@{$jobHashByPsubDir->{$psubDir}}.
                                " jobs with dir : $psubDir");
