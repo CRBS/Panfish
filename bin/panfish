@@ -33,6 +33,7 @@ use Panfish::PsubDirnameHashKeyGenerator;
 use Panfish::PsubHashKeyGenerator;
 use Panfish::PsubIdHashKeyGenerator;
 use Panfish::FileLock;
+use Panfish::SortByFileAgeSorter;
 
 my $cmdLineParseResult = GetOptions ("daemon=s"     => \$daemonArgValue,
                                      "cluster=s"    => \$clusterArgValue,
@@ -74,6 +75,7 @@ my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($config->getPanfishVerbosity());
 
 my $fUtil = Panfish::FileUtil->new($logger);
+my $fileAgeSorter = Panfish::SortByFileAgeSorter->new($fUtil);
 my $writer = Panfish::FileReaderWriterImpl->new($logger);
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
@@ -107,7 +109,7 @@ my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$log
 my $curDirKeyGen = Panfish::CurrentWorkingDirHashKeyGenerator->new($logger);
 my $curDirJobHashFac = Panfish::JobHashFactory->new($curDirKeyGen,$logger);
 
-my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer,$curDirJobHashFac);
+my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer,$curDirJobHashFac,$fileAgeSorter);
 
 my $psubKeyGen = Panfish::PsubHashKeyGenerator->new($logger,$fUtil);
 
@@ -116,12 +118,12 @@ my $psubDirKeyGen = Panfish::PsubDirnameHashKeyGenerator->new($logger,$psubKeyGe
 my $psubDirJobHashFac = Panfish::JobHashFactory->new($psubDirKeyGen,$logger);
 
 my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
-                                                   $logger,$fUtil,$uploader,$psubDirJobHashFac);
+                                                   $logger,$fUtil,$uploader,$psubDirJobHashFac,$fileAgeSorter);
 
 my $psubJobHashFac = Panfish::JobHashFactory->new($psubKeyGen,$logger);
 
 my $sshSubmitter = Panfish::SSHJobSubmitter->new($config,$jobDb,$logger,
-                                           $fUtil,$sshExec,$psubJobHashFac);
+                                           $fUtil,$sshExec,$psubJobHashFac,$fileAgeSorter);
 
 my $psubIdKeyGen = Panfish::PsubIdHashKeyGenerator->new($logger,$psubKeyGen);
 
@@ -130,7 +132,7 @@ my $psubIdJobHashFac = Panfish::JobHashFactory->new($psubIdKeyGen,$logger);
 my $sshWatcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
                                        $fUtil,$sshExec,$psubIdJobHashFac);
 
-my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec,$psubJobHashFac);
+my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec,$psubJobHashFac,$fileAgeSorter);
 
 my $qstatWatcher = Panfish::QstatJobWatcher->new($config,$jobDb,$logger,
                                                  $fUtil,$exec);
