@@ -55,6 +55,9 @@ sub runFileTest {
    my $flag = shift;
    my $path = shift;
 
+   if ($flag eq "-e"){
+      return -e $path;
+   }
    if ($flag eq "-f"){
       return -f $path;
    }
