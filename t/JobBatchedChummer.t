@@ -22,7 +22,7 @@ use Panfish::PanfishConfig;
 use Panfish::Config;
 use Panfish::JobState;
 use Panfish::Job;
-
+use Panfish::SortByFileAgeSorter;
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
@@ -57,8 +57,9 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $db = Mock::JobDatabase->new();
    my $keyGen = Mock::HashKeyGenerator->new();
    my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
- 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,undef,undef,$hashFac);
+   my $fUtil = Mock::FileUtil->new();
+   my $sorter = Panfish::SortByFileAgeSorter->new($fUtil); 
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,undef,undef,$hashFac,$sorter);
 
    ok(!defined($chummer->chumBatchedJobs($CLUSTER)));
 
@@ -76,15 +77,18 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $db = Mock::JobDatabase->new();
    my $keyGen = Mock::HashKeyGenerator->new();
    my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
+
+   my $fUtil = Mock::FileUtil->new();
+   my $sorter = Panfish::SortByFileAgeSorter->new($fUtil);
+
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new($CLUSTER,"1","2","name","cwd","command",
                                        Panfish::JobState->BATCHED(),1,undef,"psub",undef,undef);
 
    $db->addGetJobsByClusterAndStateResult($CLUSTER,Panfish::JobState->BATCHED(),\@clusterJobs);
-
    $keyGen->addGetKeyResult($clusterJobs[0],undef);
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,undef,$hashFac);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fUtil,undef,$hashFac,$sorter);
    ok(!defined($chummer->chumBatchedJobs($CLUSTER)));
 
    my @logs = $logger->getLogs();
@@ -100,6 +104,9 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $logger = Mock::Logger->new(1);
    my $db = Mock::JobDatabase->new();
    my $remote = Mock::RemoteIO->new();
+
+   my $fu = Mock::FileUtil->new();
+   my $sorter = Panfish::SortByFileAgeSorter->new($fu);
  
    my $keyGen = Mock::HashKeyGenerator->new();
    my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
@@ -114,7 +121,7 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
 
    $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac,$sorter);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
@@ -142,6 +149,7 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $db->addUpdateResult($clusterJobs[0],"someerror");
 
    my $fu = Mock::FileUtil->new();
+   my $sorter = Panfish::SortByFileAgeSorter->new($fu);
 
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
 
@@ -150,7 +158,7 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $remote->addUploadResult("psubdir","foo2",undef,undef);
 
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac,$sorter);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
@@ -173,13 +181,13 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $keyGen = Mock::HashKeyGenerator->new();
    my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
 
-
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new("foo2","1","2","name","cwd","command",
                                        Panfish::JobState->BATCHED(),1,undef,"psub",undef,undef);
    $db->addGetJobsByClusterAndStateResult("foo2",Panfish::JobState->BATCHED(),\@clusterJobs);
 
    my $fu = Mock::FileUtil->new();
+   my $sorter = Panfish::SortByFileAgeSorter->new($fu);
 
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
    $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
@@ -187,7 +195,7 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $remote->addUploadResult("psubdir","foo2",undef,undef);
 
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac,$sorter);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
@@ -215,12 +223,13 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $db->addGetJobsByClusterAndStateResult($CLUSTER,Panfish::JobState->BATCHED(),\@clusterJobs);
 
    my $fu = Mock::FileUtil->new();
+   my $sorter = Panfish::SortByFileAgeSorter->new($fu);
 
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
 
   $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,undef,$hashFac);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,undef,$hashFac,$sorter);
    ok(!defined($chummer->chumBatchedJobs($CLUSTER)));
 
    my @logs = $logger->getLogs();
@@ -254,16 +263,21 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $db->addGetJobsByClusterAndStateResult("foo2",Panfish::JobState->BATCHED(),\@clusterJobs);
 
    my $fu = Mock::FileUtil->new();
+   my $sorter = Panfish::SortByFileAgeSorter->new($fu);
+
 
    $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
    $keyGen->addGetKeyResult($clusterJobs[1],"psubdir");
    $keyGen->addGetKeyResult($clusterJobs[2],"psubdir");
    $fu->addGetDirnameResult("psubdir","dirpsubdir");
+ 
+   $fu->addRunFileTestResult("-M","psubdir",100);
 
+ 
    $remote->addUploadResult("psubdir","foo2",undef,undef);
 
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac,$sorter);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
@@ -302,7 +316,7 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $db->addGetJobsByClusterAndStateResult("foo2",Panfish::JobState->BATCHED(),\@clusterJobs);
 
    my $fu = Mock::FileUtil->new();
-
+   my $sorter = Panfish::SortByFileAgeSorter->new($fu);
    $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
    $keyGen->addGetKeyResult($clusterJobs[1],"psubdir");
    $keyGen->addGetKeyResult($clusterJobs[2],"psubdir");
@@ -314,8 +328,10 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    $remote->addUploadResult("psubdir","foo2",undef,undef);
    $remote->addUploadResult("psubdir3","foo2",undef,undef);
 
+   $fu->addRunFileTestResult("-M","psubdir",20);
+   $fu->addRunFileTestResult("-M","psubdir3",50);
 
-   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac);
+   my $chummer = Panfish::JobBatchedChummer->new($config,$db,$logger,$fu,$remote,$hashFac,$sorter);
    ok(!defined($chummer->chumBatchedJobs("foo2")));
 
    my @logs = $logger->getLogs();
