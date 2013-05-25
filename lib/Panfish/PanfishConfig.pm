@@ -74,10 +74,13 @@ sub _getValueFromConfig {
     my $key = shift; 
     my $cluster = shift;
     if (!defined($self->{Config})){
-        return undef;
+        return "";
     }
 
     if (!defined($cluster)){
+      if (!defined($self->getThisCluster())){
+         return "";
+      }
       $key = $self->getThisCluster().".".$key;
     }
     elsif ($cluster ne ""){
@@ -246,6 +249,7 @@ my $psub = $foo->getPanfishSubmit("gordon_shadow.q");
 sub getPanfishSubmit {
     my $self = shift;
     my $cluster = shift;
+
     return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
            $self->{PANFISH_SUBMIT};
 }
@@ -390,7 +394,22 @@ my ($skippedClusters,@cArray) = $config->getClusterListAsArray("lion_shadow.q,po
 sub getClusterListAsArray {
     my $self = shift;
     my $clusterList = shift;
+
+    my $skipCheck = shift;
+
     my $skippedClusters = undef;
+
+    my $cListFromConfig = $self->_getValueFromConfig($self->{CLUSTER_LIST},"");
+    if ($cListFromConfig eq ""){
+         my @tmpArr;
+         if (defined($clusterList) && defined($skippedClusters) &&
+             $skippedClusters == 1){
+             my @tmpArr = split(",",$clusterList);
+             return (undef,@tmpArr);
+         }
+         return($clusterList,@tmpArr);
+    }
+
     my @cArray = split(",",$self->_getValueFromConfig($self->{CLUSTER_LIST},""));
 
     if (!defined($clusterList)){
@@ -410,7 +429,8 @@ sub getClusterListAsArray {
     my @finalArray;
     
     for (my $x = 0; $x < @cArrayFromParam; $x++){
-        if (defined($cHash{$cArrayFromParam[$x]})){
+        if (defined($cHash{$cArrayFromParam[$x]}) ||
+            (defined($skipCheck) && $skipCheck == 1)){
             push(@finalArray,$cArrayFromParam[$x]);
         }
         else {
@@ -534,6 +554,10 @@ sub getConfigForCluster {
     my $cluster = shift;
     my @config = ();
 
+    if (!defined($cluster)){
+       return @config;
+    }
+
     push(@config,$self->{THIS_CLUSTER}."=".$cluster);
     push(@config,$self->{CLUSTER_LIST}."=".$cluster);
     push(@config,$cluster.".".$self->{ENGINE}."=".$self->getEngine($cluster));
@@ -544,14 +568,9 @@ sub getConfigForCluster {
     push(@config,$cluster.".".$self->{BIN_DIR}."=".$self->getBinDir($cluster));
     push(@config,$cluster.".".$self->{MAX_NUM_RUNNING_JOBS}."=".$self->getMaximumNumberOfRunningJobs($cluster));
     push(@config,$cluster.".".$self->{PANFISH_SLEEP}."=".$self->getPanfishSleepTime($cluster));
-
     push(@config,$cluster.".".$self->{SCRATCH}."=".$self->getScratchDir($cluster));
-
     push(@config,$cluster.".".$self->{PANFISH_VERBOSITY}."=".$self->getPanfishVerbosity($cluster));
-
     push(@config,$cluster.".".$self->{PANFISHSUBMIT_VERBOSITY}."=".$self->getPanfishSubmitVerbosity($cluster));
-
-    push(@config,$cluster.".".$self->{PANFISH_SLEEP}."=".$self->getPanfishSleepTime($cluster));
 
     return @config;
 }
