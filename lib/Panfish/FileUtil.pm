@@ -370,28 +370,35 @@ my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $f->getDirectorySize(
 sub getDirectorySize {
     my $self = shift;
     my $path = shift;
+    my $depth = shift;
 
     # this is a file just return
     if (-f $path){
         my $size = -s $path;
         return (1,0,0,$size,undef);
     }
-    
-    # this is a symlink invoke readlink up to 100 times to find a file or directory otherwise
-    # give up
+
+    # if we reached a depth of 20 bail cause this is too deep and might hint
+    # at a circular reference
+    if (defined($depth) && $depth > 20){
+        $self->{Logger}->error("Reached max directory depth of 20");
+        return (0,0,0,0,"Reached max directory depth of 20");
+    }    
+
+    # increment path depth cause its not a file
+    if (!defined($depth)){
+      $depth = 1;
+    }
+    else {
+      $depth++;
+    }
+
+    # this is a symlink invoke readlink and follow that path
     if (-l $path){
-        
-        my $linkCount=1;
-        my $origPath = $path;
-        while (-l $path && $linkCount < 100){
-          $linkCount++;
-          $path = readlink($path);
-        }  
-        if ($linkCount >= 100){
-            $self->{Logger}->error("Encountered too many symbolic links with path : $origPath");
-            return (0,0,0,0,"Encountered too many symbolic links with path : $origPath");
-        }
-        return $self->getDirectorySize($path);
+        $path = readlink($path);
+        my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $self->getDirectorySize($path,$depth);
+        $numSymLinks++;
+        return ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error);
     }
 
     # this is a directory
@@ -414,7 +421,7 @@ sub getDirectorySize {
         my $totalBytes = 0;
 
         for (my $x = 0; $x < @files; $x++){
-            ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $self->getDirectorySize($path."/".$files[$x]);
+            ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $self->getDirectorySize($path."/".$files[$x],$depth);
 	    $totalFiles += $numFiles; 
             $totalDirs += $numDirs;
             $totalSymLinks += $numSymLinks;
