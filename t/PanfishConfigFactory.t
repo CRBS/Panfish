@@ -84,7 +84,7 @@ use Panfish::Config;
     $config = $pcf->getPanfishConfig($config);
     ok($config->getThisCluster() eq "bahh");
     ok($config->getScratchDir() eq "/yo");
-    ok(!defined($config->getScratchDir("foo")));
+    ok($config->getScratchDir("foo") eq "");
 
 
     my @rows = split("\n",$logoutput);
