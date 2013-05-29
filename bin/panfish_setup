@@ -30,8 +30,10 @@ if (@ARGV == 0){
 my $cmdLineParseResult = GetOptions ("sync=s"       => \$syncArgValue,
                                      "syncall"      => \$syncallArg,
                                      "writeconfig"  => \$writeConfigArg,
-                                     "setupdb"      => \$setupDbArg,
-                                     "examinedir=s" => \$examineDirArg,
+                                     "setupdball"   => \$setupDbAllArg,
+                                     "setupdb=s"    => \$setupDbArg,
+                                     "examinedir=s" => \$examineDirArgValue,
+                                     "exists=s"     => \$existsArgValue,
                                      "removedir=s"  => \$removeDirArg,
                                      "verbose+"     => \$verboseArg,
                                      "help|?"       => \$helpArg,
@@ -84,8 +86,8 @@ my $fUtil = Panfish::FileUtil->new($logger);
 
 # if --examinedir argument is set get the size of the directory and
 # return information on that path in configuration file format
-if (defined($examineDirArg)){
-   my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($examineDirArg);
+if (defined($examineDirArgValue)){
+   my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($examineDirArgValue);
    print "num.files=$numFiles\n";
    print "num.dirs=$numDirs\n";
    print "num.symlinks=$numSymLinks\n";
@@ -97,6 +99,18 @@ if (defined($examineDirArg)){
    }
    
    print "\n";
+   exit(0);
+}
+
+# if --exists argument is set just run simple file test to see if path specified
+# exists
+if (defined($existsArgValue)){   
+   if($fUtil->runFileTest("-e",$existsArgValue)){
+      print "exists=yes\n";
+   }
+   else {
+      print "exists=no\n";
+   }
    exit(0);
 }
 
@@ -133,12 +147,21 @@ if (defined($removeDirArg)){
    exit(1);
 }
 
+my $skipClusterArgCheck = undef;
 
 # initialize the job database
-if (defined($setupDbArg)){
+if (defined($setupDbArg) || defined($setupDbAllArg)){
    $logger->info("Initializing Database ".$config->getDatabaseDir());
+
    my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
-   my ($error,@clusterList) = $config->getClusterListAsArray();
+
+   my $cList = undef;
+   if (defined($setupDbArg)){
+      $cList = $setupDbArg;
+      $skipClusterArgCheck = 1;
+   }
+
+   my ($error,@clusterList) = $config->getClusterListAsArray($cList,$skipClusterArgCheck);
    if (defined($error)){
       $logger->fatal("Problems getting list of clusters needed to initialize db : $error");
       exit(1);
@@ -161,9 +184,10 @@ if (defined($syncArgValue) || defined($syncallArg)){
    my $cList = undef;
    if (defined($syncArgValue)){
      $cList = $syncArgValue;
+     $skipClusterArgCheck = 1;
    }
 
-   my ($error,@clusterList) = $config->getClusterListAsArray($cList);
+   my ($error,@clusterList) = $config->getClusterListAsArray($cList,$skipClusterCheckArg);
    if (defined($error)){
      $logger->fatal("Unable to synchronize to cluster : $cList : not in valid cluster list");
      exit(1);
@@ -264,8 +288,8 @@ sub initializeDatabase {
    $sshExec->setStandardInputCommand(undef);
    $sshExec->setCluster($cluster);
    $sshExec->enableSSH();
-   $logger->debug("Running $remoteBinDir/panfish_setup --setupdb");
-     $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --setupdb",60);
+   $logger->debug("Running $remoteBinDir/panfish_setup --setupdball");
+     $exit = $sshExec->executeCommand($remoteBinDir."/panfish_setup --setupdball",60);
      if ($exit != 0){
           $logger->error("Unable to run ".$sshExec->getCommand().
                                  "  : ".$sshExec->getOutput());
@@ -356,12 +380,25 @@ The AA,BB,CC,DD would be set to values for path and B<error's> value
 would be blank unless there was a problem in which case it would be set. 
 Also the program will exit with non zero exit code if there is a problem
 
+=item B<--exists path>
+
+Checks if path set exists on filesystem. Output will be in this format:
+
+exists=AA
+
+The AA is set to "yes" if the path exists or "no" if it does not.
+
 =item B<--removedir directory>
 
 Removes directory specified.  Code will exit with 0 exit code upon success or 1 upon failure.
 
-=item B<--setupdb>
-Sets up Job database directory for current cluster
+=item B<--setupdb cluster>
+
+Sets up Job database directory for B<cluster> specified.
+
+=item B<--setupdball>
+
+Sets up Job database for all clusters in panfish.config::cluster.list
 
 =item B<--sync cluster>
 
