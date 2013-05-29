@@ -26,18 +26,19 @@ if (@ARGV == 0){
 }
 
 
-my $cmdLineParseResult = GetOptions ("path=s"        => \$pathArgValue,
-                                     "deletebefore"  => \$deleteBeforeArg,
-                                     "cluster=s"     => \$clusterArgValue,
-                                     "exclude=s"     => \@excludeArgValues,
-                                     "listchummed"   => \$listChummedArg,
-                                     "listexists"    => \$listExistsArg,
-                                     "retry=i"       => \$retryArgValue,
-                                     "timeout=i"     => \$timeOutArgValue,
-                                     "dry-run"       => \$dryRunArg,
-                                     "verbose+"      => \$verboseArg,
-                                     "help|?"        => \$helpArg,
-                                     "man"           => \$manArg) or pod2usage(2);
+my $cmdLineParseResult = GetOptions ("path=s"           => \$pathArgValue,
+                                     "deletebefore"     => \$deleteBeforeArg,
+                                     "cluster=s"        => \$clusterArgValue,
+                                     "skipclustercheck" => \$skipClusterCheckArg,
+                                     "exclude=s"        => \@excludeArgValues,
+                                     "listchummed"      => \$listChummedArg,
+                                     "listexists"       => \$listExistsArg,
+                                     "retry=i"          => \$retryArgValue,
+                                     "timeout=i"        => \$timeOutArgValue,
+                                     "dry-run"          => \$dryRunArg,
+                                     "verbose+"         => \$verboseArg,
+                                     "help|?"           => \$helpArg,
+                                     "man"              => \$manArg) or pod2usage(2);
 
 
 if ($helpArg){
@@ -86,7 +87,14 @@ my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
-my ($error,@clusterList) = $config->getClusterListAsArray($clusterArgValue);
+# if skip cluster check is set then set the $skipClusterCheckArg to 1 and pass it to
+# getClusterListAsArray
+if (defined($skipClusterCheckArg) && defined($clusterArgValue)){
+   $skipClusterCheckArg = 1;   
+}
+
+my ($error,@clusterList) = $config->getClusterListAsArray($clusterArgValue,$skipClusterCheckArg);
+
 
 my $fUtil = Panfish::FileUtil->new($logger);
 
@@ -191,8 +199,8 @@ for (my $x = 0; $x < @clusterList ; $x++){
           print "\n";
        }
        $startTime = time();
-       my ($numFilesR,$numDirsR,$numSymLinksR,$sizeInBytesR,$errorR) = $uploader->getDirectorySize($pathArgValue,
-                                                                                              $clusterList[$x]);
+       my ($exists,$errorR) = $uploader->exists($pathArgValue,$clusterList[$x]);
+                                                                                              
 
        $duration = time() - $startTime;
 
@@ -201,24 +209,17 @@ for (my $x = 0; $x < @clusterList ; $x++){
            next;
        }
 
-       $logger->info("Remote # of Files:  $numFilesR");
-       $logger->info("Remote # of Directories:  $numDirsR");
-       $logger->info("Remote # of Symlinks:  $numSymLinksR");
-       $logger->info("Remote Size in Bytes:  $sizeInBytesR");
-
        print " ... done.  Took $duration seconds.  ";
-       print "Found $sizeInBytesR bytes in $numFilesR files";
 
-       if (($numFilesR > 0 && $numFiles > 0) ||
-           ($numDirsR > 0 && $numDirs > 0)){
+       if ($exists == 1){
            if ($chummedClusters ne ""){
               $chummedClusters .= ",";
            }
            $chummedClusters .= $clusterList[$x];
-           print " which meets exists criteria.  Adding cluster to list\n\n";
+           print "Path exists.  Adding cluster to list\n\n";
        }
        else {
-          print " which does NOT meet exists criteria.  Skipping cluster\n\n";
+          print "Path does NOT exist.  Skipping cluster\n\n";
        }
        next;
     }
@@ -302,6 +303,11 @@ Defines the list of clusters (comma delimited) that the directory should be uplo
 If this argument is omitted then all clusters listed in B<panfish.config::queue.list> will
 be used.  
 
+=item B<--dry-run>
+
+If set, the program will NOT transfer any data, instead the program will merely state what it 
+would transfer.
+
 =item B<--deletebefore>
 
 Defines whether remote path is deleted before transfer is started.  Default is no.
@@ -315,8 +321,8 @@ chummed.clusters=CLUSTER1,CLUSTER2,CLUSTER3
 
 =item B<--listexists>
 
-If set program will output a line listing what clusters the directory specified path exists.  The
-matching rules only verify both local and remote contain 1 or more files or directories.
+If set program will output a line listing what clusters the specified path exists.  The
+matching rules only verify remote path exists as done with -e flag in bash.
 
 =item B<--exclude PATTERN>
 
@@ -332,10 +338,9 @@ Defines the number of times to retry the transfer per cluster before failing. De
 Defines timeout in seconds this program should wait before attempting a retry if a transfer failed.
 Default is 30 seconds.
 
-=item B<--dry-run>
+=item B<--skipclustercheck>
 
-If set, the program will NOT transfer any data, instead the program will merely state what it 
-would transfer.
+If set B<chum> skips the check on validity of cluster or clusters set in B<--cluster> flag.  
 
 =item B<--verbose>
 
