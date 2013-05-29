@@ -371,6 +371,74 @@ sub getDirectorySize {
     return ($numFiles,$numDirs,$numSymlinks,$sizeInBytes,$error);
 }
 
+=head3 exists
+
+Checks if path exists on remote system returning  1 if it exists in the
+$val variable and 0 if not.  If there was an error it will be set in
+$error
+
+my ($val,$error) = $remoteIo->exists("/foo/somefile","foo.cluster");
+
+=cut
+
+sub exists {
+    my $self = shift;
+    my $path = shift;
+    my $cluster = shift;
+
+    if (!defined($path)){
+       return (0,"Path is not defined");
+    }
+
+    if (!defined($cluster)){
+       return (0,"Cluster is not defined");
+    }
+
+    # unset any command which is piped to the command to execute
+    $self->{SSHExecutor}->setStandardInputCommand(undef);
+
+    my $remoteDir = $self->{Config}->getBaseDir($cluster).$path;
+    $self->{SSHExecutor}->setCluster($cluster);
+
+    $self->{SSHExecutor}->enableSSH();
+
+    my $panfishSetup = $self->{Config}->getPanfishSetup($cluster)." --exists $remoteDir";
+    $self->{Logger}->debug("Running $panfishSetup");
+
+    my $exit = $self->{SSHExecutor}->executeCommandWithRetry($self->{RetryCount},$self->{RetrySleep},
+                                                          $panfishSetup,undef,undef);
+    # if we get a non zero exit code bail
+    if ($exit != 0){
+       $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
+                               "  : ".$self->{SSHExecutor}->getOutput());
+       return (0,$self->{SSHExecutor}->getOutput());
+    }
+
+    $self->{Logger}->debug("Output : ".$self->{SSHExecutor}->getOutput());
+    my @rows = split("\n",$self->{SSHExecutor}->getOutput());
+    my $exists = 0;
+    my $key;
+    my $val;
+    my $error = undef;
+    for (my $x = 0; $x < @rows; $x++){
+       chomp($rows[$x]);
+       if ($rows[$x]=~/^(.*)=(.*)$/){
+           $key = $1;
+           $val = $2;
+           if ($key eq "exists"){
+              if ($val eq "yes"){
+                 $exists = 1;
+              }
+              last;
+           }
+       }
+    }
+    if ($key ne "exists"){
+      $error = "exists key not found in output";
+    }
+    return ($exists,$error);
+}
+
 
 1;
 
