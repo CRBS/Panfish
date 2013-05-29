@@ -86,8 +86,11 @@ sub _getValueFromConfig {
     elsif ($cluster ne ""){
       $key = $cluster.".".$key;
     }
-
-    return $self->{Config}->getParameterValue($key);
+    my $val = $self->{Config}->getParameterValue($key);
+    if (!defined($val)){
+      return "";
+    }
+    return $val;
 }
 
 =head3 getThisCluster 
