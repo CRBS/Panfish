@@ -29,10 +29,12 @@ if (@ARGV == 0){
 my $cmdLineParseResult = GetOptions ("path|directory=s"  => \$directoryArgValue,
                                      "exclude=s"    => \@excludeArgValues,
                                      "cluster=s"    => \$clusterArgValue,
+                                     "skipclustercheck" => \$skipClusterCheckArg,
                                      "deleteonly"   => \$deleteOnlyArg,
                                      "retry=i"      => \$retryArgValue,
                                      "timeout=i"    => \$timeOutArgValue,
                                      "dry-run"      => \$dryRunArg,
+                                     "stats"        => \$statsArg,
                                      "verbose+"     => \$verboseArg,
                                      "help|?"       => \$helpArg,
                                      "man"          => \$manArg) or pod2usage(2);
@@ -85,7 +87,13 @@ my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $downloader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
-my ($skippedClusters,@clusterList) = $config->getClusterListAsArray($clusterArgValue);
+# if skip cluster check is set then set the $skipClusterCheckArg to 1 and pass it to
+# getClusterListAsArray
+if (defined($skipClusterCheckArg) && defined($clusterArgValue)){
+    $skipClusterCheckArg = 1;
+}
+
+my ($skippedClusters,@clusterList) = $config->getClusterListAsArray($clusterArgValue,$skipClusterCheckArg);
 
 if (defined($skippedClusters)){
   $logger->warn("Skipping following clusters since they are no longer in the remote cluster list in config: $skippedClusters");
@@ -108,6 +116,8 @@ if (@excludeArgValues && defined($deleteOnlyArg)){
   exit(1);
 }
 
+my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error);
+
 # clean up the directory path
 $directoryArgValue = $fUtil->standardizePath($directoryArgValue);
 
@@ -125,8 +135,10 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }   
     my $startTime = time();
 
-    my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $downloader->getDirectorySize($directoryArgValue,
-                                                                                             $clusterList[$x]);
+    if (defined($statsArg)){
+        ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $downloader->getDirectorySize($directoryArgValue,
+                                                                                              $clusterList[$x]);
+    }
     $duration = getDuration($startTime);
 
     if (defined($error)){
@@ -136,14 +148,19 @@ for (my $x = 0; $x < @clusterList ; $x++){
     }
 
     print " ... done.  Took $duration seconds.  ";
-    print "Found $sizeInBytes bytes in $numFiles files\n\n";
+    if (defined($statsArg)){
+       print "Found $sizeInBytes bytes in $numFiles files";
+    }
+    print "\n\n";
 
-    $logger->info("Directory to download: $directoryArgValue");
-    $logger->info("# of Files:  $numFiles");
-    $logger->info("# of Directories:  $numDirs");
-    $logger->info("# of Symlinks:  $numSymLinks");
-    $logger->info("Size in Bytes:  $sizeInBytes");
-
+    if (defined($statsArg)){
+       $logger->info("Directory to download: $directoryArgValue");
+       $logger->info("# of Files:  $numFiles");
+       $logger->info("# of Directories:  $numDirs");
+       $logger->info("# of Symlinks:  $numSymLinks");
+       $logger->info("Size in Bytes:  $sizeInBytes");
+    }
+ 
     if (defined($dryRunArg)){
           print "Dry run no action taken\n";
           next;
@@ -258,6 +275,11 @@ would transfer.
 
 If set the path defined in B<--directory> will be deleted on the remote clusters.  This parameter
 cannot be used with --exclude.
+
+=item B<--stats>
+
+If set remotely query remote dataset size and output those statistics.  More information can be obtained
+by setting B<--verbose> flag.
 
 =item B<--verbose>
 
