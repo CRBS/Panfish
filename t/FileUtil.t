@@ -10,11 +10,13 @@ use Fcntl ':mode';
 # change 'tests => 1' to 'tests => last_test_to_print';
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
+use lib $Bin;
 
-use Test::More tests => 95;
+use Test::More tests => 126;
 use Panfish::FileReaderWriterImpl;
 use Panfish::FileUtil;
 use Panfish::Logger;
+use Mock::Logger;
 #########################
 
 $|=1;
@@ -308,4 +310,116 @@ $|=1;
 
 }
 
+# test getDirectorySize with depth of 2 and 2 files
+{
+   my $logger = Mock::Logger->new();
+   my $fUtil = Panfish::FileUtil->new($logger);
+
+   # remove existing test directory and make a new one
+   # using external command cause its easier to do
+   my $testdir = $Bin."/testFileUtil";
+   $fUtil->recursiveRemoveDir($testdir);
+   ok($fUtil->makeDir($testdir) == 1);
+
+   ok($fUtil->makeDir($testdir."/one") == 1);
+   ok($fUtil->makeDir($testdir."/one/two") == 1);   
+
+    my $writer = Panfish::FileReaderWriterImpl->new();
+
+    my $first = "$testdir/first.txt";
+
+    ok(!defined($writer->openFile(">$first")));
+    $writer->write("somedata\n");
+    $writer->close();
+
+    $first = "$testdir/one/second.txt";
+
+    ok(!defined($writer->openFile(">$first")));
+    $writer->write("somedata\n");
+    $writer->close();
+
+    my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($testdir);
+    ok($numFiles == 2);
+    ok($numDirs == 3);
+    ok($numSymLinks == 0);
+    ok($sizeInBytes == 18);
+    ok(!defined($error));
+
+    ok(!defined($logger->getLogs()));
+}
+
+# test getDirectorySize with a simple link to external directory that is fine
+{
+   my $logger = Mock::Logger->new();
+   my $fUtil = Panfish::FileUtil->new($logger);
+
+   my $testdir = $Bin."/testFileUtil";
+   $fUtil->recursiveRemoveDir($testdir);
+   ok($fUtil->makeDir($testdir) == 1);
+
+   ok($fUtil->makeDir($testdir."/one") == 1);
+   ok($fUtil->makeDir($testdir."/two") == 1);
+   
+
+    my $writer = Panfish::FileReaderWriterImpl->new();
+
+    my $first = "$testdir/two/first.txt";
+
+    ok(!defined($writer->openFile(">$first")));
+    $writer->write("somedata\n");
+    $writer->close();
+
+
+    $first = "$testdir/one/second.txt";
+
+    ok(!defined($writer->openFile(">$first")));
+    $writer->write("somedata\n");
+    $writer->close();
+
+    ok(eval{ symlink($testdir."/two",$testdir."/one/twolink")});
+
+    my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($testdir."/one");
+    ok($numFiles == 2);
+    ok($numDirs == 2);
+    ok($numSymLinks == 1);
+    ok($sizeInBytes == 18);
+    ok(!defined($error));
+
+    ok(!defined($logger->getLogs()));
+}
+
+
+# test getDirectorySize with a circular link
+{
+   my $logger = Mock::Logger->new();
+   my $fUtil = Panfish::FileUtil->new($logger);
+
+   my $testdir = $Bin."/testFileUtil";
+   $fUtil->recursiveRemoveDir($testdir);
+   ok($fUtil->makeDir($testdir) == 1);
+
+   ok($fUtil->makeDir($testdir."/one") == 1);
+   ok(eval{ symlink($testdir."/one",$testdir."/one/circular")});
+
+    my $writer = Panfish::FileReaderWriterImpl->new();
+
+    my $first = "$testdir/first.txt";
+
+    ok(!defined($writer->openFile(">$first")));
+    $writer->write("somedata\n");
+    $writer->close();
+
+    $first = "$testdir/one/second.txt";
+
+    ok(!defined($writer->openFile(">$first")));
+    $writer->write("somedata\n");
+    $writer->close();
+
+    my ($numFiles,$numDirs,$numSymLinks,$sizeInBytes,$error) = $fUtil->getDirectorySize($testdir);
+    ok($error eq "Reached max directory depth of 20");
+
+    my @logs = $logger->getLogs();
+    ok(@logs == 1);
+    ok($logs[0] =~/ERROR Reached max directory depth of 20/);
+}
 
