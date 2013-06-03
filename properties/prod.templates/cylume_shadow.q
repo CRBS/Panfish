@@ -10,4 +10,6 @@
 #$ -q camlow.q
 #$ -l h_rt=12:00:00
 
+echo "SGE Id:  ${JOB_ID}.${SGE_TASK_ID}"
+
 /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
