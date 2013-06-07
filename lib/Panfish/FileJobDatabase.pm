@@ -206,10 +206,12 @@ sub insert {
 
    # to be safe check that this job isn't already in db
    if (!defined($skipCheck)){
-      if (defined($self->getJobByClusterAndId($job->getCluster(),
+      my $existingJob = $self->getJobByClusterAndId($job->getCluster(),
                                               $job->getJobId(),
-                                              $job->getTaskId()))){
-         return "Job ".$job->getJobAndTaskId()." already exists in database unable to insert";
+                                              $job->getTaskId());
+      if (defined($existingJob)){
+         return "Job ".$job->getJobAndTaskId()." already exists in database in state ".$existingJob->getState().
+                " unable to insert";
       }
    }
 
