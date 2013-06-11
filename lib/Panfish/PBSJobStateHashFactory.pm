@@ -76,10 +76,6 @@ sub getJobStateHash {
         
         $rows[$x]=~s/ +/ /g;
         @subSplit = split(" ",$rows[$x]);
-        # $self->{Logger}->debug("XXXXXXX".$rows[$x]);
-        #for (my $y = 0; $y < @subSplit; $y++){
-        #   $self->{Logger}->debug("YYY $y - $subSplit[$y]");
-        #}
         $realJobId = $subSplit[0];
         $realJobId=~s/\..*//;
         $rawState = $subSplit[4];
