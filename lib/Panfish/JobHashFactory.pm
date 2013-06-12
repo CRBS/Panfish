@@ -44,8 +44,8 @@ sub new {
 =head3 getJobHash 
 
 Given an array of jobs this method creates a hash where the keys
-are the psub files and the value is an array of jobs with that
-psub file.
+are the whatever is kicked out from the KeyGenerator and the value is an array of jobs 
+with the matching key.
 
 my $jobHash = $foo->getJobHash(\@jobs);
 
