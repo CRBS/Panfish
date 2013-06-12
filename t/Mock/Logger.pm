@@ -16,6 +16,11 @@ sub new {
    return $blessedself;
 }
 
+sub clearLog {
+   my $self = shift;
+   $self->{Logs} = undef;
+}
+
 sub setIsDebugEnabled {
    my $self = shift;
    $self->{DebugEnabled} = shift;
