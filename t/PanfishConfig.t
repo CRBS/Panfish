@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 91;
+use Test::More tests => 114;
 use Panfish::PanfishConfig;
 use Panfish::Config;
 
@@ -22,6 +22,52 @@ use Panfish::Config;
    my $config = Panfish::PanfishConfig->new();
    ok($config->getThisCluster() eq "");
    ok($config->getPanfishSubmit() eq "/panfishsubmit");
+
+}
+
+
+# test isClusterPartOfThisCluster 
+{
+   my $config = Panfish::PanfishConfig->new();
+   my $con = Panfish::Config->new();
+   $con->setParameter($config->{THIS_CLUSTER},"");
+   $config->setConfig($con);
+
+   # this cluster is set to empty string   
+   ok($config->isClusterPartOfThisCluster("") == 0);
+   ok($config->isClusterPartOfThisCluster(" ") == 0);
+   ok($config->isClusterPartOfThisCluster("foo") == 0);
+   ok($config->isClusterPartOfThisCluster("ha") == 0);
+
+   # this cluster set to single cluster
+   $con->setParameter($config->{THIS_CLUSTER},"beer");
+   ok($config->isClusterPartOfThisCluster("") == 0);
+   ok($config->isClusterPartOfThisCluster(" ") == 0);
+   ok($config->isClusterPartOfThisCluster("foo") == 0);
+   ok($config->isClusterPartOfThisCluster("beer") == 1);
+   ok($config->isClusterPartOfThisCluster("some,beer,yo") == 0);
+
+   #this cluster is set to list of 2 clusters
+   $con->setParameter($config->{THIS_CLUSTER},"beer,soda");
+   ok($config->isClusterPartOfThisCluster("") == 0);
+   ok($config->isClusterPartOfThisCluster(" ") == 0);
+   ok($config->isClusterPartOfThisCluster("soda") == 1);
+   ok($config->isClusterPartOfThisCluster("beer") == 1);
+   ok($config->isClusterPartOfThisCluster("beer,soda") == 0); # only one cluster can be specified, commas result in no match
+   ok($config->isClusterPartOfThisCluster("soda,beer") == 0); 
+
+   #this cluster is set to list of 3 clusters
+   $con->setParameter($config->{THIS_CLUSTER},"beer,soda,cheese");
+   ok($config->isClusterPartOfThisCluster("") == 0);
+   ok($config->isClusterPartOfThisCluster(" ") == 0);
+   ok($config->isClusterPartOfThisCluster("soda") == 1);
+   ok($config->isClusterPartOfThisCluster("beer") == 1);
+   ok($config->isClusterPartOfThisCluster("cheese") == 1);
+   ok($config->isClusterPartOfThisCluster("beer,soda") == 0);
+   ok($config->isClusterPartOfThisCluster("soda,beer") == 0);
+   ok($config->isClusterPartOfThisCluster("beer,soda,cheese") == 0);
+ 
+  
 
 }
 

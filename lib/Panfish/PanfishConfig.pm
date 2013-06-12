@@ -106,6 +106,47 @@ sub getThisCluster {
 
 }
 
+=head3 isClusterLocal
+
+Checks if cluster passed in is a local cluster or not.  
+
+my $res = $config->isClusterPartOfThisCluster("foo");
+
+Returns 1 for yes and 0 for no.  
+
+=cut
+
+sub isClusterPartOfThisCluster {
+    my $self = shift;
+    my $cluster = shift;
+    my $thisCluster = $self->getThisCluster();
+
+    # if This.Cluster is undefined or empty string. Fail or
+    # if cluster argument is undef
+    if (!defined($cluster) || 
+        !defined($thisCluster) ||
+        $thisCluster eq ""){
+       return 0;
+    }
+   
+    # if there is a comma as part of the cluster name just
+    # fail the test
+    if (index($cluster,',') > -1){
+       return 0;
+    }
+
+    # return 1 if cluster passed in matches This.Cluster or
+    # if the cluster is an element in a comma delimited list
+    if ($thisCluster eq $cluster ||
+        $thisCluster =~ /,\s*$cluster\s*$/ ||
+        $thisCluster =~ /,\s*$cluster\s*,/ ||
+        $thisCluster =~ /^\s*$cluster\s*,/){
+      return 1;
+    }
+
+  return 0;
+}
+
 =head3 getScratchDir 
 
 Gets the scratch directory for the cluster
