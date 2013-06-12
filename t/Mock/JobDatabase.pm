@@ -9,7 +9,8 @@ sub new {
    my $class = shift;
    my $self = {
      GetJobsByClusterAndState => undef,
-     Update                   => undef
+     Update                   => undef,
+     NumberOfJobsInState      => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -80,6 +81,23 @@ sub update {
    return pop(@{$self->{Update}->{$job->getJobAndTaskId()}});
 }
 
+sub addGetNumberOfJobsInStateResult {
+   my $self = shift;
+   my $cluster = shift; 
+   my $state = shift;
+   my $res = shift;
+
+   push(@{$self->{NumberOfJobsInState}->{$cluster.".".$state}},$res);
+}
+
+
+sub getNumberOfJobsInState {
+   my $self = shift;
+   my $cluster = shift;
+   my $state = shift;
+
+   return pop(@{$self->{NumberOfJobsInState}->{$cluster.".".$state}});
+}
 
 1;
 
