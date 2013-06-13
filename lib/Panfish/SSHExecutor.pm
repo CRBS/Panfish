@@ -198,22 +198,30 @@ sub executeCommand {
     my $command = shift;
     my $timeout = shift;
     my $resetTimeoutOnOutput = shift;
-
     
-    # if there is no command let the parent executor handle the failure 
-    if (!defined($command)){
-        return $self->{Executor}->executeCommand($command,$timeout,$resetTimeoutOnOutput);
-    }    
+    my $cmd = $self->_buildCommandToExecute($command);
 
-    my $cmd = "";
+    return $self->{Executor}->executeCommand($cmd,$timeout,$resetTimeoutOnOutput);
+}
 
-    # see if any command neads to be set before the ssh command
-    if (defined($self->{StdInCommand}) && 
+
+sub _buildCommandToExecute {
+   my $self = shift;
+   my $command = shift;
+ 
+   if (!defined($command)){
+     return "";
+   }
+
+   my $cmd = "";
+
+   # see if any command neads to be set before the ssh command
+   if (defined($self->{StdInCommand}) &&
         $self->{StdInCommand} ne ""){
 
         $cmd = $self->{StdInCommand}." | ";
     }
-    
+ 
     # only set the ssh stuff if the user wants it.
     if ($self->{UseSSH} == 1){
         $cmd .= $self->{SSHCommand}." ".$self->{Host}." ";
@@ -221,8 +229,7 @@ sub executeCommand {
 
     # finally append the command
     $cmd .= $command;
-
-    return $self->{Executor}->executeCommand($cmd,$timeout,$resetTimeoutOnOutput);
+    return $cmd;
 }
 
 =head3 executeCommandWithRetry 
@@ -242,7 +249,8 @@ sub executeCommandWithRetry {
    my $timeout = shift;
    my $resetTimeoutOnOutput = shift;
 
-   return $self->{Executor}->executeCommandWithRetry($numRetries,$retrySleep,$command,$timeout,$resetTimeoutOnOutput);
+   my $cmd = $self->_buildCommandToExecute($command);
+   return $self->{Executor}->executeCommandWithRetry($numRetries,$retrySleep,$cmd,$timeout,$resetTimeoutOnOutput);
 }
 
 
