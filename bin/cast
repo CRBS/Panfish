@@ -4,9 +4,9 @@
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
-use lib "$Bin/../lib";
-use lib "$Bin/../lib/perl5/site_perl";
-use lib "$Bin/../lib/perl5";
+use lib "$Bin/perl5";
+use lib "$Bin/../share/perl5";
+
 
 use Getopt::Long;
 use Pod::Usage;
@@ -16,6 +16,7 @@ use Panfish::PanfishConfig;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
+use Panfish::FileUtil;
 
 if (@ARGV == 0){
   pod2usage(2);
@@ -100,7 +101,8 @@ my $logger = Panfish::Logger->new();
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
 my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
-my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
+my $fUtil = Panfish::FileUtil->new($logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 

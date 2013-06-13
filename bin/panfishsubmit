@@ -1,12 +1,11 @@
 #!/usr/bin/perl
 
-
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
-use lib "$Bin/../lib";
-use lib "$Bin/../lib/perl5/site_perl";
-use lib "$Bin/../lib/perl5";
+use lib "$Bin/perl5";
+use lib "$Bin/../share/perl5";
+
 
 use Cwd;
 
@@ -18,7 +17,7 @@ use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
 use Panfish::PanfishConfigFactory;
 use Panfish::FileJobDatabase;
-
+use Panfish::FileUtil;
 
 my $cmdLineParseResult = GetOptions ("cluster=s" => \$clusterArgValue,
                                      "help|?"    => \$helpArg,
@@ -38,14 +37,15 @@ my $logger = Panfish::Logger->new();
 
 my $logFileHandle = undef;
 
+my $fUtil = Panfish::FileUtil->new($logger);
+
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
-my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($reader,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($config->getPanfishSubmitVerbosity($clusterArgValue));
 
 my $jobDb = Panfish::FileJobDatabase->new($reader,
                                       $config->getDatabaseDir($clusterArgValue),$logger);
-my $fUtil = Panfish::FileUtil->new($logger);
 
 my $job;
 my $line;

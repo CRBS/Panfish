@@ -1,12 +1,11 @@
 #!/usr/bin/perl
 
-
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
-use lib "$Bin/../lib";
-use lib "$Bin/../lib/perl5/site_perl";
-use lib "$Bin/../lib/perl5";
+use lib "$Bin/perl5";
+use lib "$Bin/../share/perl5";
+
 
 use Getopt::Long;
 use Pod::Usage;
@@ -80,8 +79,10 @@ $logger->setPrefix("\t");
 # was passed into command
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
+my $fUtil = Panfish::FileUtil->new($logger);
+
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
-my $configFactory = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($reader,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
@@ -99,7 +100,6 @@ if (defined($skippedClusters)){
   $logger->warn("Skipping following clusters since they are no longer in the remote cluster list in config: $skippedClusters");
 }
 
-my $fUtil = Panfish::FileUtil->new($logger);
 
 # force auto flush for standard out
 local $| = 1;

@@ -1,12 +1,11 @@
 #!/usr/bin/perl
 
-
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
-use lib "$Bin/../lib";
-use lib "$Bin/../lib/perl5/site_perl";
-use lib "$Bin/../lib/perl5";
+use lib "$Bin/perl5";
+use lib "$Bin/../share/perl5";
+
 
 use Cwd;
 use IO::Handle;
@@ -23,6 +22,7 @@ use Panfish::PanfishConfigFactory;
 use Panfish::Job;
 use Panfish::JobState;
 use Panfish::FileJobDatabase;
+use Panfish::FileUtil;
 
 use Panfish::ForkExecutor;
 
@@ -95,9 +95,9 @@ if (defined($batchFactorArgValue) && $batchFactorArgValue <= 0){
 }
 
 my $rawCommand = $cArgValue;
-
+my $fUtil = Panfish::FileUtil->new($logger);
 my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
-my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($config->getLineVerbosity());
 

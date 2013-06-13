@@ -1,21 +1,19 @@
 #!/usr/bin/perl
 
-
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
-use lib "$Bin/../lib";
-use lib "$Bin/../lib/perl5/site_perl";
-use lib "$Bin/../lib/perl5";
+use lib "$Bin/perl5";
+use lib "$Bin/../share/perl5";
+
+
 
 use Getopt::Long;
 use Pod::Usage;
 
 use Panfish::ForkExecutor;
-use Panfish::PanfishConfig;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
-use Panfish::PanfishConfigFactory;
 
 if (@ARGV == 0){
   pod2usage(2);
