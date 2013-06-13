@@ -30,7 +30,6 @@ t/ConfigFromFileFactory.t
 t/PsubHashKeyGenerator.t
 t/PBSJobStateHashFactory.t
 t/Job.t
-t/panfish.config
 t/SGEJobStateHashFactory.t
 t/PanfishConfigFactory.t
 t/JobBatcher.t
