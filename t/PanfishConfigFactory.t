@@ -7,11 +7,12 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
+use lib $Bin;
 
-use Test::More tests => 13;
-use Panfish::FileUtil;
-use Panfish::Logger;
-use Panfish::FileReaderWriterImpl;
+use Test::More tests => 16;
+use Mock::FileUtil;
+use Mock::Logger;
+use Mock::FileReaderWriter;
 use Panfish::PanfishConfigFactory;
 use Panfish::Config;
 
@@ -21,53 +22,54 @@ use Panfish::Config;
 # its man page ( perldoc Test::More ) for help writing this test script.
 
 
-#test with no panfish.config file found
+#test with no panfish.config file found anywhere
 {
-    my $logoutput;
-    my $foo;
-    open $foo,'>',\$logoutput;
+    my $blog = Mock::Logger->new();
+    
+    my $fUtil = Mock::FileUtil->new();
 
-    #delete panfish.config
-    my $fUtil = Panfish::FileUtil->new();
-    ok($fUtil->deleteFile("$Bin/panfish.config") == 1);
+    $fUtil->addRunFileTestResult("-e",$ENV{"HOME"}."/.panfish.config",0);
+    $fUtil->addRunFileTestResult("-e","$Bin/../etc/panfish.config",0);
+    $fUtil->addRunFileTestResult("-e","$Bin/panfish.config",0);
+    $fUtil->addRunFileTestResult("-e","/etc/panfish.config",0);    
 
-    my $blog = Panfish::Logger->new();
-    $blog->setLevelBasedOnVerbosity(2);
-    $blog->setOutput($foo);
-    my $reader = Panfish::FileReaderWriterImpl->new($blog);
-    my $pcf = Panfish::PanfishConfigFactory->new($reader,$blog);
+    my $reader = Mock::FileReaderWriter->new();
+    my $pcf = Panfish::PanfishConfigFactory->new($reader,$fUtil,$blog);
 
     my $config = $pcf->getPanfishConfig();     
 
     ok(!defined($config));
 
-    my @rows = split("\n",$logoutput);
-    ok(@rows == 1);
-
-    ok($rows[0]=~/Unable to load config from.* or .*/);
+    my @rows = $blog->getLogs();
+   
+    if ($ENV{"PANFISH_CONFIG"}){
+       fail("Test requires PANFISH_CONFIG environment variable to be unset");
+    }
+    my $cnt = 0;
+    ok(@rows == 5);    
+    ok($rows[$cnt++]=~/DEBUG Attempting to parse config from: .*.panfish.config/);
+    ok($rows[$cnt++]=~/DEBUG Attempting to parse config from: .*\.\.\/etc\/panfish.config/);
+    ok($rows[$cnt++]=~/DEBUG Attempting to parse config from: .*\/panfish.config/);
+    ok($rows[$cnt++]=~/DEBUG Attempting to parse config from: \/etc\/panfish.config/);
+    ok($rows[$cnt++]=~/ERROR Unable to load config from any of these locations: .*/);
     
-    close($foo);
 }
 
 #test with a valid panfish.config file and then rewrite panfish.config with alternate values and check that
 # too
 {
-    my $logoutput;
-    my $foo;
-    open $foo,'>',\$logoutput;
+    my $blog = Mock::Logger->new();
 
-    my $blog = Panfish::Logger->new();
-    $blog->setLevelBasedOnVerbosity(0);
-    $blog->setOutput($foo);
+    my $fUtil = Mock::FileUtil->new();
 
-    my $writer = Panfish::FileReaderWriterImpl->new($blog);
-    $writer->openFile(">$Bin/panfish.config");
-    $writer->write("this.cluster=foo\nfoo.scratch=/tmp\n");
-    $writer->close();
-    $blog->setLevelBasedOnVerbosity(2);
-    my $reader = Panfish::FileReaderWriterImpl->new($blog);
+    $fUtil->addRunFileTestResult("-e",$ENV{"HOME"}."/.panfish.config",1);
+    $fUtil->addRunFileTestResult("-e",$ENV{"HOME"}."/.panfish.config",1);
 
-    my $pcf = Panfish::PanfishConfigFactory->new($reader,$blog);
+    my $reader = Mock::FileReaderWriter->new();
+    $reader->addOpenFileResult(">".$ENV{"HOME"}."/.panfish.config",undef);
+    $reader->addReadResult("this.cluster=foo\n");
+    $reader->addReadResult("foo.scratch=/tmp\n");
+    my $pcf = Panfish::PanfishConfigFactory->new($reader,$fUtil,$blog);
 
     my $config = $pcf->getPanfishConfig();
 
@@ -75,24 +77,21 @@ use Panfish::Config;
     ok($config->getThisCluster() eq "foo");
     ok($config->getScratchDir() eq "/tmp");
 
-    $blog->setLevelBasedOnVerbosity(0);
-    $writer->openFile(">$Bin/panfish.config");
-    $writer->write("this.cluster=bahh\nbahh.scratch=/yo\n");
-    $writer->close();
+    $reader->addOpenFileResult(">".$ENV{"HOME"}."/.panfish.config",undef);
+    $reader->addReadResult("this.cluster=bahh\n");
+    $reader->addReadResult("bahh.scratch=/yo\n");
 
-    $blog->setLevelBasedOnVerbosity(2);
     $config = $pcf->getPanfishConfig($config);
     ok($config->getThisCluster() eq "bahh");
     ok($config->getScratchDir() eq "/yo");
     ok($config->getScratchDir("foo") eq "");
 
 
-    my @rows = split("\n",$logoutput);
+    my @rows = $blog->getLogs();
     ok(@rows == 2);
-    ok($rows[0]=~/DEBUG.*Attempting to parse config from:.*\/panfish.config/);
-    ok($rows[1]=~/DEBUG.*Attempting to parse config from:.*\/panfish.config/);
+    ok($rows[0]=~/DEBUG.*Attempting to parse config from:.*\.panfish.config/);
+    ok($rows[1]=~/DEBUG.*Attempting to parse config from:.*\.panfish.config/);
 
-    close($foo);
 }
 
 
