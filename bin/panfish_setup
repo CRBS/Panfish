@@ -4,9 +4,8 @@
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
-use lib "$Bin/../lib";
-use lib "$Bin/../lib/perl5/site_perl";
-use lib "$Bin/../lib/perl5";
+use lib "$Bin/perl5";
+use lib "$Bin/../share/perl5";
 
 use Getopt::Long;
 use Pod::Usage;
@@ -77,12 +76,11 @@ if (defined($writeConfigArg)){
 }
 
 
-my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$logger);
+my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
-my $fUtil = Panfish::FileUtil->new($logger);
 
 # if --examinedir argument is set get the size of the directory and
 # return information on that path in configuration file format
@@ -225,6 +223,21 @@ if (defined($syncArgValue) || defined($syncallArg)){
 
      $logger->debug("Remote cluster bin dir: ".$remoteBinDir);
 
+
+     # make sure that path exists
+     $sshExec->setStandardInputCommand(undef);
+     $sshExec->setCluster($cluster);
+     $sshExec->enableSSH();
+     $exit = $sshExec->executeCommand("/bin/mkdir -p ".$remoteBinDir,60);
+     if ($exit != 0){
+         print " failed\n";
+         $logger->error("Unable to run ".$sshExec->getCommand().
+                               "  : ".$sshExec->getOutput());
+
+          exit(4);
+     }
+
+
      for (my $x = 0; $x < @binaries; $x++){
          $res = $uploader->directUpload($binaries[$x],$remoteBinDir,$cluster);
          if (defined($res)){
@@ -235,9 +248,8 @@ if (defined($syncArgValue) || defined($syncallArg)){
          }
      }
 
-     #upload the lib directory to parent directory of remoteBinDir
-     my $remoteBinParent = $fUtil->getDirname($remoteBinDir);
-     $res = $uploader->directUpload($libDir,$remoteBinParent,$cluster);
+     #upload the perl5 directory to directory of remoteBinDir
+     $res = $uploader->directUpload($libDir,$remoteBinDir,$cluster);
      my $echoArgs = "";
      #create panfish.config and upload to directory where binaries reside
      my @lines = $config->getConfigForCluster($cluster); 
