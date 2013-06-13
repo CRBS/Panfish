@@ -4,6 +4,8 @@ use strict;
 use English;
 use warnings;
 
+require Panfish::FileReaderWriter;
+our @ISA = qw(Panfish::FileReaderWriter);
 
 sub new {
    my $class = shift;
