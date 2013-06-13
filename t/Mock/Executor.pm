@@ -122,6 +122,19 @@ sub executeCommand {
     return $self->{ExitCode};
 }
 
+sub executeCommandWithRetry {
+   my $self = shift;
+   my $numRetries = shift;
+   my $retrySleep = shift;
+   my $command = shift;
+   my $timeout = shift;
+   my $resetTimeoutOnOutput = shift;
+
+   return $self->executeCommand($command,$timeout,$resetTimeoutOnOutput);
+}
+
+
+
 1;
 
 __END__
