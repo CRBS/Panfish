@@ -6,7 +6,8 @@ use warnings;
 use Panfish::ConfigFromFileFactory;
 use Panfish::PanfishConfig;
 use Panfish::Config;
-
+use Panfish::FileUtil;
+use Panfish::Logger;
 use FindBin qw($Bin);
 
 =head1 SYNOPSIS
@@ -29,9 +30,10 @@ the first argument and optionally a Logger as the second argument.
 
 Ex:
 
-my $reader = Panfish::FileReaderWriterImpl->new();
 my $logger = Panfish::Logger->new();
-my $f = Panfish::PanfishConfigFactory->new($reader,$logger);
+my $reader = Panfish::FileReaderWriterImpl->new($logger);
+my $fUtil = Panfish::FileUtil->new($logger);
+my $f = Panfish::PanfishConfigFactory->new($reader,$fUtil,$logger);
 
 =cut
 
@@ -40,8 +42,9 @@ sub new {
    my $class = shift;
    my $reader = shift;
    my $self = {
+      FileUtil      => shift,
+      Logger        => shift,
       ConfigFactory => undef,
-      Logger => shift,
       PANFISH_CONFIG => "panfish.config"
    };
 
@@ -65,46 +68,51 @@ is returned to the caller
 sub getPanfishConfig {
     my $self = shift;
     my $existingConfig = shift;
-   
-    # Try loading config in Bin/../etc 
-    my $config = $self->_getPanfishConfigFromPath("$Bin/../etc/".$self->{PANFISH_CONFIG});
-  
-    if (!defined($config)){
-        # Try loading config in Bin/
-        $config = $self->_getPanfishConfigFromPath("$Bin/".$self->{PANFISH_CONFIG});
+
+    my @pathList;
+    if ( $ENV{"PANFISH_CONFIG"}){
+       push(@pathList,$ENV{"PANFISH_CONFIG"});
+    }
+    push(@pathList,$ENV{"HOME"}."/.".$self->{PANFISH_CONFIG});
+    push(@pathList,"$Bin/../etc/".$self->{PANFISH_CONFIG});
+    push(@pathList,"$Bin/".$self->{PANFISH_CONFIG});
+    push(@pathList,"/etc/".$self->{PANFISH_CONFIG});
+
+    for (my $x = 0; $x < @pathList; $x++){
+       my $config = $self->_getPanfishConfigFromPath($pathList[$x]);
+       if (defined($config)){
+
+          # if we are given a PanfishConfig, just set the config
+          # into that object and return it
+          if (defined($existingConfig)){
+             $existingConfig->setConfig($config);
+             return $existingConfig;
+          }
+          return Panfish::PanfishConfig->new($config);
+       }
     }
 
-    if (!defined($config)){
-       $self->{Logger}->error("Unable to load config from $Bin/ or $Bin/../etc");
-       return undef;
-    }
-
-   
-    # if we are given a PanfishConfig, just set the config into that object and return it
-    if (defined($existingConfig)){
-       $existingConfig->setConfig($config);
-       return $existingConfig;
-    }
-
-    return Panfish::PanfishConfig->new($config);
-    
+    $self->{Logger}->error("Unable to load config from any of these locations: ".join(', ',@pathList));
+    return undef;
 }
 
 sub _getPanfishConfigFromPath {
     my $self = shift;
     my $path = shift;
-
-    if (! -e $path){
-        return undef;
+    
+    if (!defined($path)){
+       return undef;
     }
 
     if (defined($self->{Logger})){
         $self->{Logger}->debug("Attempting to parse config from: $path");
     }
 
-    my $config = $self->{ConfigFactory}->getConfig($path);
+    if (! $self->{FileUtil}->runFileTest("-e",$path)){
+        return undef;
+    }
 
-    return $config;
+    return $self->{ConfigFactory}->getConfig($path);
 }
 
 
