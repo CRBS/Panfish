@@ -130,6 +130,8 @@ Defines cluster this program is invoked on
 Verbose mode.  Causes B<panfishsubmit> to print debugging messages.  
 Multiple B<--verbose> increase verbosity.  The maximum is 2.
 
+=back
+
 =head1 EXIT STATUS
 
 =over

@@ -286,6 +286,8 @@ by setting B<--verbose> flag.
 Verbose mode.  Causes B<chum> to print debugging messages.  Multiple B<--verbose> options increase
 verbosity.  The maximum is 2.
 
+=back
+
 =head1 EXIT STATUS
 
 =over

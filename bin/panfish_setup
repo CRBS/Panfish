@@ -432,6 +432,8 @@ This is used to initialize the configuration on a remote cluster.
 Verbose mode.  Causes B<panfish_setup> to print debugging messages.  
 Multiple B<--verbose> options increase verbosity.  The maximum is 2.
 
+=back
+
 =head1 EXIT STATUS
 
 =over
