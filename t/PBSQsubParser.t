@@ -40,12 +40,12 @@ ok($error eq "No output from qsub to parse");
 
 # test parse with just id no period
 ($jobid,$error) = $parser->parse("12345");
-ok($jobid = 12345);
+ok($jobid == 12345);
 ok(!defined($error));
 
 # test parse with multiple periods
 ($jobid,$error) = $parser->parse("123444.gordon-f3.local");
-ok($jobid = 123444);
+ok($jobid == 123444);
 ok(!defined($error));
 
 
@@ -53,6 +53,5 @@ ok(!defined($error));
 ($jobid,$error) = $parser->parse(".123444.gordon-f3.local");
 ok($jobid eq "");
 ok(!defined($error));
-
 
 
