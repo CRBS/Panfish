@@ -25,7 +25,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.1';
 
 
 # Preloaded methods go here.
@@ -36,25 +36,45 @@ __END__
 
 =head1 NAME
 
-Panfish - Perl extension for blah blah blah
+Panfish - A multicluster submission system 
 
 =head1 SYNOPSIS
 
-  use Panfish;
-  blah blah blah
+chum
+cast
+land
+panfish
+
 
 =head1 DESCRIPTION
 
-Stub documentation for Panfish, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+Panfish is a set of tools and daemons that let users submit jobs in a similar
+process they use for their local cluster, running Oracle/Sun/Open Grid Engine,
+with the advantage of those jobs optionally being sent to XSEDE compute
+clusters.  Utilizing a Panfish tool (chum) the user first uploads data to XSEDE
+compute clusters.  The user then invokes a Panfish command (cast) to submit
+their jobs.  This command is a dropin replacement for the one in
+Oracle/Sun/Open Grid Engine (qsub.) The user then monitors the jobs via the id
+returned by the submission command (cast) as with any normally submitted job.
+Upon job completion the user invokes a Panfish command (land) to retrieve the
+data.
 
-Blah blah blah.
+What happens in the above steps is the Panfish submission command (cast) submits
+what is known as a “shadow” job to a set of “shadow” queues that correspond to
+the local cluster and other XSEDE compute clusters.  Oracle/Sun/Open Grid Engine
+handles the scheduling of these “shadow” jobs to the appropriate “shadow” queue.
+Once scheduled and running these “shadow” jobs examine what queue they are under
+and let the Panfish daemon  know.  The Panfish daemon on the local compute
+cluster then submits those jobs to the corresponding compute resource notifying
+the “shadow” job upon completion.  The “shadow” job then exits letting the user
+know the work has completed.  The (chum) and (land) commands are wrappers that
+simplify the transfer of data to and from remote resources.
 
-=head2 EXPORT
-
-None by default.
-
+Panfish can be run as a cron on the local compute cluster and as a cron job on
+each remote XSEDE cluster.  The current implementation runs as a single user and
+all jobs are run as that user.  Panfish requires only ssh and rsync and no
+configuration adjustment on the remote clusters other than enabling ssh from the
+local compute resources to the remote compute resources.
 
 
 =head1 SEE ALSO
@@ -70,15 +90,9 @@ If you have a web site set up for your module, mention it here.
 
 =head1 AUTHOR
 
-chris, E<lt>churas@localdomainE<gt>
+Christopher Churas <churas@ncmir.ucsd.edu>
 
 =head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2013 by chris
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
 
 
 =cut
