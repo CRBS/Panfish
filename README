@@ -1,12 +1,33 @@
-Panfish version 0.01
+Panfish version 0.1
 ====================
 
-Panfish is a set of programs that enables Grid Engine serial jobs to be run on 
-remote clusters.  
+Panfish is a set of tools and daemons that let users submit jobs in a similar 
+process they use for their local cluster, running Oracle/Sun/Open Grid Engine, 
+with the advantage of those jobs optionally being sent to XSEDE compute 
+clusters.  Utilizing a Panfish tool (chum) the user first uploads data to XSEDE 
+compute clusters.  The user then invokes a Panfish command (cast) to submit 
+their jobs.  This command is a dropin replacement for the one in 
+Oracle/Sun/Open Grid Engine (qsub.) The user then monitors the jobs via the id 
+returned by the submission command (cast) as with any normally submitted job.  
+Upon job completion the user invokes a Panfish command (land) to retrieve the 
+data.  
 
+What happens in the above steps is the Panfish submission command (cast) submits 
+what is known as a “shadow” job to a set of “shadow” queues that correspond to 
+the local cluster and other XSEDE compute clusters.  Oracle/Sun/Open Grid Engine 
+handles the scheduling of these “shadow” jobs to the appropriate “shadow” queue.  
+Once scheduled and running these “shadow” jobs examine what queue they are under 
+and let the Panfish daemon  know.  The Panfish daemon on the local compute 
+cluster then submits those jobs to the corresponding compute resource notifying 
+the “shadow” job upon completion.  The “shadow” job then exits letting the user 
+know the work has completed.  The (chum) and (land) commands are wrappers that 
+simplify the transfer of data to and from remote resources.
 
-
-
+Panfish can be run as a cron on the local compute cluster and as a cron job on 
+each remote XSEDE cluster.  The current implementation runs as a single user and 
+all jobs are run as that user.  Panfish requires only ssh and rsync and no 
+configuration adjustment on the remote clusters other than enabling ssh from the 
+local compute resources to the remote compute resources.  
 
 
 
@@ -21,15 +42,19 @@ To install this module type the following:
 
 DEPENDENCIES
 
-This module requires these other modules and libraries:
+Panfish is designed to only work on linux operating systems that
+have command line binaries for ssh and rsync.  The main installation
+machine must have Sun/Oracle/Open Grid Engine 6.1+ installed and properly
+configured.
 
-  blah blah blah
+
+  
 
 COPYRIGHT AND LICENCE
 
 Put the correct copyright and licence information here.
 
-Copyright (C) 2013 by chris
+Copyright (C) 2013 by Christopher Churas
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.8 or,
