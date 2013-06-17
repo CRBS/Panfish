@@ -69,7 +69,7 @@ sub submitJobs {
         return "Cluster is not set";
     }
 
-    if ($cluster ne $self->{Config}->getThisCluster()){
+    if ($self->{Config}->isClusterPartOfThisCluster($cluster) == 0){
        $self->{Logger}->warn("This should only be run on jobs for local cluster returning.");
        return undef;
     }
@@ -81,8 +81,11 @@ sub submitJobs {
     if ($runningJobCount >= $self->{Config}->getMaximumNumberOfRunningJobs()){
         $self->{Logger}->debug("$runningJobCount jobs running which exceeds ".
                                $self->{Config}->getMaximumNumberOfRunningJobs()." not submitting any jobs");
+        return undef;
     }
     
+    # $self->{JobHashFactory}->setCluster($cluster);
+    # ($jobHashByPsub,$error) = $self->{JobHashFactory}->getJobHash();
     my $jobHashByPsub = $self->_buildJobHash($cluster);   
     my $jobCount = 0;
     my @keys = keys %$jobHashByPsub;
@@ -94,14 +97,20 @@ sub submitJobs {
            $self->{Logger}->debug("Reached maximum number of jobs that can be run on cluster $cluster");
            last;
        }
-       # submit array of psub files
+
+       # submit array of psub files 
+       # TODO: move this method to a separate class
+       # ($realJobId,$error) = $self->{QsubCommand}->run($psubFile);
+       # if (defined($error) { next; }
        my $realJobId = $self->_submitJobViaQsub($psubFile);
 
        if (defined($realJobId)){
           $self->{Logger}->debug("Submit succeeded updating database");
-
           my $jobArrayRef = $jobHashByPsub->{$psubFile};
           $jobCount+= @{$jobArrayRef};
+
+          # $self->{JobDb}->updateWithRealJobIdAndState($jobArrayRef,$realJobId,Panfish::JobState->QUEUED());
+
           for (my $x = 0; $x < @{$jobArrayRef}; $x++){
              ${$jobArrayRef}[$x]->setRealJobId($realJobId);
              ${$jobArrayRef}[$x]->setState(Panfish::JobState->QUEUED());
