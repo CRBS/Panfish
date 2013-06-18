@@ -238,7 +238,7 @@ System side Programs
 
 * **panfishstat**         Takes a **panfishsubmit** job file and returns status of the job.
 
-* **panfishrunner**       Runs serial jobs in parallel on a cluster node.
+* **panfishjobrunner**       Runs serial jobs in parallel on a cluster node.
 
 Panfish.config
 ==============
@@ -295,10 +295,9 @@ will be in this format with **CLUSTER** to be replaced by the name of the shadow
     CLUSTER.qstat=
     CLUSTER.engine=
     CLUSTER.basedir=
-    CLUSTER.panfishsubmit=
-    CLUSTER.panfishstat=
+    CLUSTER.bin.dir=
     CLUSTER.job.dir=
-    CLUSTER.max.num.jobs=
+    CLUSTER.max.num.running.jobs=
     CLUSTER.submit.sleep=
     CLUSTER.run.job.script=
     CLUSTER.scratch=
@@ -312,6 +311,9 @@ will be in this format with **CLUSTER** to be replaced by the name of the shadow
 
 
 Here is a breakdown of each **global** property:
+
+* **this.cluster** 
+   Lets application know which cluster(s) are local.
 
 * **cluster.list**
     This parameter lists all of the clusters/queues configured for panfish.  The 
@@ -329,13 +331,11 @@ Here is a breakdown of the **queue** specific properties
     Might want to set this on a per cluster basis cause some clusters are slow
     and others are fast.
 
-* **CLUSTER.line.stderr.path**
-    Directory to write the standard error stream for the shadow job.  This
-    output needs to go somewhere and is not relevant to the user so we have it
-    written to a special side directory.
-
 * **CLUSTER.line.stdout.path**
-    Directory to write the standard output stream for the shadow job.
+    Directory to write the standard out/error stream for the shadow job.  This
+    output needs to go somewhere and is not relevant to the user so we have it
+    written to a special side directory.  The output is merged into a single
+    file to reduce disk IO.
 
 * **CLUSTER.job.template.dir**
     Directory where job template files for each cluster reside.  The template files are named with the
@@ -374,26 +374,19 @@ Here is a breakdown of the **queue** specific properties
     This is possible because the job script should prefix all paths with $PANFISH_BASEDIR which 
     will be set to this value.
 
-* **CLUSTER.panfishsubmit**
-    Path to **panfishsubmit** wrapper that handles in job submission as well 
-    as offers throttline capability because some clusters cannot have more then 
-    a limited number of jobs submitted.
+* **CLUSTER.bin.dir**
+    Directory where all the panfish binaries reside
 
-* **CLUSTER.panfishstat**
-    Path to **panfishstat** wrapper that lets caller get status of job.
 
 * **CLUSTER.job.dir**
     Directory housing filesystem database of jobs.  
 
-* **CLUSTER.max.num.jobs**
+* **CLUSTER.max.num.running.jobs**
     Maximum number of jobs to allow to run concurrently on the cluster.  This
     is done because some clusters restrict # of jobs per user.
 
 * **CLUSTER.submit.sleep**
     Sleep time between submissions.  Some clusters need a break :)
-
-* **CLUSTER.run.job.script**
-    This script lets a set of serial jobs run on a single node in parallel.
 
 * **CLUSTER.scratch**
     The temp directory to use for individual jobs on the remote cluster corresponding to the queue.
@@ -1134,7 +1127,7 @@ This program is a helper program to run batched serial jobs on a compute node.
 
 Command line:
 
-     panfishrunner (options) <file with list of programs to run. 1 per line>
+     panfishjobrunner (options) <file with list of programs to run. 1 per line>
 
 (options)
 
@@ -1152,14 +1145,3 @@ exit code and log an error to standard error with format:
 Otherwise write to standard out when a parallel job starts and when it finishes along with 
 any other pertinent information.  
 
-panfishsubmit.config
-====================
-
-This configuration file will reside in the same directory as the **panfishsubmit**, **panfishstat**, and
-**panfishsubmit** binaries and will contain the following fields:
-
-     panfishsubmit.dir=Directory where job files will be put by psub
-
-     max.num.jobs=Maximum # of jobs to submit to batch processing system 
-
-     submit.sleep=Wait time in seconds between submission of jobs to batch processing system
