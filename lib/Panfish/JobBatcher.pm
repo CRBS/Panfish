@@ -151,7 +151,7 @@ sub _createPsubFile {
        $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
     }
 
-    my $runJobScript = $self->{Config}->getRunJobScript($cluster)." --parallel ".$self->{Config}->getJobsPerNode($cluster);
+    my $runJobScript = $self->{Config}->getPanfishJobRunner($cluster)." --parallel ".$self->{Config}->getJobsPerNode($cluster);
 
     $self->{Logger}->debug("Current Directory: $curdir");
 
