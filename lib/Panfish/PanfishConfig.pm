@@ -33,14 +33,15 @@ sub new {
      LINE_SLEEP_TIME      => "line.sleep.time",
      LINE_STDOUT_PATH     => "line.stdout.path",
      JOB_TEMPLATE_DIR     => "job.template.dir",
-     LINE_COMMAND         => "line",
      BASE_DIR             => "basedir",
      HOST                 => "host",
      JOBS_PER_NODE        => "jobs.per.node",
+     LINE_COMMAND         => "panfishline",
+     PANFISH              => "panfish",
      PANFISH_JOB_RUNNER   => "panfishjobrunner",
-     PANFISH_SETUP       => "panfish_setup",
+     PANFISH_SETUP        => "panfishsetup",
      BATCHER_OVERRIDE     => "job.batcher.override.timeout",
-     PANFISH_SUBMIT       => "panfishsubmit",
+     PANFISH_SUBMIT       => "panfishcast",
      PANFISH_STAT         => "panfishstat",
      DATABASE_DIR         => "database.dir",
      QSUB                 => "qsub",
@@ -262,6 +263,36 @@ sub getDatabaseDir {
     return $self->_getValueFromConfig($self->{DATABASE_DIR},$cluster);
 }
 
+=head3 getPanfish
+
+Gets the path on the remote cluster to panfish
+binary.  This method expects a cluster as a parameter.
+
+my $pan = $foo->getPanfish("gordon_shadow.q");
+
+=cut
+
+sub getPanfish {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
+           $self->getPanfishBinaryOnly();
+}
+
+=head3 getPanfishBinaryOnly
+
+Returns name of binary for Panfish
+
+my $val = $config->getPanfishBinaryOnly();
+
+=cut
+
+sub getPanfishBinaryOnly {
+   my $self = shift;
+   return $self->{PANFISH};
+}
+
+
 
 =head3 getPanfishStat
 
@@ -276,9 +307,21 @@ sub getPanfishStat {
     my $self = shift;
     my $cluster = shift;
     return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
-           $self->{PANFISH_STAT};
+           $self->getPanfishStatBinaryOnly();
 }
 
+=head3 getPanfishStatBinaryOnly
+
+Returns name of binary for PanfishStat
+
+my $val = $config->getPanfishStatBinaryOnly();
+
+=cut
+
+sub getPanfishStatBinaryOnly {
+   my $self = shift;
+   return $self->{PANFISH_STAT};
+}
 
 
 =head3 getPanfishSubmit 
@@ -295,12 +338,26 @@ sub getPanfishSubmit {
     my $cluster = shift;
 
     return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
-           $self->{PANFISH_SUBMIT};
+           $self->getPanfishSubmitBinaryOnly();
+}
+
+
+=head3 getPanfishSubmitBinaryOnly
+
+Returns name of binary for PanfishSubmit
+
+my $val = $config->getPanfishSubmitBinaryOnly();
+
+=cut
+
+sub getPanfishSubmitBinaryOnly {
+   my $self = shift;
+   return $self->{PANFISH_SUBMIT};
 }
 
 =head3 getPanfishSetup 
 
-Gets the path on the remote cluster to panfish_setup
+Gets the path on the remote cluster to panfishsetup
 binary.  This method expects a cluster as a parameter
 
 my $psub = $foo->getPanfishSetup("gordon_shadow.q");
@@ -311,8 +368,23 @@ sub getPanfishSetup {
  my $self = shift;
     my $cluster = shift;
     return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
-           $self->{PANFISH_SETUP};
+           $self->getPanfishSetupBinaryOnly();
 }
+
+=head3 getPanfishSetupBinaryOnly
+
+Returns name of binary for PanfishSetup
+
+my $val = $config->getPanfishSetupBinaryOnly();
+
+=cut
+
+sub getPanfishSetupBinaryOnly {
+   my $self = shift;
+   return $self->{PANFISH_SETUP};
+}
+
+
 
 
 =head3 getLineVerbosity
@@ -526,19 +598,34 @@ sub getLineSleepTime {
 }
 
 
-=head3 getRunJobScript
+=head3 getPanfishJobRunner
 
 Gets the run job script for the cluster specified
 
 =cut
 
-sub getRunJobScript {
+sub getPanfishJobRunner {
     my $self = shift;
     my $cluster = shift;
 
     return $self->_getValueFromConfig($self->{BIN_DIR},$cluster)."/".
-           $self->{PANFISH_JOB_RUNNER};
+           $self->getPanfishJobRunnerBinaryOnly();
 }
+
+
+=head3 getPanfishJobRunnerBinaryOnly
+
+Gets the name of the panfishjobrunner program
+
+=cut
+
+sub getPanfishJobRunnerBinaryOnly {
+    my $self = shift;
+
+    return $self->{PANFISH_JOB_RUNNER};
+}
+
+
 
 =head3 getHost 
 
