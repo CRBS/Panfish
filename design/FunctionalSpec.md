@@ -296,7 +296,7 @@ or to all clusters listed in the configuration if this option is omitted.
 
 **(options)**
 
-**--directory**   **REQUIRED** Directory to upload.
+**--path**   **REQUIRED** Directory to upload.
 
 **--cluster**     Comma delimited list of clusters to upload to.  If this is omitted
                   all clusters in configuration file will be used.
@@ -341,10 +341,6 @@ version these arguments will be supported:
 The above options should also be definable as directives within the script to be submitted using the
 format #$PANFISH (flag) convention similar to the one used by Grid Engine. 
 
-In addition, to the above commands the following Panfish specific options will also be supported:
-
-* **-dir** Lets caller specify directory to be uploaded to remote cluster.
-
 The **Cast** program will first upload any data to the remote cluster and then submit the job to
 the local Grid Engine.  The output of **Cast** upon success will be the same output from **qsub**
 complete with a job id that the user can use to monitor.  
@@ -374,7 +370,7 @@ This program has the following command line:
 **(options)**
 
 
-* **--directory** **REQUIRED** Path to the directory on the local filesystem that
+* **--path** **REQUIRED** Path to the directory on the local filesystem that
                   should be downloaded from the remote clusters.
 
 * **--cluster**   Comma delimited list of clusters to upload to.  If this is omitted
