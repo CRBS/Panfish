@@ -313,7 +313,7 @@ sub getDirectorySize {
 
     $self->{SSHExecutor}->enableSSH();
 
-    # call panfish_setup with --examinedir flag on remote cluster
+    # call panfishsetup with --examinedir flag on remote cluster
     # this command will tell us disk consumed and output in this format
     # num.files=6
     # num.dirs=1
