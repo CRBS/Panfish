@@ -111,6 +111,13 @@ if [ "$DEPLOY_ENV" == "dev" ] ; then
    SCP_ARG="${HOST}:${DEPLOY_BASE_DIR}/."
 fi
 
+if [ "$DEPLOY_ENV" == "prod" ] ; then
+   HOST="tomcat@cylume.camera.calit2.net"
+   DEPLOY_BASE_DIR="/home/validation/camera/release/bin"
+   SCP_ARG="${HOST}:${DEPLOY_BASE_DIR}/."
+fi
+
+
 
 if [ "$HOST" == "NOTSET" ] ; then
   echo "Please setup $DEPLOY_ENV in this script $0"
