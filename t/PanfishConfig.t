@@ -21,7 +21,7 @@ use Panfish::Config;
 {
    my $config = Panfish::PanfishConfig->new();
    ok($config->getThisCluster() eq "");
-   ok($config->getPanfishSubmit() eq "/panfishsubmit");
+   ok($config->getPanfishSubmit() eq "/".$config->{PANFISH_SUBMIT});
 
 }
 
