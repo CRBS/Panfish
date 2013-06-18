@@ -77,12 +77,11 @@ t/Mock/Executor.pm
 t/Mock/RemoteIO.pm
 t/Mock/Logger.pm
 t/Mock/NoSortPathSorter.pm
-bin/land
-bin/chum
+bin/panfishsetup
+bin/panfishchum
 bin/panfish
+bin/panfishline
 bin/panfishstat
-bin/panfishsubmit
-bin/cast
+bin/panfishland
+bin/panfishcast
 bin/panfishjobrunner
-bin/line
-bin/panfish_setup
