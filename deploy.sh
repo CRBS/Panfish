@@ -11,7 +11,7 @@ DEPLOY_ENV=$1
 # is located.
 PANFISH_DIR="`dirname $0`"
 
-TIMESTAMP=`date +%d.%m.%Y.%H.%M.%S`
+TIMESTAMP=`date +%m.%d.%Y.%H.%M.%S`
 
 INSTALL_DIR_NAME="panfish.${TIMESTAMP}"
 
