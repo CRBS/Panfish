@@ -16,6 +16,7 @@ lib/Panfish/Job.pm
 lib/Panfish/SSHExecutor.pm
 lib/Panfish/JobBatchedChummer.pm
 lib/Panfish/QsubJobSubmitter.pm
+lib/Panfish/JobSubmitter.pm
 lib/Panfish/FileReaderWriterImpl.pm
 lib/Panfish/ForkExecutor.pm
 lib/Panfish/PBSQsubParser.pm
@@ -26,15 +27,17 @@ lib/Panfish/KilledJobHandler.pm
 lib/Panfish/FileReaderWriter.pm
 lib/Panfish/SortByFileAgeSorter.pm
 lib/Panfish/FileUtil.pm
-lib/Panfish/QsubCommand.pm
 lib/Panfish/PanfishConfigFactory.pm
 lib/Panfish/SSHJobSubmitter.pm
+lib/Panfish/SLURMSbatchParser.pm
+lib/Panfish/SLURMJobStateHashFactory.pm
 lib/Panfish/Executor.pm
 lib/Panfish/RemoteIO.pm
 lib/Panfish/Logger.pm
 lib/Panfish/PsubIdHashKeyGenerator.pm
 lib/Panfish/CurrentWorkingDirHashKeyGenerator.pm
 lib/Panfish/PsubDirnameHashKeyGenerator.pm
+lib/Panfish/SubmitCommand.pm
 lib/Panfish/FileJobDatabase.pm
 lib/Panfish/JobState.pm
 lib/Panfish/SGEQsubParser.pm
