@@ -53,8 +53,9 @@ sub getJobStateHash {
     my $self = shift;
     my %jobStatusHash = ();
 
-    my $qstatCmd = $self->{Config}->getQstat();
+    my $qstatCmd = $self->{Config}->getQstat()." 2>&1";
 
+    $self->{Logger}->debug("Running $qstatCmd");
     my $exit = $self->{Executor}->executeCommand($qstatCmd,60);
     if ($exit != 0){
        $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
@@ -77,8 +78,10 @@ sub getJobStateHash {
         @subSplit = split(" ",$rows[$x]);
         $realJobId = $subSplit[0];
         $rawState = $subSplit[4];
-        $jobStatusHash{$realJobId}=$self->_convertStateToJobState($rawState);
-
+        if (!defined($jobStatusHash{$realJobId})){
+            $self->{Logger}->debug("Setting hash ".$realJobId." => ($rawState) -> ".$self->_convertStateToJobState($rawState));
+            $jobStatusHash{$realJobId}=$self->_convertStateToJobState($rawState);
+        }            
     }
     return \%jobStatusHash;
 
