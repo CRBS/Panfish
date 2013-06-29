@@ -25,7 +25,6 @@ sub new {
    my $self = {
      Config               => shift,
      THIS_CLUSTER         => "this.cluster",     
-     QSUB_PATH            => "qsub.path",
      CLUSTER_LIST         => "cluster.list",
      LINE_VERBOSITY       => "line.log.verbosity",
      PANFISH_VERBOSITY    => "panfish.log.verbosity",
@@ -45,7 +44,9 @@ sub new {
      PANFISH_STAT         => "panfishstat",
      DATABASE_DIR         => "database.dir",
      QSUB                 => "qsub",
+     SUBMIT               => "submit",
      QSTAT                => "qstat",
+     STAT                 => "stat",
      MAX_NUM_RUNNING_JOBS => "max.num.running.jobs",
      ENGINE               => "engine",
      SCRATCH              => "scratch",
@@ -225,16 +226,34 @@ sub getBaseDir {
 
 =head3 getQsub 
 
-Gets path to qsub for cluster
+Gets path to qsub for cluster.  This 
+method is deprecated, please call getSubmit()
 
 =cut
 
 sub getQsub {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($self->{QSUB},$cluster);
+    return $self->getSubmit($cluster);
 }
 
+=head getSubmit
+
+Get path to submit binary for cluster.  For
+backwards compatibility code will also look for
+old QSUB value if SUBMIT is missing
+
+=cut
+
+sub getSubmit {
+    my $self = shift;
+    my $cluster = shift;
+    my $submitPath = $self->_getValueFromConfig($self->{SUBMIT},$cluster);
+    if ($submitPath eq ""){
+       return $self->_getValueFromConfig($self->{QSUB},$cluster);
+    }
+    return $submitPath;
+}
 
 =head3 getQstat
 
@@ -245,7 +264,24 @@ Gets path for qstat for cluster
 sub getQstat {
     my $self = shift;
     my $cluster = shift;
-    return $self->_getValueFromConfig($self->{QSTAT},$cluster);
+    return $self->getStat($cluster);
+}
+
+=head3 getStat
+
+Gets path for program that gets status of jobs
+
+=cut
+
+sub getStat {
+    my $self = shift;
+    my $cluster = shift;
+    
+    my $statPath = $self->_getValueFromConfig($self->{STAT},$cluster);
+    if ($statPath eq ""){
+        return $self->_getValueFromConfig($self->{QSTAT},$cluster);
+    }
+    return $statPath;
 }
 
 
