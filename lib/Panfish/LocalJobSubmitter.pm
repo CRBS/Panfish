@@ -59,13 +59,13 @@ sub submitJobs {
     my $self = shift;
     my $cluster = shift;
 
-    if (!defined($cluster)){
+    if (!defined($cluster) || $cluster eq ""){
         $self->{Logger}->error("Cluster is not set");
         return "Cluster is not set";
     }
 
     if ($self->{Config}->isClusterPartOfThisCluster($cluster) == 0){
-       $self->{Logger}->warn("This should only be run on jobs for local cluster returning.");
+       $self->{Logger}->error("$cluster is not considered a local cluster");
        return undef;
     }
 
@@ -93,14 +93,13 @@ sub submitJobs {
     foreach $psubFile (@sortedJobPaths){
  
        if ($runningJobCount >= $self->{Config}->getMaximumNumberOfRunningJobs()){
-           $self->{Logger}->debug("Reached maximum number of jobs that can be run on cluster $cluster");
+           $self->{Logger}->debug("Reached maximum number of jobs that can be run on $cluster");
            last;
        }
 
        # submit array of psub files 
-       # TODO: move this method to a separate class
        my ($realJobId,$error) = $self->{SubmitCommand}->run($psubFile);
-       if (defined($error) { 
+       if (defined($error)) { 
            next; 
        }
 
@@ -109,6 +108,7 @@ sub submitJobs {
           my $jobArrayRef = $jobHashByPsub->{$psubFile};
           $jobCount+= @{$jobArrayRef};
 
+          # TODO:  modify code to do more efficient batch up date from within job database object
           # $self->{JobDb}->updateWithRealJobIdAndState($jobArrayRef,$realJobId,Panfish::JobState->QUEUED());
 
           for (my $x = 0; $x < @{$jobArrayRef}; $x++){
