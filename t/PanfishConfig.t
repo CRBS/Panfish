@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 114;
+use Test::More tests => 115;
 use Panfish::PanfishConfig;
 use Panfish::Config;
 
@@ -29,7 +29,12 @@ use Panfish::Config;
 # test isClusterPartOfThisCluster 
 {
    my $config = Panfish::PanfishConfig->new();
+   
+   # config not set
+   ok($config->isClusterPartOfThisCluster("ha") == 0);
+
    my $con = Panfish::Config->new();
+
    $con->setParameter($config->{THIS_CLUSTER},"");
    $config->setConfig($con);
 
