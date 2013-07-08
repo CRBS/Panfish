@@ -73,7 +73,7 @@ sub run {
 
     my $cmd = $self->{Command}." ".$args;
 
-    $exit = $self->{Executor}->executeCommandWithRetry($self->{MaxRetries},$self->{RetryTimeOut},$cmd,$self->{TimeOut});
+    my $exit = $self->{Executor}->executeCommandWithRetry($self->{MaxRetries},$self->{RetryTimeOut},$cmd,$self->{TimeOut});
     if ($exit != 0){
          $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
                                "  : ".$self->{Executor}->getOutput());
