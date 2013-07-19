@@ -1,0 +1,142 @@
+[churas@coleslaw Panfish]$ ./remotebenchmark.sh /home/churas/tests/foo2 trestles_shadow.q 32
+WARNING: /home/churas/tests/foo2 WILL BE DELETED.  You have 10 seconds to hit Ctrl-C if you dont want this
+panfishcastremote
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+262.11
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+199.20
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+198.10
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+260.09
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+258.23
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+199.11
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+199.12
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+199.10
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+200.22
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+259.13
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+259.12
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+438.13
+
+Examining ... /home/churas/tests/foo2 ... done.  Took 0 seconds.
+Found 38 bytes in 1 files
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+200.13
+
+Uploading to trestles_shadow.q ... done.  Transfer took 1 seconds.  Rate: 0.00 Mb/sec.
+
+Examining path on trestles_shadow.q ... done.  Took 1 seconds.  
+
+Deleting from trestles_shadow.q ... ... done.  Took 1 seconds.
+199.20
+258.11
+543.11
