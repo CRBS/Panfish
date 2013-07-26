@@ -57,7 +57,7 @@ if (!defined($clusterArgValue)){
 }
 
 my $jobDb = Panfish::FileJobDatabase->new($reader,
-                                      $config->getDatabaseDir($clusterArgValue),$logger);
+                                      $config->getDatabaseDir($clusterArgValue),$fUtil,$logger);
 
 my $job;
 my $line;
@@ -172,14 +172,8 @@ while(<STDIN>){
     $logger->debug("Job id: ".$jobId." task id: ".$taskId); 
 
     my $job = $jobDb->getJobByClusterAndId($clusterArgValue,$jobId,$taskId);
-    if (!defined($job)){
-        $state = "notfound";
-    }
-    else {
-        $state = $job->getState();
-    }
-    print $line."=".$state."\n";
-    
+
+    print $line."=".$job->getState()."\n";    
 }  
     
 exit($exitVal);
