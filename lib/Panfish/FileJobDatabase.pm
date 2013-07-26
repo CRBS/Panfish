@@ -39,8 +39,8 @@ sub new {
    my $self = {
      FileReaderWriter  => shift,
      SubmitDir         => shift,
+     FileUtil          => shift,
      Logger            => shift,
-     FileUtil          => undef,
      ConfigFactory     => undef,
      JOB_NAME_KEY      => "job.name",
      COMMAND_KEY       => "command.to.run",
@@ -60,11 +60,14 @@ sub new {
        print STDERR "submitdir not set";
        return undef;
    }
+   if (!defined($self->{FileUtil})){
+       print STDERR "fileutil not set";
+       return undef;
+   }
    if (!defined($self->{Logger})){
        print STDERR "logger not set";
         return undef;
    }
-   $self->{FileUtil} = Panfish::FileUtil->new($self->{Logger});
    $self->{ConfigFactory} = Panfish::ConfigFromFileFactory->new($self->{FileReaderWriter},$self->{Logger});
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -480,14 +483,28 @@ sub getJobStateByClusterAndId {
     my $cluster = shift;
     my $jobId = shift;
     my $taskId = shift;
-  
+ 
+    if (!defined($jobId)){
+       $self->{Logger}->error("Job Id not defined");
+       return Panfish::JobState->UNKNOWN();
+    }
+
+    if (!defined($cluster)){
+       $self->{Logger}->error("Cluster Id not defined");
+       return Panfish::JobState->UNKNOWN();
+    }
+ 
     my $jobFileName = "$jobId".$self->_getTaskSuffix($taskId);
     my $searchDir = $self->{SubmitDir}."/".$cluster;
-    if (defined($self->{Logger})){
-       $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
-    }
+    $self->{Logger}->debug("Looking for job: $jobFileName under $searchDir");
     my ($state,$jobFile) = $self->_findJobFile($searchDir,$jobFileName);
    
+    # if we couldnt find the job just return unknown for the state
+    if (!defined($state)){
+        $self->{Logger}->warn("Unable to find job: $jobFileName under $searchDir");
+        return Panfish::JobState->UNKNOWN();
+    }
+
     return $state;
 }
 
