@@ -8,12 +8,16 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
+use lib $Bin;
 
-use Test::More tests => 103;
+use Test::More tests => 115;
 use Panfish::FileReaderWriterImpl;
+use Mock::FileReaderWriter;
 use Panfish::FileUtil;
+use Mock::FileUtil;
 use Panfish::FileJobDatabase;
 use Panfish::Logger;
+use Mock::Logger;
 use Panfish::ConfigFromFileFactory;
 use Panfish::JobState;
 use Panfish::Job;
@@ -32,7 +36,7 @@ use Panfish::Job;
    my $testdir = $Bin."/testFileJobDatabase";
    my $readerWriter = Panfish::FileReaderWriterImpl->new($blog);
    my $fUtil = Panfish::FileUtil->new($blog);
-   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$blog);
+   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$blog);
 
    ok($jobDb->_getTaskSuffix(undef) eq "");
 
@@ -56,7 +60,7 @@ use Panfish::Job;
    my $fUtil = Panfish::FileUtil->new($blog);
    $fUtil->recursiveRemoveDir($testdir);
    
-   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$blog);
+   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$blog);
    ok($jobDb->initializeDatabase("gee") == 1);
 
    # try with non existant file
@@ -110,7 +114,7 @@ use Panfish::Job;
    
    $fUtil->recursiveRemoveDir($testdir);
 
-   $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$blog);
+   $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$blog);
    ok($jobDb->initializeDatabase("gee") == 1);
 
    # test empty insert
@@ -171,7 +175,7 @@ use Panfish::Job;
    my @jStates = Panfish::JobState->getAllStates();
    ok($fUtil->recursiveRemoveDir($testdir) > 0);
 
-   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$blog);
+   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$blog);
    ok($jobDb->initializeDatabase("foo") == 1);
 
    # test all the query methods return 0
@@ -238,6 +242,60 @@ use Panfish::Job;
 
 
    close($foo);
+}
+
+# getJobStateByClusterAndId tests where various inputs are not defined
+{
+    my $logger = Mock::Logger->new();
+    my $readerWriter = Mock::FileReaderWriter->new();
+    my $testdir = "/foo";
+    my $fUtil = Mock::FileUtil->new();
+    my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$logger);
+
+    # test where jobId is not defined
+    ok($jobDb->getJobStateByClusterAndId("cluster",undef,"taskId") eq Panfish::JobState->UNKNOWN());
+
+   # test where cluster is not defined
+   ok($jobDb->getJobStateByClusterAndId(undef,"jobid","taskId") eq Panfish::JobState->UNKNOWN());
+   
+   my @logs = $logger->getLogs();
+   ok(@logs == 2);
+   ok($logs[0] =~ /ERROR.*Job Id not defined/);
+   ok($logs[1] =~ /ERROR.*Cluster Id not defined/);
+}
+
+# getJobStateByClusterAndId test where job is not found
+{
+    my $logger = Mock::Logger->new();
+    my $readerWriter = Mock::FileReaderWriter->new();
+    my $testdir = "/foo";
+    my $fUtil = Mock::FileUtil->new();
+    my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$logger);
+   
+   ok($jobDb->getJobStateByClusterAndId("cluster","1",undef) eq Panfish::JobState->UNKNOWN());
+
+   my @logs = $logger->getLogs();
+   ok(@logs == 2);
+   ok($logs[0] =~ /DEBUG.*Looking for job: 1 under \/foo\/cluster/);
+   ok($logs[1] =~ /WARN.*Unable to find job: 1 under \/foo\/cluster/);
+}
+
+# getJobStateByClusterAndId test where job is found
+{
+    my $logger = Mock::Logger->new();
+    my $readerWriter = Mock::FileReaderWriter->new();
+    my $testdir = "/foo";
+    my $fUtil = Mock::FileUtil->new();
+
+    $fUtil->addRunFileTestResult("-e","/foo/cluster/".Panfish::JobState->SUBMITTED()."/1",1);
+
+    my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$logger);
+
+   ok($jobDb->getJobStateByClusterAndId("cluster","1",undef) eq Panfish::JobState->SUBMITTED());
+
+   my @logs = $logger->getLogs();
+   ok(@logs == 1);
+   ok($logs[0] =~ /DEBUG.*Looking for job: 1 under \/foo\/cluster/);
 }
 
 
