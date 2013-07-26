@@ -326,7 +326,7 @@ sub submitJobsFromStdInToCluster {
     $logger->setLevelBasedOnVerbosity($config->getPanfishSubmitVerbosity($clusterArgValue));
 
     my $jobDb = Panfish::FileJobDatabase->new($reader,
-                                         $config->getDatabaseDir($clusterArgValue),$logger);
+                                         $config->getDatabaseDir($clusterArgValue),$fUtil,$logger);
 
     my $job;
     my $line;

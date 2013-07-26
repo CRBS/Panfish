@@ -104,7 +104,7 @@ if (defined($cronArg) || defined($iterationArgValue)){
 
 my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
 
-my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$logger);
+my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$fUtil,$logger);
 
 my $curDirKeyGen = Panfish::CurrentWorkingDirHashKeyGenerator->new($logger);
 my $curDirJobHashFac = Panfish::JobHashFactory->new($curDirKeyGen,$logger);

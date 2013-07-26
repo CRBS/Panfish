@@ -151,7 +151,7 @@ my $skipClusterArgCheck = undef;
 if (defined($setupDbArg) || defined($setupDbAllArg)){
    $logger->info("Initializing Database ".$config->getDatabaseDir());
 
-   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
+   my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$fUtil,$logger);
 
    my $cList = undef;
    if (defined($setupDbArg)){

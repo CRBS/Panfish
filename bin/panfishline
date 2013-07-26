@@ -153,7 +153,7 @@ my $job = Panfish::Job->new($cluster,$jobId,$taskId,$jobName,getcwd(),$command,
                             Panfish::JobState->SUBMITTED(),undef,undef,undef,undef,undef,
                             $batchFactorArgValue);
 
-my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$logger);
+my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$fUtil,$logger);
 
 my $res = $jobDb->insert($job);
 
