@@ -112,10 +112,11 @@ sub checkJobs {
     # update database with new status
  
     for my $psubJobId (keys %$jobHashByPsubJobId){
-        
+       # need to handle case from panfishstat where job state is notfound 
         $state = $psubStatusHash->{$psubJobId};
         if ($state ne Panfish::JobState->SUBMITTED() && 
-            $state ne ${$jobHashByPsubJobId->{$psubJobId}}[0]->getState()){
+            $state ne ${$jobHashByPsubJobId->{$psubJobId}}[0]->getState() &&
+            $state ne Panfish::JobState->UNKNOWN()){
             for (my $x = 0; $x < @{$jobHashByPsubJobId->{$psubJobId}}; $x++){
                  ${$jobHashByPsubJobId->{$psubJobId}}[$x]->setState($state);
                  $self->{JobDb}->update(${$jobHashByPsubJobId->{$psubJobId}}[$x]);
