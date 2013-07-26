@@ -99,21 +99,21 @@ if (defined($jobStatusReportArgValue)){
 if (defined($statusOfJobsArgValue)){
   if ( ! -s $statusOfJobsArgValue){
      $logger->fatal("$statusOfJobsArgValue is either not a file or is not of size greater then 0");
-     print "status=UNKNOWN\n";
+     print "status=".Panfish::JobState->UNKNOWN()."\n";
      exit(1);
   }
 
   my $res = $reader->openFile($statusOfJobsArgValue);
   if (defined($res)){
      $logger->fatal("Unable to open $statusOfJobsArgValue : $res");
-     print "status=UNKNOWN\n";
+     print "status=".Panfish::JobState->UNKNOWN()."\n";
      exit(1);
   }
   
   if ($config->getEngine($clusterArgValue) ne "SGE"){
      $logger->fatal("Only SGE engine currently supported. $clusterArgValue is using ".
                     $config->getEngine($clusterArgValue));
-     print "status=UNKNOWN\n";
+     print "status=".Panfish::JobState->UNKNOWN()."\n";
      exit(1);
   }
   my $exec = Panfish::ForkExecutor->new();
@@ -127,7 +127,7 @@ if (defined($statusOfJobsArgValue)){
   }
 
  
-  my $status = "DONE";
+  my $status = Panfish::JobState->DONE();
   my $line = $reader->read();
   while(defined($line)){
     chomp($line);
@@ -140,7 +140,7 @@ if (defined($statusOfJobsArgValue)){
        if (defined($jStatus)){
           if ($jStatus ne Panfish::JobState->DONE() &&
               $jStatus ne Panfish::JobState->FAILED()){
-             $status = "RUNNING";
+             $status = Panfish::JobState->RUNNING();
              break;
           }
        }
@@ -171,9 +171,9 @@ while(<STDIN>){
     }   
     $logger->debug("Job id: ".$jobId." task id: ".$taskId); 
 
-    my $job = $jobDb->getJobByClusterAndId($clusterArgValue,$jobId,$taskId);
+    my $jobState = $jobDb->getJobStateByClusterAndId($clusterArgValue,$jobId,$taskId);
 
-    print $line."=".$job->getState()."\n";    
+    print $line."=".$jobState."\n";    
 }  
     
 exit($exitVal);
