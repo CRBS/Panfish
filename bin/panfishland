@@ -47,8 +47,7 @@ if ($manArg){
   pod2usage(-exitstatus => 0, -verbose => 2);
 }
 
-if (!defined($directoryArgValue) ||
-    ! -d $directoryArgValue){
+if (!defined($directoryArgValue)){
 
    pod2usage(-message => "\nValid directory must be set via the --directory flag\n",
              -verbose => 1,
