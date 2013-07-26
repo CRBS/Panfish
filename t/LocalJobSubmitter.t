@@ -9,7 +9,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 3;
+use Test::More tests => 9;
 use Panfish::LocalJobSubmitter;
 use Panfish::PanfishConfig;
 use Panfish::Config;
