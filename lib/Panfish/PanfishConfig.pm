@@ -43,9 +43,7 @@ sub new {
      PANFISH_SUBMIT       => "panfishcast",
      PANFISH_STAT         => "panfishstat",
      DATABASE_DIR         => "database.dir",
-     QSUB                 => "qsub",
      SUBMIT               => "submit",
-     QSTAT                => "qstat",
      STAT                 => "stat",
      MAX_NUM_RUNNING_JOBS => "max.num.running.jobs",
      ENGINE               => "engine",
@@ -224,19 +222,6 @@ sub getBaseDir {
    return $self->_getValueFromConfig($self->{BASE_DIR},$cluster);
 }
 
-=head3 getQsub 
-
-Gets path to qsub for cluster.  This 
-method is deprecated, please call getSubmit()
-
-=cut
-
-sub getQsub {
-    my $self = shift;
-    my $cluster = shift;
-    return $self->getSubmit($cluster);
-}
-
 =head getSubmit
 
 Get path to submit binary for cluster.  For
@@ -249,22 +234,7 @@ sub getSubmit {
     my $self = shift;
     my $cluster = shift;
     my $submitPath = $self->_getValueFromConfig($self->{SUBMIT},$cluster);
-    if ($submitPath eq ""){
-       return $self->_getValueFromConfig($self->{QSUB},$cluster);
-    }
     return $submitPath;
-}
-
-=head3 getQstat
-
-Gets path for qstat for cluster
-
-=cut
-
-sub getQstat {
-    my $self = shift;
-    my $cluster = shift;
-    return $self->getStat($cluster);
 }
 
 =head3 getStat
@@ -278,9 +248,6 @@ sub getStat {
     my $cluster = shift;
     
     my $statPath = $self->_getValueFromConfig($self->{STAT},$cluster);
-    if ($statPath eq ""){
-        return $self->_getValueFromConfig($self->{QSTAT},$cluster);
-    }
     return $statPath;
 }
 
@@ -730,8 +697,8 @@ sub getConfigForCluster {
     push(@config,$cluster.".".$self->{ENGINE}."=".$self->getEngine($cluster));
     push(@config,$cluster.".".$self->{BASE_DIR}."=".$self->getBaseDir($cluster));
     push(@config,$cluster.".".$self->{DATABASE_DIR}."=".$self->getDatabaseDir($cluster));
-    push(@config,$cluster.".".$self->{QSUB}."=".$self->getQsub($cluster));
-    push(@config,$cluster.".".$self->{QSTAT}."=".$self->getQstat($cluster));
+    push(@config,$cluster.".".$self->{SUBMIT}."=".$self->getSubmit($cluster));
+    push(@config,$cluster.".".$self->{STAT}."=".$self->getStat($cluster));
     push(@config,$cluster.".".$self->{BIN_DIR}."=".$self->getBinDir($cluster));
     push(@config,$cluster.".".$self->{MAX_NUM_RUNNING_JOBS}."=".$self->getMaximumNumberOfRunningJobs($cluster));
     push(@config,$cluster.".".$self->{PANFISH_SLEEP}."=".$self->getPanfishSleepTime($cluster));
