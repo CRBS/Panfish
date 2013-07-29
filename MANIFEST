@@ -6,7 +6,6 @@ lib/Panfish.pm
 lib/Panfish.pm
 lib/Panfish/Config.pm
 lib/Panfish/PanfishConfig.pm
-lib/Panfish/LocalJobSubmitter.pm
 lib/Panfish/SGEJobStateHashFactory.pm
 lib/Panfish/PsubHashKeyGenerator.pm
 lib/Panfish/JobKiller.pm
@@ -54,7 +53,6 @@ t/JobHashFactory.t
 t/Config.t
 t/PsubIdHashKeyGenerator.t
 t/PanfishConfig.t
-t/LocalJobSubmitter.t
 t/ConfigFromFileFactory.t
 t/PsubHashKeyGenerator.t
 t/PBSJobStateHashFactory.t
