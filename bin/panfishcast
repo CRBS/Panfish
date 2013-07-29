@@ -207,7 +207,7 @@ else {
 
 for (my $x = 0; $x < @tArgArray; $x++){
 
-   $cmd = $config->getQsub()." $tArgArray[$x] $newArgList -j y -o ".
+   $cmd = $config->getSubmit()." $tArgArray[$x] $newArgList -j y -o ".
           $lineStdOutPath." ".
           $config->getLineCommand().$stdout.$stderr.$batchFactorArg.$writeOutputLocal." -c \"'$command'\"";
 
