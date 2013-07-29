@@ -28,7 +28,7 @@ my $timeout = 60; #default timeout
 
 my $baseConfig = Panfish::Config->new();
 $baseConfig->setParameter("this.cluster","foo");
-$baseConfig->setParameter("foo.qstat","squeue -u \"fun\"");
+$baseConfig->setParameter("foo.stat","squeue -u \"fun\"");
 
 # test getJobStateHash with qstat returning no results 
 {
