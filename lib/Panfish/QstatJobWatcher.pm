@@ -12,6 +12,7 @@ use Panfish::JobState;
 use Panfish::Job;
 use Panfish::SGEJobStateHashFactory;
 use Panfish::PBSJobStateHashFactory;
+use Panfish::SLURMJobStateHashFactory;
 
 =head1 SYNOPSIS
    
@@ -39,8 +40,9 @@ sub new {
      Logger       => shift,
      FileUtil     => shift,
      Executor  => shift,
-     SGEJobStateFactory => undef,
-     PBSJobStateFactory => undef
+     SGEJobStateHashFactory => undef,
+     PBSJobStateHashFactory => undef,
+     SLURMJobStateHashFactory => undef
    };
  
    if (!defined($self->{Logger})){
@@ -51,6 +53,9 @@ sub new {
                                                                           $self->{Executor});
 
    $self->{PBSJobStateHashFactory} = Panfish::PBSJobStateHashFactory->new($self->{Config},$self->{Logger},
+                                                                          $self->{Executor});
+
+   $self->{SLURMJobStateHashFactory} = Panfish::SLURMJobStateHashFactory->new($self->{Config},$self->{Logger},
                                                                           $self->{Executor});
 
    my $blessedself = bless($self,$class);
@@ -78,6 +83,17 @@ sub setPBSJobStateHashFactory {
    my $self = shift;
    $self->{PBSJobStateHashFactory} = shift;
 }
+
+=head3 setSLURMJobStateHashFactory
+Sets alternate SLURMJobStateHashFactory.
+
+=cut
+
+sub setSLURMJobStateHashFactory {
+   my $self = shift;
+   $self->{SLURMJobStateHashFactory} = shift;
+}
+
 
 =head3 checkJobs
 
@@ -128,6 +144,9 @@ sub checkJobs {
     elsif ($self->{Config}->getEngine() eq "PBS") {
 
         ($jobStatusHash,$error) = $self->{PBSJobStateHashFactory}->getJobStateHash();
+    }
+    elsif ($self->{Config}->getEngine() eq "SLURM") {
+        ($jobStatusHash,$error) = $self->{SLURMJobStateHashFactory}->getJobStateHash();
     }
     else {
         return "Engine ".$self->{Config}->getEngine()." not supported";
