@@ -30,7 +30,6 @@ my $timeout = 60; #default timeout
 my $CLUSTER = "foo";
 my $baseConfig = Panfish::Config->new();
 $baseConfig->setParameter("this.cluster",$CLUSTER);
-$baseConfig->setParameter($CLUSTER.".qstat","qstat");
 $baseConfig->setParameter($CLUSTER.".basedir","base");
 my $config = Panfish::PanfishConfig->new($baseConfig);
 
