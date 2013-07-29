@@ -53,7 +53,7 @@ sub getJobStateHash {
     my $self = shift;
     my %jobStatusHash = ();
 
-    my $qstatCmd = $self->{Config}->getQstat();
+    my $qstatCmd = $self->{Config}->getStat();
 
     my $exit = $self->{Executor}->executeCommand($qstatCmd,60);
     if ($exit != 0){
