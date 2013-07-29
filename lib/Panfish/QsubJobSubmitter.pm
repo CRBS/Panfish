@@ -10,6 +10,7 @@ use Panfish::Logger;
 use Panfish::FileJobDatabase;
 use Panfish::JobState;
 use Panfish::Job;
+use Panfish::SubmitCommand;
 use Panfish::JobHashFactory;
 
 =head1 SYNOPSIS
@@ -37,7 +38,7 @@ sub new {
      JobDb          => shift,
      Logger         => shift,
      FileUtil       => shift,
-     Executor       => shift,
+     SubmitCommand  => shift,
      JobHashFactory => shift,
      PathSorter     => shift
    };
@@ -99,10 +100,7 @@ sub submitJobs {
        }
 
        # submit array of psub files 
-       # TODO: move this method to a separate class
-       # ($realJobId,$error) = $self->{QsubCommand}->run($psubFile);
-       # if (defined($error) { next; }
-       my $realJobId = $self->_submitJobViaQsub($psubFile);
+       my ($realJobId,$error) = $self->{SubmitCommand}->run($psubFile);
 
        if (defined($realJobId)){
           $self->{Logger}->debug("Submit succeeded updating database");
@@ -126,55 +124,6 @@ sub submitJobs {
 
     return undef;
 }
-
-
-#
-# 
-#
-#
-#
-sub _submitJobViaQsub {
-    my $self = shift;
-    my $psubFile = shift;
-    my $qsubCmd = $self->{Config}->getQsub();
-    my $realJobId;
-    my $exit;
-
-    my $cmd = "$qsubCmd ".$psubFile;
-    $exit = $self->{Executor}->executeCommand($cmd,60);
-    if ($exit != 0){
-         $self->{Logger}->error("Unable to run ".$self->{Executor}->getCommand().
-                               "  : ".$self->{Executor}->getOutput());
-         return undef;
-    }
-    else {
-       #need to parse out the job id from output and set it in the job somehow
-       # example SGE output:
-       # Your job 661 ("line") has been submitted
-            
-       if ($self->{Config}->getEngine() eq "SGE"){
-           my @rows = split("\n",$self->{Executor}->getOutput());
-           for (my $x = 0; $x < @rows; $x++){
-              if ($rows[$x]=~/^Your job/){
-                $realJobId = $rows[$x];
-                $realJobId=~s/^Your job //;
-                $realJobId=~s/ \(.*//;
-                last;
-              }
-           }
-       }
-       elsif ($self->{Config}->getEngine() eq "PBS"){
-           # example output PBS on gordon
-           # 580504.gordon-fe2.local
-           my @rows = split("\n",$self->{Executor}->getOutput());
-           $realJobId = $rows[0];
-           $realJobId=~s/\..*//;     
-       }
-    }
-    
-    return $realJobId;
-}
-
 
 #
 # Builds a hash of jobs where the key is the psub file and value is array of jobs
