@@ -57,7 +57,7 @@ sub getJobStateHash {
     my $self = shift;
     my %jobStatusHash = ();
    
-    my $qstatCmd = $self->{Config}->getQstat()." -u \"*\" 2>&1";
+    my $qstatCmd = $self->{Config}->getStat()." -u \"*\" 2>&1";
 
 
     $self->{Logger}->debug("Running $qstatCmd");    
