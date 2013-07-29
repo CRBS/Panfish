@@ -25,6 +25,11 @@ use Panfish::SSHJobSubmitter;
 use Panfish::SSHJobWatcher;
 use Panfish::QsubJobSubmitter;
 use Panfish::QstatJobWatcher;
+use Panfish::SubmitCommand;
+
+use Panfish::PBSQsubParser;
+use Panfish::SGEQsubParser;
+use Panfish::SLURMSbatchParser;
 
 use Panfish::JobHashFactory;
 use Panfish::CurrentWorkingDirHashKeyGenerator;
@@ -132,7 +137,25 @@ my $psubIdJobHashFac = Panfish::JobHashFactory->new($psubIdKeyGen,$logger);
 my $sshWatcher = Panfish::SSHJobWatcher->new($config,$jobDb,$logger,
                                        $fUtil,$sshExec,$psubIdJobHashFac);
 
-my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$exec,$psubJobHashFac,$fileAgeSorter);
+# TODO: move this into a factory
+my $sParser;
+if ($config->getEngine() eq "SGE"){
+  $sParser = Panfish::SGEQsubParser->new();
+}
+elsif ($config->getEngine() eq "PBS"){
+  $sParser = Panfish::PBSQsubParser->new();
+}
+elsif ($config->getEngine() eq "SLURM"){
+  $sParser = Panfish::SLURMSbatchParser->new();
+}
+else {
+   $logger->fatal("Engine ".$config->getEngine(). " not supported");
+   exit(1);
+}
+
+my $submitCommand = Panfish::SubmitCommand->new($logger,$exec,$config->getSubmit(),$sParser,60,3,60);
+
+my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$submitCommand,$psubJobHashFac,$fileAgeSorter);
 
 my $qstatWatcher = Panfish::QstatJobWatcher->new($config,$jobDb,$logger,
                                                  $fUtil,$exec);
