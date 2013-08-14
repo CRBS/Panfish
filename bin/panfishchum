@@ -270,11 +270,11 @@ __END__
 
 =head1 NAME
 
-chum - Uploads directory to remote clusters
+panfishchum - Uploads directory to remote clusters
 
 =head1 SYNOPSIS
 
-chum [ B<options> ] 
+panfishchum [ B<options> ] 
 
 =head1 DESCRIPTION
 
@@ -338,11 +338,11 @@ Default is 30 seconds.
 
 =item B<--skipclustercheck>
 
-If set B<chum> skips the check on validity of cluster or clusters set in B<--cluster> flag.  
+If set B<panfishchum> skips the check on validity of cluster or clusters set in B<--cluster> flag.  
 
 =item B<--verbose>
 
-Verbose mode.  Causes B<chum> to print debugging messages.  Multiple B<--verbose> options increase
+Verbose mode.  Causes B<panfishchum> to print debugging messages.  Multiple B<--verbose> options increase
 verbosity.  The maximum is 2.
 
 =back
