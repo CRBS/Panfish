@@ -221,17 +221,17 @@ __END__
 
 =head1 NAME
 
-land - Downloads directory from remote clusters
+panfishland - Downloads directory from remote clusters
 
 =head1 SYNOPSIS
 
-land [ B<options> ] 
+panfishland [ B<options> ] 
 
 =head1 DESCRIPTION
 
-B<Land> downloads a directory from remote clusters.
+B<Panfishland> downloads a directory from remote clusters.
 
-B<Land> does this utilizing B<rynsc> to pull the data from clusters
+B<Panfishland> does this utilizing B<rynsc> to pull the data from clusters
 specified by the user or to call clusters configured in B<panfish.config>
 file.
 
