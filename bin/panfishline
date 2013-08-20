@@ -72,16 +72,9 @@ my $stdout = "";
 if (defined($eArgValue)){
     $stderr = $eArgValue;
 }
-else {
-    $logger->fatal("-e flag must be set to define stderr file path");
-    exit(1);
-}
+
 if (defined($oArgValue)){
     $stdout = $oArgValue;
-}
-else {
-    $logger->fatal("-o flag must be set to define stdout file path");
-    exit(1);
 }
 
 if (!defined($cArgValue)){
@@ -260,6 +253,11 @@ sub getRedirectOutput {
    my $outFile = shift;
    my $suffix = shift;
    my $writeOutputLocalArg = shift;
+
+   # if no redirect is specified perform no redirect
+   if ($outFile eq ""){
+     return (" ","");
+   }
 
    if ($outFile eq "/dev/null"){
       return ($redirectSymbol." ".$outFile,"");
