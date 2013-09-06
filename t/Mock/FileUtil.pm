@@ -8,8 +8,9 @@ use warnings;
 sub new {
    my $class = shift;
    my $self = {
-     DirName => undef,
-     FileTest => undef
+     DirName    => undef,
+     FileTest   => undef,
+     DeleteFile => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -65,6 +66,34 @@ sub getDirname {
    return pop(@{$self->{DirName}->{$dir}});
 
 }
+
+=head3 addDeleteFileResult
+
+Sets expected value for deleteFile call.
+
+=cut
+
+sub addDeleteFileResult {
+    my $self = shift;
+    my $pathToDelete = shift;
+    my $result = shift;
+
+    push(@{$self->{DeleteFile}->{$pathToDelete}},$result);
+}
+
+=head3 deleteFile
+
+Deletes file
+
+=cut
+
+sub deleteFile {
+  my $self = shift;
+  my $pathToDelete = shift;
+
+  return pop(@{$self->{DeleteFile}->{$pathToDelete}});
+}
+
 
 1;
 
