@@ -35,7 +35,8 @@ sub new {
      Logger         => shift,
      FileUtil       => shift,
      RemoteIO       => shift,
-     UploadExcludes => undef
+     UploadExcludes => undef,
+     KillFilePrefix => "kill"
    };
 
    my @excludeArr;
@@ -143,15 +144,33 @@ sub removeKilledJobs {
            # of uploads of these token files to the remote cluster
            my $psubFile = $jobToKill->getPsubFile();
            if ($self->{FileUtil}->runFileTest("-e",$psubFile)){
-	           $dirsToUpload{$self->{FileUtil}->getDirname($psubFile)}++;
+
+                   my $psubDir = $self->{FileUtil}->getDirname($psubFile);
+
+                   # create a kill.#.# file in the directory where psub file resides
+                   if ($self->{FileUtil}->touch($psubDir."/".
+                                                $self->{KillFilePrefix}.".".
+                                                $jobToKill->getJobAndTaskId())){
+                       # add psubDir to list of directories to upload to remote clusters
+                       $dirsToUpload{$psubDir}++;
+                   }
+                   else {
+                       $self->{Logger}->error("Unable to touch file: ".
+                                              $psubDir."/".
+                                              $self->{KillFilePrefix}.".".
+                                              $jobToKill->getJobAndTaskId()); 
+                   }
            }
            else {
               $self->{Logger}->error($psubFile." does not exist on file system for job ".
                                      $jobToKill->getJobAndTaskId());
            }
+
+           # Delete the job from the database or move it to failed state
+           $self->_moveJobToNewState($jobToKill,Panfish::JobState->FAILED());
        }
        else {
-        # job is in an unknown state deleting kill file and moving on
+        # job is in a state that requires no action. deleting kill file and moving on
         $self->{Logger}->debug("Job ".$killedJobs[$x]->getJobAndTaskId().
                                " in state that requires no action for deletion");
        }
@@ -162,7 +181,12 @@ sub removeKilledJobs {
     # For each entry in $dirsToUpload invoke remoteIo uploading
     # the token files to the remote cluster
     while ( my ($theDir, $value) = each(%dirsToUpload) ) {
-        $self->{RemoteIO}->upload($theDir,$cluster,$self->{UploadExcludes});
+        $self->{Logger}->debug("Uploading kill files in path: ".$theDir);
+        my $uploadRes = $self->{RemoteIO}->upload($theDir,$cluster,
+                                                 $self->{UploadExcludes});
+        if (defined($uploadRes)){
+            $self->{Logger}->error("Error uploading $theDir : ".$uploadRes);
+        }
     }    
 
     $self->{Logger}->info("Handled ".
@@ -180,6 +204,8 @@ sub _deletePsubAndCommandFiles {
 
     my $psubFile = $job->getPsubFile();
     my $cmdFile = $job->getCommandsFile();
+
+    $self->{Logger}->debug("Deleting ".$psubFile." and ".$cmdFile." for killed job ".$job->getJobAndTaskId());
 
     if (defined($psubFile)){
         if (!$self->{FileUtil}->deleteFile($psubFile)){
@@ -225,9 +251,16 @@ sub _revertBatchedJobsToSubmittedState {
        $self->{Logger}->debug("No jobs in ".$job->getState()." to examine for possible moving to ".Panfish::JobState->SUBMITTED()." state");
        return;
     }
+    $self->{Logger}->debug("Examining ".(@jobsInState).
+                           " job(s) in state ".$job->getState.
+                           " to see if they need to be reverted to ".
+                           Panfish::JobState->SUBMITTED()." state");
 
     for (my $x = 0; $x < @jobsInState; $x++){
-        if ($jobsInState[$x]->getPsubFile() eq $psubFile){
+        if ($jobsInState[$x]->getPsubFile() eq $psubFile &&
+            $jobsInState[$x]->getJobAndTaskId() ne $job->getJobAndTaskId()){
+            $jobsInState[$x]->setPsubFile(undef);
+            $jobsInState[$x]->setCommandsFile(undef);
             $self->_moveJobToNewState($jobsInState[$x],Panfish::JobState->SUBMITTED());         
         }
     }
@@ -244,6 +277,9 @@ sub _moveJobToNewState {
    my $self = shift;
    my $job = shift;
    my $newState = shift;
+   $self->{Logger}->debug("Moving job ".$job->getJobAndTaskId().
+                          " from ".$job->getState()." state to ".
+                          $newState." state");
    $job->setState($newState);
    my $res = $self->{JobDb}->update($job);
    if (defined($res)){
