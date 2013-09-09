@@ -475,7 +475,22 @@ sub standardizePath {
     return "/$returnPath";
 }
 
+=head3 touch
 
+Creates empty file.  Returns 1 upon success, 0 otherwise.
+
+=cut
+
+sub touch {
+    my $self = shift;
+    my $path = shift;
+   
+    if (!open(HANDLE,">$path")){
+        return 0;
+    }
+    close(HANDLE);
+    return 1;
+}
 
 
 1;
