@@ -12,7 +12,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 126;
+use Test::More tests => 128;
 use Panfish::FileReaderWriterImpl;
 use Panfish::FileUtil;
 use Panfish::Logger;
@@ -21,7 +21,7 @@ use Mock::Logger;
 
 $|=1;
 
-# Test copy, move, chmod, and unlink a file
+# Test copy, move, chmod, and unlink a file and touch one too
 {
     my $logoutput;
     my $foo;
@@ -96,6 +96,9 @@ $|=1;
 
     ok(!defined($logoutput));
     close($foo);
+
+    ok($fUtil->touch("$testdir/touchy") == 1);
+    ok(-f "$testdir/touchy");
 }
 
 # getDirname tests
