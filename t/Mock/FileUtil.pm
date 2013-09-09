@@ -10,7 +10,8 @@ sub new {
    my $self = {
      DirName    => undef,
      FileTest   => undef,
-     DeleteFile => undef
+     DeleteFile => undef,
+     Touch      => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -94,6 +95,33 @@ sub deleteFile {
   return pop(@{$self->{DeleteFile}->{$pathToDelete}});
 }
 
+=head3 addTouchResult
+
+Adds expected result from a touch
+
+=cut
+
+sub addTouchResult {
+    my $self = shift;
+    my $path = shift;
+    my $result = shift;
+
+    push(@{$self->{Touch}->{$path}},$result);
+}
+
+
+=head3 touch
+
+Touch a file
+
+=cut
+
+sub touch {
+    my $self = shift;
+    my $path = shift;
+
+    return pop(@{$self->{Touch}->{$path}});
+}
 
 1;
 
