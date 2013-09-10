@@ -38,6 +38,7 @@ use Panfish::PsubHashKeyGenerator;
 use Panfish::PsubIdHashKeyGenerator;
 use Panfish::FileLock;
 use Panfish::SortByFileAgeSorter;
+use Panfish::KilledJobHandler;
 
 my $cmdLineParseResult = GetOptions ("daemon=s"     => \$daemonArgValue,
                                      "cluster=s"    => \$clusterArgValue,
@@ -107,7 +108,7 @@ if (defined($cronArg) || defined($iterationArgValue)){
    }
 }
 
-my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
+my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger,$fUtil);
 
 my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$fUtil,$logger);
 
@@ -160,6 +161,8 @@ my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil
 my $qstatWatcher = Panfish::QstatJobWatcher->new($config,$jobDb,$logger,
                                                  $fUtil,$exec);
 
+my $killer = Panfish::KilledJobHandler->new($jobDb,$logger,$fUtil,$uploader);
+
 my @clusterList;
 my $error;
 
@@ -199,7 +202,7 @@ while($keepLooping == 1){
       # Obtain updated statistics on cluster
 
       # Check for any jobs to be killed
-      # $check = $killer->removeKilledJobs($clusterList[$x]);
+      $check = $killer->removeKilledJobs($clusterList[$x]);
       
       $check = $batcher->batchJobs($clusterList[$x]);
       
