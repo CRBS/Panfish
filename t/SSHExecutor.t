@@ -9,7 +9,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 4;
+use Test::More tests => 6;
 use Panfish::SSHExecutor;
 
 use Mock::Executor;
@@ -50,5 +50,24 @@ use Panfish::PanfishConfig;
    ok($exec->executeCommandWithRetry(3,0,"blah") == 1);
    ok($exec->getOutput() eq "error1");
    ok($exec->getExitCode() == 1);
+}
+
+#
+# Test ssh exec where we have a successful invocation
+#
+{
+    my $logger = Mock::Logger->new();
+    my $mockexec = Mock::Executor->new();
+    $mockexec->add_expected_result("/usr/bin/ssh host -o NumberOfPasswordPrompts=0 -o ConnectTimeout=30 command.exe","hi","0",undef,undef);
+    my $config = Panfish::Config->new();
+    $config->setParameter("foo.host","host");
+    my $pconfig = Panfish::PanfishConfig->new($config);
+    my $exec = Panfish::SSHExecutor->new($pconfig,$mockexec,$logger);
+    $exec->setCluster("foo");
+    $exec->enableSSH();
+    $exec->setStandardInputCommand(undef);
+    ok($exec->executeCommand("command.exe") == 0);
+    ok($exec->getOutput() eq "hi");
+
 }
 
