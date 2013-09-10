@@ -80,7 +80,7 @@ my $configFactory = Panfish::PanfishConfigFactory->new($readerWriter,$fUtil,$log
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
+my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger,$fUtil);
 
 # if --examinedir argument is set get the size of the directory and
 # return information on that path in configuration file format

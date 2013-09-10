@@ -86,7 +86,7 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
-my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger);
+my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger,$fUtil);
 
 # if skip cluster check is set then set the $skipClusterCheckArg to 1 and pass it to
 # getClusterListAsArray
