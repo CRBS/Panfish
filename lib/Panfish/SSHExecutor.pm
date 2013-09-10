@@ -65,6 +65,7 @@ sub new {
         Host          => "",
         StdInCommand  => "",
         SSHCommand    => "/usr/bin/ssh",
+        SSHOptions    => "-o NumberOfPasswordPrompts=0 -o ConnectTimeout=30",
         UseSSH        => 1
 	};
     return bless ($self,$class);
@@ -224,7 +225,7 @@ sub _buildCommandToExecute {
  
     # only set the ssh stuff if the user wants it.
     if ($self->{UseSSH} == 1){
-        $cmd .= $self->{SSHCommand}." ".$self->{Host}." ";
+        $cmd .= $self->{SSHCommand}." ".$self->{Host}." ".$self->{SSHOptions}." ";
     }
 
     # finally append the command
