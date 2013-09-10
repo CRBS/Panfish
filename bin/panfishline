@@ -26,6 +26,10 @@ use Panfish::FileUtil;
 
 use Panfish::ForkExecutor;
 
+# force flush of output
+$|=1;
+
+
 my $SIGTERMCALLED = 0;
 my $SIGUSR1CALLED = 0;
 my $SIGUSR2CALLED = 0;
@@ -155,11 +159,15 @@ if (defined($res)){
    exit(1);
 }
 
+handleSignal($jobDb,$job,$logger);
+
 my $sleepTime = $config->getLineSleepTime();
 
 $logger->debug("Sleeping $sleepTime after job insertion");
 
 sleep $sleepTime;
+
+handleSignal($jobDb,$job,$logger);
 
 # Wait for the above file to move into done or failed directory
 $jobState = $jobDb->getJobStateByClusterAndId($cluster,$jobId,$taskId);
@@ -225,6 +233,7 @@ sub handleSignal {
        if (defined($res)){
           $logger->error("There was a problem trying to kill real job : $res");
        }
+       sleep $sleepTime;
        exit(50);
     }
 }
