@@ -49,10 +49,13 @@ sub new {
      ENGINE               => "engine",
      SCRATCH              => "scratch",
      PANFISH_SLEEP        => "panfish.sleep",  
-     BIN_DIR              => "bin.dir"
-     
+     BIN_DIR              => "bin.dir",
+     IO_RETRY_COUNT       => "io.retry.count",
+     IO_RETRY_SLEEP       => "io.retry.sleep",
+     IO_TIMEOUT           => "io.timeout",
+     IO_CONNECT_TIMEOUT   => "io.connect.timeout",
    };
-   
+
    my $blessedself = bless($self,$class);
    return $blessedself;
 }
@@ -648,6 +651,54 @@ sub getHost {
     my $cluster = shift;
 
     return $self->_getValueFromConfig($self->{HOST},$cluster);
+}
+
+=head3 getIORetryCount
+
+Gets the number of retries that should be attempted for upload/download
+
+=cut
+
+sub getIORetryCount {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{IO_RETRY_COUNT},$cluster);
+}
+
+=head3 getIOTimeout
+
+Gets the time to wait before considering upload/down has failed
+
+=cut
+
+sub getIOTimeout {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{IO_TIMEOUT},$cluster);
+}
+
+=head3 getIORetrySleep 
+
+Number of seconds to wait before retrying
+
+=cut
+
+sub getIORetrySleep {
+     my $self = shift;
+     my $cluster = shift;
+     return $self->_getValueFromConfig($self->{IO_RETRY_SLEEP},$cluster);
+}
+
+=head3 getIOConnectTimeout
+
+Connection time out in seconds
+
+=cut
+
+sub getIOConnectTimeout {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{IO_CONNECT_TIMEOUT},$cluster);
 }
 
 
