@@ -136,10 +136,15 @@ my $scratch = $config->getScratchDir($cluster);
 
 my $stdErrOut = getStandardErrorOutput($stdout,$stderr,$writeOutputLocalArg);
 
+my $exportableTaskId = $taskId;
+if (!defined($exportableTaskId)){
+   $exportableTaskId = "";
+}
+
 my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
               "export PANFISH_SCRATCH=\"".$scratch."\";".
               "export JOB_ID=\"".$jobId."\";".
-              "export SGE_TASK_ID=\"".$taskId."\";".
+              "export SGE_TASK_ID=\"".$exportableTaskId."\";".
               "export SGE_TASK_STEPSIZE=\"".$taskStepSize."\";".
               "export SGE_TASK_LAST=\"".$taskLast."\";".
               "\$PANFISH_BASEDIR".$rawCommand." $stdErrOut";
