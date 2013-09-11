@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+
+use POSIX ":sys_wait_h";
+
 use FindBin qw($Bin);
 
 #these allow this script to work when installed in alternate path
@@ -14,6 +17,7 @@ use Pod::Usage;
 use Panfish::ForkExecutor;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
+use Panfish::FileUtil;
 
 if (@ARGV == 0){
   pod2usage(2);
@@ -41,6 +45,7 @@ if (@ARGV < 1){
   pod2usage(2);
 }
 
+my $fUtil = Panfish::FileUtil->new();
 my $logger = Panfish::Logger->new();
 my $reader = Panfish::FileReaderWriterImpl->new($logger);
 $logger->setLevelBasedOnVerbosity($verboseArg);
@@ -52,6 +57,8 @@ if (defined($res)){
     $logger->fatal($res);
     exit(1);
 }
+
+my $baseDir = $fUtil->getDirname($commands);
 
 my @cmdArray;
 my $cmd = $reader->read();
@@ -75,10 +82,21 @@ elsif ($parallelCommandsArg <= 0){
 $logger->debug("Running $parallelCommandsArg commands at a time");
 
 my %pidHash;
+my %jobIdHash;
 my $exitCode;
 my $childFailed = 0;
-
+my $jobAndTaskId;
+my $waitCounter = 0;
 for (my $x = 0; $x < @cmdArray;$x++){
+
+   $jobAndTaskId = getJobAndTaskIdFromCommand($cmdArray[$x]);
+
+   # check if a kill file exists for this job.  
+   # if it does don't run the job
+   if (doesKillFileExist($baseDir,$jobAndTaskId) == 1){
+       $logger->info("Kill detected for job ".$jobAndTaskId." skipping job");
+       next;
+   }
 
    # create child process
    my $pid = fork();
@@ -93,31 +111,24 @@ for (my $x = 0; $x < @cmdArray;$x++){
    }
 
    # if i am here I am the parent
+   #
    $pidHash{$pid} = $x; # just set the value to index of command in @cmdArray
+
+   $jobIdHash{$pid} = $jobAndTaskId; # set the id of job in another hash
 
    $logger->debug("Waiting for process id: $pid which corresponds to this command : ".$cmdArray[$x]);
 
    $jobFinished = 0;
+   $waitCounter = 0;
    # Wait for jobs to finish if we have too many
    # running.
    while (keys(%pidHash) >= $parallelCommandsArg){
-       for my $cpid ( keys %pidHash){
-          if (waitpid($cpid,WNOHANG) != 0){
-             $exitCode = $?;
-             if ($exitCode != 0){
-                $logger->error("Process $cpid : ".$cmdArray[$pidHash{$cpid}].
-                               " : exited with nonzero exit code : $exitCode");
-                $childFailed = 20;
-             }
-             delete $pidHash{$cpid};
-             $jobFinished = 1;
-          }
-       }
 
        # if no jobs completed sleep 10 seconds before checking again
-       if ($jobFinished == 0){
+       if (haveAnyJobsFinished($waitCounter,\%pidHash,\%jobIdHash,$logger) == 0){
           sleep 10;
        }
+       $waitCounter++;
    }
 }
 
@@ -125,19 +136,96 @@ for (my $x = 0; $x < @cmdArray;$x++){
 
 $logger->debug("No more commands to submit.  Waiting for children commands to complete");
 
-#wait for any children threads to complete
+$jobFinished = 0;
+$waitCounter = 0;
 
-for my $cpid (keys %pidHash){
-  waitpid($cpid,0);
-  $exitCode = $?;
-  if ($exitCode != 0){
-     $logger->error("Process $cpid : ".$cmdArray[$pidHash{$cpid}].
-                    " : exited with nonzero exit code : $exitCode");
-     $childFailed = 20;
-  }
+#wait for any children threads to complete
+while (keys(%pidHash) > 0){
+    if (haveAnyJobsFinished($waitCounter,\%pidHash,\%jobIdHash,$logger) == 0){
+        sleep 10;
+    }
+    $waitCounter++;
 }
 
 exit($childFailed);
+
+#
+# Iterates through all the running jobs in $pidHash
+# passed in and sees if any have completed.  Also every 18 checks
+# as determined by $waitCounter the code will check for a kill
+# file and if found the code will kill the job with the TERM signal
+#
+sub haveAnyJobsFinished {
+    my $waitCounter = shift;
+    my $pidHash = shift;
+    my $jobIdHash = shift;
+    my $logger = shift;
+    my $jobFinished = 0;
+    for my $cpid ( keys %$pidHash){
+          if (waitpid($cpid,WNOHANG) != 0){
+             $exitCode = $?;
+             if ($exitCode != 0){
+                $logger->error("Process $cpid : ".$cmdArray[$pidHash->{$cpid}].
+                               " : exited with nonzero exit code : $exitCode");
+                $childFailed = 20;
+             }
+             delete $pidHash->{$cpid};
+             delete $jobIdHash->{$cpid};
+             $jobFinished = 1;
+          }
+          elsif ($waitCounter % 18 == 0){ # every 18 checks see if a kill file exists
+              if (doesKillFileExist($baseDir,$jobIdHash->{$cpid})){
+                  $logger->info("Kill file detected. Killing job ".
+                                $jobIdHash->{$cpid}." running with process id ".
+                                $cpid);
+                  kill("TERM",$cpid);
+                  delete $pidHash->{$cpid};
+                  delete $jobIdHash->{$cpid};
+                  $jobFinished = 1;
+              }
+          }
+    }
+    return $jobFinished;
+}
+
+#
+# Parses command and returns job and task id
+#
+sub getJobAndTaskIdFromCommand {
+    my $command = shift;
+    my $jobId;
+    my $taskId;
+   
+    $jobId=$command;
+    $jobId=~s/^.*;export JOB_ID=\"//;
+    $jobId=~s/\".*//;
+
+    $taskId = $command;
+    $taskId=~s/^.*;export SGE_TASK_ID=\"//;
+    $taskId=~s/\".*//;
+
+    # problems parsing
+    if (!defined($jobId) || $jobId eq ""){
+       return "";
+    }
+
+    if (defined($taskId) && $taskId ne ""){
+       return $jobId.".".$taskId;
+    }
+    
+    return $jobId;
+}
+
+#
+# Simple check to see if a kill file exists in the directory where
+# the commands file resides
+#
+sub doesKillFileExist {
+    my $baseDir = shift;
+    my $jobId = shift;
+    return $fUtil->runFileTest("-e",$baseDir."/kill.".$jobId);
+}
+
 
 1;
 
