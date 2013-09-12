@@ -8,7 +8,7 @@
 #$ -e @PANFISH_JOB_STDERR_PATH@
 #$ -N @PANFISH_JOB_NAME@
 #$ -q camlow.q
-#$ -l h_rt=12:00:00
+#$ -l h_rt=@PANFISH_WALLTIME@
 
 echo "SGE Id:  ${JOB_ID}.${SGE_TASK_ID}"
 

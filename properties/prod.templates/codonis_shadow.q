@@ -6,7 +6,7 @@
 #PBS -o @PANFISH_JOB_STDOUT_PATH@
 #PBS -e @PANFISH_JOB_STDERR_PATH@
 #PBS -V
-#PBS -l nodes=1:ppn=18,walltime=12:00:00
+#PBS -l nodes=1:ppn=18,walltime=@PANFISH_WALLTIME@
 #PBS -N @PANFISH_JOB_NAME@
 #PBS -d @PANFISH_JOB_CWD@
 
