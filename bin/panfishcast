@@ -34,6 +34,8 @@ my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "e=s"        => \$eArgValue,
                                      "o=s"        => \$oArgValue,
                                      "N=s"        => \$nArgValue,
+                                     "A=s"        => \$aArgValue,
+                                     "walltime=s" => \$wallTimeArgValue,
                                      "sync=s"     => \$syncArgValue,
                                      "retry=i"    => \$retryArgValue,
                                      "batchfactor=i" => \$batchFactorArgValue,
@@ -185,6 +187,15 @@ if ($cList eq ""){
 
 $newArgList .= " -q ".$cList;
 
+my $accountArg = " ";
+if (defined($aArgValue)){
+   $accountArg = " -A \"$aArgValue\"";
+}
+
+my $wallTimeArg = " ";
+if (defined($wallTimeArgValue)){
+   $wallTimeArg = " --walltime $wallTimeArgValue";
+}
 
 
 
@@ -209,7 +220,7 @@ for (my $x = 0; $x < @tArgArray; $x++){
 
    $cmd = $config->getSubmit()." $tArgArray[$x] $newArgList -j y -o ".
           $lineStdOutPath." ".
-          $config->getLineCommand().$stdout.$stderr.$batchFactorArg.$writeOutputLocal." -c \"'$command'\"";
+          $config->getLineCommand().$wallTimeArg.$accountArg.$stdout.$stderr.$batchFactorArg.$writeOutputLocal." -c \"'$command'\"";
 
     $logger->info("Running command: $cmd");
 
@@ -429,6 +440,22 @@ described as follows.
 
 =over 4
 
+=item B<-A Account(s)>
+
+Defines account(s) to set in remote cluster scheduler.  This parameter can be in two
+formats.  The basic format is just to set a single account string which will be set
+for all remote clusters.  The complex format goes with queue followed by two colons and
+then then account to use for that queue.  If more then one queue needs to be specified
+then use commas with no spaces to delimit.
+
+Format:
+
+<queue>::<account>,<queue>::<account>
+
+Example:
+
+foo.q::ddp555,blah.q::TG2342s
+
 =item B<-t [-m[:s]]>
 
 Submits an array job with the environment variable B<SGE_TASK_ID> set to index number of job.   
@@ -542,6 +569,21 @@ Z<>
 Z<>
 
 =back
+
+=item B<--walltime HH:MM:SS>
+
+Defines walltime to specify in hours:minutes:seconds for all remote clusters in the basic format. In
+complex format walltime can be specified for each cluster by first listing the cluster followed
+by two colons and then the walltime.  If multiple clusters need to be set then delimit with a
+comma and no spaces.
+
+Format:
+
+<queue>::<HH:MM:SS>,<queue>::<HH:MM:SS>
+
+Example:
+
+foo.q::12:00:00,blah.q::08:00:00
 
 =back
 
