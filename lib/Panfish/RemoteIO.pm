@@ -249,7 +249,7 @@ sub download {
     # unset any command which is piped to the command to execute
     $self->{SSHExecutor}->setStandardInputCommand(undef);
 
-    my $parentDir = $self->{FileUtile}->getDirname($dirToDownload);
+    my $parentDir = $self->{FileUtil}->getDirname($dirToDownload);
 
     my $remoteDir = $self->{Config}->getBaseDir($cluster).$dirToDownload;
 
