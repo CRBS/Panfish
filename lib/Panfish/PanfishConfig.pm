@@ -54,6 +54,8 @@ sub new {
      IO_RETRY_SLEEP       => "io.retry.sleep",
      IO_TIMEOUT           => "io.timeout",
      IO_CONNECT_TIMEOUT   => "io.connect.timeout",
+     ACCOUNT              => "job.account",
+     WALLTIME             => "job.walltime"
    };
 
    my $blessedself = bless($self,$class);
@@ -109,7 +111,7 @@ sub getThisCluster {
 
 }
 
-=head3 isClusterLocal
+=head3 isClusterPartOfThisCluster
 
 Checks if cluster passed in is a local cluster or not.  
 
@@ -699,6 +701,31 @@ sub getIOConnectTimeout {
     my $self = shift;
     my $cluster = shift;
     return $self->_getValueFromConfig($self->{IO_CONNECT_TIMEOUT},$cluster);
+}
+
+
+=head3 getAccount
+
+Gets account to charge jobs to for cluster
+
+=cut
+
+sub getAccount {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{ACCOUNT},$cluster);
+}
+
+=head3 getWallTime 
+
+Gets walltime to set for job
+
+=cut
+
+sub getWallTime {
+   my $self = shift;
+   my $cluster = shift;
+   return $self->_getValueFromConfig($self->{WALLTIME},$cluster);
 }
 
 
