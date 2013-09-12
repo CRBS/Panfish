@@ -60,6 +60,7 @@ t/Job.t
 t/PBSQsubParser.t
 t/SGEJobStateHashFactory.t
 t/PanfishConfigFactory.t
+t/RemoteIO.t
 t/JobBatcher.t
 t/Panfish.t
 t/FileUtil.t
@@ -67,11 +68,13 @@ t/CurrentWorkingDirHashKeyGenerator.t
 t/Logger.t
 t/SLURMJobStateHashFactory.t
 t/FileReaderWriterImpl.t
+t/KilledJobHandler.t
 t/SGEQsubParser.t
 t/QstatJobWatcher.t
 t/SLURMSbatchParser.t
 t/JobBatchedChummer.t
 t/Mock/JobKiller.pm
+t/Mock/SSHExecutor.pm
 t/Mock/HashKeyGenerator.pm
 t/Mock/JobHashFactory.pm
 t/Mock/FileReaderWriter.pm
