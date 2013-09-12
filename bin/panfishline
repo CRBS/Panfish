@@ -49,7 +49,9 @@ if (@ARGV == 0){
 my $cmdLineParseResult = GetOptions ("e=s"      => \$eArgValue,
                                      "o=s"      => \$oArgValue,
                                      "c=s"      => \$cArgValue,
-                                     "batchfactor=i" => \$batchFactorArgValue,
+                                     "A=s"              => \$aArgValue,
+                                     "walltime=s"       => \$wallTimeArgValue,
+                                     "batchfactor=i"    => \$batchFactorArgValue,
                                      "writeoutputlocal" => \$writeOutputLocalArg,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
@@ -127,7 +129,7 @@ $logger->info("Job: ($jobIdWithTaskId) JobName: ($jobName) Cluster: ($cluster)")
 # UNLESS the cluster matches this cluster in which case leave the $baseDir set to an empty
 # string cause the job will be running on this cluster anyways.
 my $baseDir = "";
-if ($cluster ne $config->getThisCluster()){
+if ($config->isClusterPartOfThisCluster($cluster) == 0){
     $baseDir = $config->getBaseDir($cluster);
 }
 
@@ -150,10 +152,14 @@ my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
               "\$PANFISH_BASEDIR".$rawCommand." $stdErrOut";
                 
 
+my $walltime = getWallTimeForJob($cluster,$config,$wallTimeArgValue);
+
+my $account = getAccountForJob($cluster,$config,$aArgValue);
+
 # Save job to database
 my $job = Panfish::Job->new($cluster,$jobId,$taskId,$jobName,getcwd(),$command,
                             Panfish::JobState->SUBMITTED(),undef,undef,undef,undef,undef,
-                            $batchFactorArgValue);
+                            $batchFactorArgValue,$walltime,$account);
 
 my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$fUtil,$logger);
 
@@ -285,6 +291,71 @@ sub getRedirectOutput {
 }
 
 
+#
+# Get Account for Job
+#
+sub getAccountForJob {
+    my $cluster = shift;
+    my $config = shift;
+    my $accountArg = shift;
+
+    if (!defined($accountArg)){
+        return $config->getAccount($cluster);
+    }
+
+    my $account = getArgumentValueForCluster($cluster,$accountArg);
+
+    if (defined($account)){
+        return $account;
+    }
+    return $config->getAccount($cluster);
+}
+
+sub getWallTimeForJob {
+    my $cluster = shift;
+    my $config = shift;
+    my $wallTimeArg = shift;
+
+    if (!defined($wallTimeArg)){
+        print "walltime arg not set\n";
+        return $config->getWallTime($cluster);
+    }
+
+    my $walltime = getArgumentValueForCluster($cluster,$wallTimeArg);
+
+    if (defined($walltime)){
+        return $walltime;
+    }
+    return $config->getWallTime($cluster);
+}
+
+
+
+#
+#
+#
+sub getArgumentValueForCluster {
+    my $cluster = shift;
+    my $arg = shift;
+
+    my $default = undef;
+    my @split = split(",",$arg);
+
+    for (my $x = 0; $x < @split; $x++){
+       if ($split[$x]=~m/^(.*)::(.*)$/){
+           if ($1 eq $cluster){
+              return $2;
+           }
+       }
+       else {
+         $default = $split[$x];
+       }
+    }
+    return $default;
+}
+
+
+
 1;
 
 __END__
@@ -314,6 +385,22 @@ retrieve the data from the remote cluster once the job completes.
 Lots of options here
 
 =over 4
+
+=item B<-A Account(s)>
+
+Defines account(s) to set in remote cluster scheduler.  This parameter can be in two
+formats.  The basic format is just to set a single account string which will be set
+for all remote clusters.  The complex format goes with queue followed by two colons and
+then then account to use for that queue.  If more then one queue needs to be specified
+then use commas with no spaces to delimit.
+
+Format:
+
+<queue>::<account>,<queue>::<account>
+
+Example:
+
+foo.q::ddp555,blah.q::TG2342s
 
 =item B<--batchfactor integer X>
 
@@ -387,6 +474,24 @@ Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose
 verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
+
+=item B<--walltime HH:MM:SS>
+
+Defines walltime to specify in hours:minutes:seconds for all remote clusters in the basic format. In
+complex format walltime can be specified for each cluster by first listing the cluster followed
+by two colons and then the walltime.  If multiple clusters need to be set then delimit with a
+comma and no spaces.
+
+Format:
+
+<queue>::<HH:MM:SS>,<queue>::<HH:MM:SS>
+
+Example:
+
+foo.q::12:00:00,blah.q::08:00:00
+
+
+
 
 =back
 
