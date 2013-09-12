@@ -37,7 +37,9 @@ sub new {
      PsubFile          => shift,
      RealJobId         => shift,
      FailReason        => shift,
-     BatchFactor       => shift
+     BatchFactor       => shift,
+     WallTime          => shift,
+     Account           => shift
    };
    my $blessedself = bless($self,$class);
    return $blessedself;
@@ -110,6 +112,14 @@ sub equals {
     }
   
     if ($self->_safeCompare($job->getBatchFactor(),$self->getBatchFactor()) == 0){
+       return $notEqual;
+    }
+    
+    if ($self->_safeCompare($job->getWallTime(),$self->getWallTime()) == 0){
+       return $notEqual;
+    }
+
+    if ($self->_safeCompare($job->getAccount(),$self->getAccount()) == 0){
        return $notEqual;
     }
 
@@ -357,6 +367,48 @@ sub getBatchFactor {
    my $self = shift;
    return $self->{BatchFactor};
 }
+
+=head3 setWallTime 
+
+Sets walltime for job
+
+=cut
+sub setWallTime {
+    my $self = shift;
+    $self->{WallTime} = shift;
+}
+
+=head3 getWallTime
+
+Gets the walltime for job
+
+=cut
+sub getWallTime {
+    my $self = shift;
+    return $self->{WallTime};
+}
+
+
+=head3 setAccount 
+
+Sets account to bill job to 
+
+=cut
+sub setAccount {
+    my $self = shift;
+    $self->{Account} = shift;
+}
+
+=head3 getAccount
+
+Gets account the job should be billed to
+
+=cut
+sub getAccount {
+    my $self = shift;
+    return $self->{Account};
+}
+
 
 
 =head3 getJobAsString

@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 52;
+use Test::More tests => 62;
 use Panfish::Job;
 
 #########################
@@ -21,7 +21,7 @@ use Panfish::Job;
   my $job = Panfish::Job->new("cluster","jobid","taskid","jobname",
                               "currentworkingdir","command","state",
                               "modificationtime","commandsfile","psubfile",
-                              "realjobid","failreason");
+                              "realjobid","failreason","batchfactor","walltime","account");
 
   ok(defined($job));
 
@@ -54,7 +54,18 @@ use Panfish::Job;
   ok($job->getFailReason() eq "failreason");
   $job->setFailReason("failreason2");
 
+  ok($job->getBatchFactor() eq "batchfactor");
+  $job->setBatchFactor("batchfactor2");
 
+  ok($job->getWallTime() eq "walltime");
+  $job->setWallTime("walltime2");
+
+  ok($job->getAccount() eq "account");
+  $job->setAccount("account2");
+
+  ok($job->getBatchFactor() eq "batchfactor2");
+  ok($job->getWallTime() eq "walltime2");
+  ok($job->getAccount() eq "account2");
   ok($job->getRealJobId() eq "realjobid2");
   ok($job->getPsubFile() eq "psubfile2");
   ok($job->getCommandsFile() eq "commandsfile2");
@@ -106,15 +117,18 @@ use Panfish::Job;
   $job = Panfish::Job->new("cluster","jobid","taskid","jobname",
                               "currentworkingdir","command","state",
                               "modificationtime","commandsfile","psubfile",
-                              "realjobid","failreason");
+                              "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($job) == 1);
+
+  # verify comparison of undef works properly
+  ok($job->equals(undef) == 0);
 
   # cluster differs
   my $jobtwo = Panfish::Job->new("cluster2","jobid","taskid","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -123,7 +137,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid2","taskid","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -132,7 +146,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid2","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -141,7 +155,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname2",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -150,7 +164,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir2","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -159,7 +173,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir","command2","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -168,7 +182,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir","command","state2",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -177,7 +191,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime2","commandsfile","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 1);
   ok($jobtwo->equals($job) == 1);
@@ -186,7 +200,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir","command","state2",
                                  "modificationtime","commandsfile2","psubfile",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -195,7 +209,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile2",
-                                 "realjobid","failreason");
+                                 "realjobid","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -204,7 +218,7 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid2","failreason");
+                                 "realjobid2","failreason","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
@@ -214,23 +228,37 @@ use Panfish::Job;
   $jobtwo = Panfish::Job->new("cluster","jobid","taskid","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid","failreason2");
+                                 "realjobid","failreason2","batchfactor","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
 
-
-
-  ok($job->equals(undef) == 0);
-
+  #batchfactor differs
   $jobtwo = Panfish::Job->new(undef,"jobid","taskid","jobname",
                                  "currentworkingdir","command","state",
                                  "modificationtime","commandsfile","psubfile",
-                                 "realjobid2","failreason");
+                                 "realjobid","failreason","batchfactor2","walltime","account");
 
   ok($job->equals($jobtwo) == 0);
   ok($jobtwo->equals($job) == 0);
 
+  # walltime differs
+  $jobtwo = Panfish::Job->new(undef,"jobid","taskid","jobname",
+                                 "currentworkingdir","command","state",
+                                 "modificationtime","commandsfile","psubfile",
+                                 "realjobid","failreason","batchfactor","walltime2","account");
+  
+  ok($job->equals($jobtwo) == 0);
+  ok($jobtwo->equals($job) == 0);
+
+  # account differs
+  $jobtwo = Panfish::Job->new(undef,"jobid","taskid","jobname",
+                                 "currentworkingdir","command","state",
+                                 "modificationtime","commandsfile","psubfile",
+                                 "realjobid","failreason","batchfactor","walltime","account2");
+
+  ok($job->equals($jobtwo) == 0);
+  ok($jobtwo->equals($job) == 0);
 }
 
 
