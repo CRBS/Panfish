@@ -121,8 +121,10 @@ sub _createPsubFile {
     my $self = shift;
     my $cluster = shift;
     my $commandsFile = shift;
-    my $name = shift;
-    my $curdir = shift;
+    my $job = shift;
+    my $name = $job->getJobName();
+    my $curdir = $job->getCurrentWorkingDir();
+
     # take commands File and strip off .commands suffix and replace with .psub
     my $psubFile = $commandsFile;
     $psubFile=~s/$self->{COMMANDS_FILE_SUFFIX}$/$self->{PSUB_FILE_SUFFIX}/;
@@ -147,9 +149,13 @@ sub _createPsubFile {
     my $remoteBaseDir = "";
 
     # set the path prefix if we are batching for another cluster otherwise dont
-    if ($cluster ne $self->{Config}->getThisCluster()){
+    if ($self->{Config}->isClusterPartOfThisCluster($cluster) == 0){
        $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
     }
+
+    my $walltime = $job->getWallTime();
+    my $account = $job->getAccount();
+
 
     my $runJobScript = $self->{Config}->getPanfishJobRunner($cluster)." --parallel ".$self->{Config}->getJobsPerNode($cluster);
 
@@ -164,6 +170,8 @@ sub _createPsubFile {
         $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir$curdir/g;
         $line=~s/\@PANFISH_RUN_JOB_SCRIPT\@/$runJobScript/g;
         $line=~s/\@PANFISH_JOB_FILE\@/$remoteBaseDir$commandsFile/g;
+        $line=~s/\@PANFISH_WALLTIME\@/$walltime/g;
+        $line=~s/\@PANFISH_ACCOUNT\@/$account/g;
 
         $self->{Writer}->write($line."\n");
 
@@ -212,7 +220,7 @@ sub _createPsubFileForJobs {
             }
 
             $psubFile = $self->_createPsubFile($cluster,$commandsFile,
-                                               $job->getJobName(),$job->getCurrentWorkingDir());
+                                               $job);
         }
         # set the psub file for each job
         $job->setPsubFile($psubFile);
