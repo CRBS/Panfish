@@ -49,7 +49,9 @@ sub new {
      PSUB_FILE_KEY     => "psub.file",
      REAL_JOB_ID_KEY   => "real.job.id",
      FAIL_REASON_KEY   => "fail.reason",
-     BATCH_FACTOR_KEY  => "batch.factor"
+     BATCH_FACTOR_KEY  => "batch.factor",
+     WALLTIME_KEY      => "walltime",
+     ACCOUNT_KEY       => "account"
    };
 
    if (!defined($self->{FileReaderWriter})){
@@ -265,6 +267,13 @@ sub insert {
       $self->{FileReaderWriter}->write($self->{BATCH_FACTOR_KEY}."=".$job->getBatchFactor()."\n");
    }
 
+   if (defined($job->getWallTime())){
+      $self->{FileReaderWriter}->write($self->{WALLTIME_KEY}."=".$job->getWallTime()."\n");
+   }
+
+   if (defined($job->getAccount())){
+      $self->{FileReaderWriter}->write($self->{ACCOUNT_KEY}."=".$job->getAccount()."\n");
+   }
 
    $self->{FileReaderWriter}->close();
 
@@ -594,7 +603,9 @@ sub _getJobFromJobFile {
                             $config->getParameterValue($self->{PSUB_FILE_KEY}),
                             $config->getParameterValue($self->{REAL_JOB_ID_KEY}),
                             $config->getParameterValue($self->{FAIL_REASON_KEY}),
-                            $config->getParameterValue($self->{BATCH_FACTOR_KEY}));
+                            $config->getParameterValue($self->{BATCH_FACTOR_KEY}),
+                            $config->getParameterValue($self->{WALLTIME_KEY}),
+                            $config->getParameterValue($self->{ACCOUNT_KEY}));
 }
 
 
