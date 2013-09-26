@@ -50,10 +50,11 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
-# if the user did not set a cluster on the command just assume the
-# local cluster
+# if the user did not set a cluster on the command just fail
 if (!defined($clusterArgValue)){
-   $clusterArgValue = $config->getThisCluster();
+  $clusterArgValue = $config->getThisCluster();
+  # if multiple clusters are listed just take the first one
+  $clusterArgValue=~s/,.*//;  
 }
 
 my $jobDb = Panfish::FileJobDatabase->new($reader,
