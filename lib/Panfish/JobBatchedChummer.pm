@@ -98,7 +98,7 @@ sub chumBatchedJobs {
         $self->{Logger}->debug("Found ".@{$jobHashByPsubDir->{$psubDir}}.
                                " jobs with dir : $psubDir");
 
-        if ($cluster ne $self->{Config}->getThisCluster()){
+        if ($self->{Config}->isClusterPartOfThisCluster($cluster) == 0){
             $self->{Logger}->debug("Uploading $psubDir to $cluster");
               
             my $res = $self->{RemoteIO}->upload($psubDir,$cluster);
