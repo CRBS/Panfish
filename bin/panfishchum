@@ -159,7 +159,7 @@ if ($fUtil->runFileTest("-f",$pathArgValue)){
 if (defined($dryRunArg)){
    print "Dry run set, above path would be uploaded to: ";
    for (my $x = 0; $x < @clusterList; $x++){
-      if ($clusterList[$x] ne $config->getThisCluster()){
+      if ($config->isClusterPartOfThisCluster($clusterList[$x]) == 1){
            print " $clusterList[$x]";
       }
    }
@@ -179,7 +179,7 @@ if ($numClusters == 0){
 for (my $x = 0; $x < @clusterList ; $x++){
 
     # skip this cluster cause the data does NOT need to be moved
-    if ($clusterList[$x] eq $config->getThisCluster()){
+    if ($config->isClusterPartOfThisCluster($clusterList[$x]) == 1){
         print "Skipping $clusterList[$x] cause this program is running on this cluster\n";
         
         if ($chummedClusters ne ""){
