@@ -116,7 +116,7 @@ sub checkJobs {
         return "Cluster is not set";
     }
 
-    if ($cluster ne $self->{Config}->getThisCluster()){
+    if ($self->{Config}->isClusterPartOfThisCluster($cluster) == 0){
        $self->{Logger}->error("Can only be run on jobs for local cluster");
        return "Can only be run on jobs for local cluster";
     }
