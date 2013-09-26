@@ -197,7 +197,7 @@ if (defined($syncArgValue) || defined($syncallArg)){
   my @binaries = getBinariesToSync($fUtil,$config);  
 
   for (my $x = 0; $x < @clusterList; $x++){
-     if ($clusterList[$x] eq $config->getThisCluster()){
+     if ($config->isClusterPartOfThisCluster($clusterList[$x]) == 1){
         $logger->debug("Skipping $clusterList[$x] since its the local cluster");
         next;
      }
