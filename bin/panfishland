@@ -123,7 +123,7 @@ $directoryArgValue = $fUtil->standardizePath($directoryArgValue);
 for (my $x = 0; $x < @clusterList ; $x++){
 
     # skip this cluster cause the data does NOT need to be moved
-    if ($clusterList[$x] eq $config->getThisCluster()){
+    if ($config->isClusterPartOfThisCluster($clusterList[$x]) == 1){
         print "Skipping $clusterList[$x] cause this program is running on this cluster\n";
         next;
     }
