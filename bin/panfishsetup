@@ -31,9 +31,11 @@ my $cmdLineParseResult = GetOptions ("sync=s"       => \$syncArgValue,
                                      "writeconfig"  => \$writeConfigArg,
                                      "setupdball"   => \$setupDbAllArg,
                                      "setupdb=s"    => \$setupDbArg,
+                                     "setup"        => \$setupArg,
                                      "examinedir=s" => \$examineDirArgValue,
                                      "exists=s"     => \$existsArgValue,
                                      "removedir=s"  => \$removeDirArg,
+                                     "runtestjob=s"    => \$testJobArgValue,
                                      "verbose+"     => \$verboseArg,
                                      "help|?"       => \$helpArg,
                                      "man"          => \$manArg) or pod2usage(2);
@@ -81,6 +83,12 @@ my $config = $configFactory->getPanfishConfig();
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger,$fUtil);
+
+# Run setup code
+if (defined($setupArg)){
+   print STDERR "--setup not yet supported\n";
+   exit(1);
+}
 
 # if --examinedir argument is set get the size of the directory and
 # return information on that path in configuration file format
@@ -404,6 +412,17 @@ The AA is set to "yes" if the path exists or "no" if it does not.
 =item B<--removedir directory>
 
 Removes directory specified.  Code will exit with 0 exit code upon success or 1 upon failure.
+
+=item B<--generatetestjob path>
+
+Generates a testjob in B<path> specified.  This job can be invoked by the caller
+by following the directions in the README file.  An associated validation script
+is included to verify correct operation.
+
+=item B<--setup>
+
+Configures Panfish and local SGE installation through a series of 
+questions and via auto resource detection and configuration.
 
 =item B<--setupdb cluster>
 
