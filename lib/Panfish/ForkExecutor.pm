@@ -8,11 +8,6 @@ use English;
 use warnings;
 use Fcntl;
 
-# this implements the Executor interface so add it to @ISA
-require Panfish::Executor;
-our @ISA = qw(Panfish::Executor);
-
-
 =head1 NAME
 
 Panfish::ForkExecutor - Runs commands passed to it by first spawning a 

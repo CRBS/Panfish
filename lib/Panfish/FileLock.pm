@@ -7,7 +7,6 @@ use warnings;
 use Panfish::FileUtil;
 use Panfish::Logger;
 use Panfish::FileReaderWriterImpl;
-use Panfish::Executor;
 
 =head1 SYNOPSIS
    

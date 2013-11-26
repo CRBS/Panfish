@@ -10,7 +10,6 @@ use FindBin qw($Bin);
 
 use Panfish::PanfishConfig;
 use Panfish::Logger;
-use Panfish::Executor;
 
 =head1 SYNOPSIS
    

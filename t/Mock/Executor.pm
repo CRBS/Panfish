@@ -4,10 +4,6 @@ use strict;
 use English;
 use warnings;
 
-require Panfish::Executor;
-
-our @ISA = qw(Panfish::Executor);
-
 sub new {
     my $class = shift;
     my $self = {
