@@ -51,7 +51,7 @@ my $cmdLineParseResult = GetOptions ("e=s"      => \$eArgValue,
                                      "c=s"      => \$cArgValue,
                                      "A=s"              => \$aArgValue,
                                      "walltime=s"       => \$wallTimeArgValue,
-                                     "batchfactor=i"    => \$batchFactorArgValue,
+                                     "batchfactor=s"    => \$batchFactorArgValue,
                                      "writeoutputlocal" => \$writeOutputLocalArg,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
@@ -85,11 +85,6 @@ if (defined($oArgValue)){
 
 if (!defined($cArgValue)){
   $logger->fatal("Must define -c <command> parameter");
-  exit(1);
-}
-
-if (defined($batchFactorArgValue) && $batchFactorArgValue <= 0){
-  $logger->fatal("--batchfactor flag must be an integer greater then zero");
   exit(1);
 }
 
@@ -156,10 +151,12 @@ my $walltime = getWallTimeForJob($cluster,$config,$wallTimeArgValue);
 
 my $account = getAccountForJob($cluster,$config,$aArgValue);
 
+my $batchFactor = getBatchFactorForJob($cluster,$config,$batchFactorArgValue);
+
 # Save job to database
 my $job = Panfish::Job->new($cluster,$jobId,$taskId,$jobName,getcwd(),$command,
                             Panfish::JobState->SUBMITTED(),undef,undef,undef,undef,undef,
-                            $batchFactorArgValue,$walltime,$account);
+                            $batchFactor,$walltime,$account);
 
 my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$config->getDatabaseDir(),$fUtil,$logger);
 
@@ -290,6 +287,19 @@ sub getRedirectOutput {
    return ($redirectSymbol." \$PANFISH_SCRATCH/\$JOB_ID.\$SGE_TASK_ID.$suffix",";/bin/mv \$PANFISH_SCRATCH/\$JOB_ID.\$SGE_TASK_ID.$suffix \$PANFISH_BASEDIR$outFile");
 }
 
+#
+# Get Batch factor for job
+# 
+sub getBatchFactorForJob {
+   my $cluster = shift;
+   my $config = shift;
+   my $batchFactorArg = shift;
+
+   if (!defined($batchFactorArg)){
+       return undef;
+   } 
+   return getArgumentValueForCluster($cluster,$batchFactorArg);
+}
 
 #
 # Get Account for Job
@@ -317,7 +327,6 @@ sub getWallTimeForJob {
     my $wallTimeArg = shift;
 
     if (!defined($wallTimeArg)){
-        print "walltime arg not set\n";
         return $config->getWallTime($cluster);
     }
 
@@ -402,12 +411,24 @@ Example:
 
 foo.q::ddp555,blah.q::TG2342s
 
-=item B<--batchfactor integer X>
+=item B<--batchfactor factor(s)>
 
 Defines a multiplier known as a batch job factor which causes jobs to be batched by X times on each node and run through
 in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
 run 8 jobs in parallel and a batch factor of 2 is set then a panfish job submitted to that compute node will be given 16 jobs
-to run in 8 job batches.
+to run in 8 job batches.  This multiplier also works for values less then 1, but greater then 0.  In this case the batchfactor
+reduces the number of concurrent jobs allowed to run per node.  For example, say a cluster runs 8 jobs on a node, if the
+batchfactor is set to 0.5 then only 4 jobs will be batched and run concurrently on those nodes.  This parameter can be in
+two formats.  The basic format is just to set a single factor X which will be set for all remote clusters.  If more then
+one queue needs to be specified then use commas with no spaces to delimit.
+
+Format:
+
+<queue>::<float X>,<queue>::<float X>
+
+Example:
+
+foo.q::0.25,blah.q::0.5
 
 =item B<-c command>
 
