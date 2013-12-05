@@ -3,11 +3,6 @@ package Panfish::FileReaderWriterImpl;
 use strict;
 use English;
 
-
-require Panfish::FileReaderWriter;
-
-our @ISA = qw(Panfish::FileReaderWriter);
-
 =head1 NAME
 
 Panfish::FileReaderImpl - Reads contents of files

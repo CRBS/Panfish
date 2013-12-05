@@ -6,7 +6,6 @@ use warnings;
 
 
 use Panfish::FileUtil;
-use Panfish::FileReaderWriter;
 use Panfish::Logger;
 use Panfish::ConfigFromFileFactory;
 use Panfish::Config;

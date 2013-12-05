@@ -36,7 +36,6 @@ sub new {
       Logger => shift
    };
 
-   die "Invalid FileReaderWriter object" unless $self->{Reader}->isa('Panfish::FileReaderWriter');
 
    my $blessedself = bless($self,$class);
    return $blessedself;
