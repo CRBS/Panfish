@@ -38,7 +38,7 @@ my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "walltime=s" => \$wallTimeArgValue,
                                      "sync=s"     => \$syncArgValue,
                                      "retry=i"    => \$retryArgValue,
-                                     "batchfactor=i" => \$batchFactorArgValue,
+                                     "batchfactor=s" => \$batchFactorArgValue,
                                      "listclusters" => \$listClustersArg,
                                      "writeoutputlocal" => \$writeOutputLocalArg,
                                      "cluster=s" => \$clusterArgValue,
@@ -535,12 +535,24 @@ verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
 
-=item B<--batchfactor integer X>
+=item B<--batchfactor factor(s)>
 
 Defines a multiplier known as a batch job factor which causes jobs to be batched by X times on each node and run through
 in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
 run 8 jobs in parallel and a batch factor of 2 is set then a panfish job submitted to that compute node will be given 16 jobs
-to run in 8 jobs batches.  
+to run in 8 jobs batches.  This multiplier also works for values less then 1, but greater then 0.  In this case the batchfactor
+reduces the number of concurrent jobs allowed to run per node.  For example, say a cluster runs 8 jobs on a node, if the
+batchfactor is set to 0.5 then only 4 jobs will be batched and run concurrently on those nodes.  This parameter can be in
+two formats.  The basic format is just to set a single factor X which will be set for all remote clusters.  If more then
+one queue needs to be specified then use commas with no spaces to delimit.
+
+Format:
+
+<queue>::<float X>,<queue>::<float X>
+
+Example:
+
+foo.q::0.25,blah.q::0.5
 
 =item B<--listclusters>
 
