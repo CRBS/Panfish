@@ -23,14 +23,12 @@ lib/Panfish/JobBatcher.pm
 lib/Panfish/SSHJobWatcher.pm
 lib/Panfish/JobHashFactory.pm
 lib/Panfish/KilledJobHandler.pm
-lib/Panfish/FileReaderWriter.pm
 lib/Panfish/SortByFileAgeSorter.pm
 lib/Panfish/FileUtil.pm
 lib/Panfish/PanfishConfigFactory.pm
 lib/Panfish/SSHJobSubmitter.pm
 lib/Panfish/SLURMSbatchParser.pm
 lib/Panfish/SLURMJobStateHashFactory.pm
-lib/Panfish/Executor.pm
 lib/Panfish/RemoteIO.pm
 lib/Panfish/Logger.pm
 lib/Panfish/PsubIdHashKeyGenerator.pm
