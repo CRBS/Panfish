@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 62;
+use Test::More tests => 73;
 use Panfish::Job;
 
 #########################
@@ -261,4 +261,34 @@ use Panfish::Job;
   ok($jobtwo->equals($job) == 0);
 }
 
+#
+# Test compareJobByJobAndTaskId
+#
+{
+  my $a = Panfish::Job->new("foo","23");
+  my $b = Panfish::Job->new("foo","24");
 
+  #undef check
+  ok($a->compareJobByJobAndTaskId(undef) == -1);
+
+  ok($a->compareJobByJobAndTaskId($b) == -1);
+  ok($b->compareJobByJobAndTaskId($a) == 1);
+
+  $b = Panfish::Job->new("foo","23");
+  ok($a->compareJobByJobAndTaskId($b) == 0);
+  ok($b->compareJobByJobAndTaskId($a) == 0);
+  ok($a->compareJobByJobAndTaskId($a) == 0);
+
+  $a = Panfish::Job->new("foo","23","2");
+  $b = Panfish::Job->new("foo","23");
+  ok($a->compareJobByJobAndTaskId($b) == -1);
+  ok($b->compareJobByJobAndTaskId($a) == 1);
+
+  $a = Panfish::Job->new("foo","23","2");
+  $b = Panfish::Job->new("foo","23","3");
+  ok($a->compareJobByJobAndTaskId($b) == -1);
+  ok($b->compareJobByJobAndTaskId($a) == 1);
+
+  ok($a->compareJobByJobAndTaskId($a) == 0);
+
+}
