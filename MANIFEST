@@ -20,6 +20,7 @@ lib/Panfish/FileReaderWriterImpl.pm
 lib/Panfish/ForkExecutor.pm
 lib/Panfish/PBSQsubParser.pm
 lib/Panfish/JobBatcher.pm
+lib/Panfish/PsubFileFromJobsCreator.pm
 lib/Panfish/SSHJobWatcher.pm
 lib/Panfish/JobHashFactory.pm
 lib/Panfish/KilledJobHandler.pm
@@ -59,6 +60,7 @@ t/PBSQsubParser.t
 t/SGEJobStateHashFactory.t
 t/PanfishConfigFactory.t
 t/RemoteIO.t
+t/PsubFileFromJobsCreator.t
 t/JobBatcher.t
 t/Panfish.t
 t/FileUtil.t
