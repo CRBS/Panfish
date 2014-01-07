@@ -55,7 +55,9 @@ sub new {
      IO_TIMEOUT           => "io.timeout",
      IO_CONNECT_TIMEOUT   => "io.connect.timeout",
      ACCOUNT              => "job.account",
-     WALLTIME             => "job.walltime"
+     WALLTIME             => "job.walltime",
+     COMMANDS_FILE_SUFFIX => ".commands",
+     PSUB_FILE_SUFFIX     => ".psub"
    };
 
    my $blessedself = bless($self,$class);
@@ -727,6 +729,33 @@ sub getWallTime {
    my $cluster = shift;
    return $self->_getValueFromConfig($self->{WALLTIME},$cluster);
 }
+
+=head3 getCommandsFileSuffix
+
+Gets the suffix to be used for command files.
+Value will include prefix period.
+
+=cut
+
+sub getCommandsFileSuffix {
+  my $self = shift;
+  return $self->{COMMANDS_FILE_SUFFIX};
+}
+
+
+=head3 getPsubFileSuffix
+
+Gets the suffix to be used for psub files.
+Value will include prefix period.
+
+=cut
+
+sub getPsubFileSuffix {
+  my $self = shift;
+  return $self->{PSUB_FILE_SUFFIX};
+}
+
+
 
 
 =head3 getAllSetValues
