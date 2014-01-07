@@ -25,6 +25,7 @@ lib/Panfish/SSHJobWatcher.pm
 lib/Panfish/JobHashFactory.pm
 lib/Panfish/KilledJobHandler.pm
 lib/Panfish/SortByFileAgeSorter.pm
+lib/Panfish/CommandsFileFromJobsCreator.pm
 lib/Panfish/FileUtil.pm
 lib/Panfish/PanfishConfigFactory.pm
 lib/Panfish/SSHJobSubmitter.pm
@@ -52,6 +53,7 @@ t/JobHashFactory.t
 t/Config.t
 t/PsubIdHashKeyGenerator.t
 t/PanfishConfig.t
+t/CommandsFileFromJobsCreator.t
 t/ConfigFromFileFactory.t
 t/PsubHashKeyGenerator.t
 t/PBSJobStateHashFactory.t
