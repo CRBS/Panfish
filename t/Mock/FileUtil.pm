@@ -123,6 +123,25 @@ sub touch {
     return pop(@{$self->{Touch}->{$path}});
 }
 
+sub addMakePathUserGroupExecutableAndReadableResult {
+  my $self = shift;
+  my $path = shift;
+  my $result = shift;
+  push(@{$self->{MakeExec}->{$path}},$result);  
+}
+
+=head3 makePathUserGroupExecutableAndReadable
+
+Make path user and group executable and readable
+
+=cut
+
+sub makePathUserGroupExecutableAndReadable {
+  my $self = shift;
+  my $path = shift;
+  return pop(@{$self->{MakeExec}->{$path}});
+}
+
 1;
 
 __END__
