@@ -11,7 +11,8 @@ sub new {
      DirName    => undef,
      FileTest   => undef,
      DeleteFile => undef,
-     Touch      => undef
+     Touch      => undef,
+     MakeDir    => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -140,6 +141,19 @@ sub makePathUserGroupExecutableAndReadable {
   my $self = shift;
   my $path = shift;
   return pop(@{$self->{MakeExec}->{$path}});
+}
+
+sub addMakeDirResult {
+  my $self = shift;
+  my $path = shift;
+  my $result = shift;
+  push(@{$self->{MakeDir}->{$path}},$result);
+}
+
+sub makeDir {
+  my $self = shift;
+  my $path = shift;
+  return pop(@{$self->{MakeDir}->{$path}});
 }
 
 1;
