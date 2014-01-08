@@ -24,7 +24,8 @@ Creates new instance of JobHashFactory object
 sub new {
    my $class = shift;
    my $self = {
-     JobHash => undef
+     JobHash => undef,
+     JobHashError => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -34,16 +35,18 @@ sub new {
 sub addGetJobHashResult {
    my $self = shift;
    my $jobs = shift;
-   my $result = shift;
+   my $resultHash = shift;
+   my $resultError = shift;
 
-   push(@{$self->{JobHash}},$result);
+   push(@{$self->{JobHash}},$resultHash);
+   push(@{$self->{JobHashError}},$resultError);
 }
 
 sub getJobHash {
    my $self = shift;
    my $jobs = shift;
 
-   return pop(@{$self->{JobHash}});
+   return (pop(@{$self->{JobHash}}),pop(@{$self->{JobHashError}}));
 }
 
 1;
