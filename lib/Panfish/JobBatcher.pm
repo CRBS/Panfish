@@ -4,18 +4,11 @@ use strict;
 use English;
 use warnings;
 
-use Panfish::FileUtil;
-use Panfish::PanfishConfig;
-use Panfish::Logger;
-use Panfish::FileJobDatabase;
 use Panfish::JobState;
-use Panfish::Job;
-use Panfish::FileReaderWriterImpl;
-use Panfish::JobHashFactory;
-use Panfish::CurrentWorkingDirHashKeyGenerator;
+
 =head1 SYNOPSIS
    
-  Panfish::JobBatcher -- Batches individual jobs to prepare them for running on remote clusters
+Panfish::JobBatcher -- Batches individual jobs to prepare them for running on remote clusters
 
 =head1 DESCRIPTION
 
@@ -25,33 +18,28 @@ Batches Panfish Jobs
 
 =head3 new
 
-Creates new instance of Job object
+Creates new instance of JobBatcher object
 
-my $job = Panfish::JobBatcher->new()
+my $job = Panfish::JobBatcher->new($config,$jobdb,$logger,
+                                   $cmdCreator,$psubCreator,$jobHashFac,
+                                   $pathSorter)
 
 =cut
 
 sub new {
-   my $class = shift;
-   my $self = {
-     Config              => shift,
-     JobDb               => shift,
-     Logger              => shift,
-     FileUtil            => shift,
-     Reader              => shift,
-     Writer              => shift,
-     JobHashFactory      => shift,
-     PathSorter          => shift,
-     COMMANDS_FILE_SUFFIX => ".commands",
-     PSUB_FILE_SUFFIX    => ".psub"
-   };
- 
-   if (!defined($self->{Logger})){
-       $self->{Logger} = Panfish::Logger->new();
-   }
+  my $class = shift;
+  my $self = {
+     Config          => shift,
+     JobDb           => shift,
+     Logger          => shift,
+     CmdCreator      => shift,
+     PsubCreator     => shift,
+     JobHashFactory  => shift,
+     PathSorter      => shift
+  };
 
-   my $blessedself = bless($self,$class);
-   return $blessedself;
+  my $blessedself = bless($self,$class);
+  return $blessedself;
 }
 
 =head3 batchJobs
@@ -60,7 +48,7 @@ This method does several things.  First it finds all submitted jobs
 for the cluster passed in and then batches them into bundles suitable to 
 run on the cluster they are designed to run on.  The code then writes
 these batches out to job files in under the cwd for that job.  In addition,
- a template file is copied to the cwd for that job and adjusted to work
+a template file is copied to the cwd for that job and adjusted to work
 for the cluster.  Once complete the jobs are set to batched state.
 
 my $res = $batcher->batchJobs($cluster);
@@ -68,168 +56,75 @@ my $res = $batcher->batchJobs($cluster);
 =cut
 
 sub batchJobs {
-    my $self = shift;
-    my $cluster = shift;
+  my $self = shift;
+  my $cluster = shift;
 
-    if (!defined($cluster)){
-        $self->{Logger}->error("Cluster is not set");
-        return "Cluster is not set";
-    }
+  if (!defined($cluster)){
+    $self->{Logger}->error("Cluster is not set");
+    return "Cluster is not set";
+  }
 
-    my $res;
+  my $res;
     
-    # builds a hash where key is job id and value is an array
-    # of jobs with that job id
-    my $jobHashByPath = $self->_buildJobHash($cluster); 
+  # builds a hash where key is job id and value is an array
+  # of jobs with that job id
+  my $jobHashByPath = $self->_buildJobHash($cluster); 
 
-    my @sortedJobs;
-    my @keys = keys %$jobHashByPath; 
-    my @sortedJobPaths = $self->{PathSorter}->sort(\@keys);
-    my $jobPath;
-    # iterate through each job array
-    foreach $jobPath (@sortedJobPaths){
+  # no jobs to process
+  if (!defined($jobHashByPath)){
+    return undef;
+  }
 
-        # sort the job array by task id
-        @sortedJobs = sort {$self->_sortJobsByTaskId } @{$jobHashByPath->{$jobPath}};
+  my @keys = keys %$jobHashByPath;
 
-        # check if it is okay to submit these jobs
-        while ($self->_isItOkayToSubmitJobs($cluster,\@sortedJobs) eq "yes"){
+  my @sortedJobPaths = $self->{PathSorter}->sort(\@keys);
 
-             # grab a batchable set of those jobs 
-             my @batchableJobs = $self->_createBatchableArrayOfJobs($cluster,
-                                                                    \@sortedJobs);
-
-             # generate a command file for those jobs
-             $self->_createCommandFileForJobs($cluster,\@batchableJobs);
-
-             # generate a psub file
-             $self->_createPsubFileForJobs($cluster,\@batchableJobs);            
-
-             # update batched jobs in database
-             $self->{JobDb}->updateArray(\@batchableJobs);
-
-             $self->{Logger}->info("Batched ".@batchableJobs.
-                                   " jobs on $cluster with base id: ".
-                                   $batchableJobs[0]->getJobId().".".
-                                   $batchableJobs[0]->getTaskId());
-        } 
-    }
-}
-
-
-sub _createPsubFile {
-    my $self = shift;
-    my $cluster = shift;
-    my $commandsFile = shift;
-    my $job = shift;
-    my $name = $job->getJobName();
-    my $curdir = $job->getCurrentWorkingDir();
-
-    # take commands File and strip off .commands suffix and replace with .psub
-    my $psubFile = $commandsFile;
-    $psubFile=~s/$self->{COMMANDS_FILE_SUFFIX}$/$self->{PSUB_FILE_SUFFIX}/;
-        
-
-    # read in template file and replace tokens and
-    # write out as psub file
-    my $res = $self->{Reader}->openFile($self->{Config}->getJobTemplateDir()."/".
-                              $cluster);
-    if (defined($res)){
-        $self->{Logger}->error("Unable to open :".$self->{Config}->getJobTemplateDir()."/".
-                              $cluster);
-        return undef;
-    }
+  if (!@sortedJobPaths){
+    return undef;
+  }
+ 
+  my $jobPath;
+  # iterate through each job array
+  foreach $jobPath (@sortedJobPaths){
    
-    $self->{Logger}->debug("Creating psub file: $psubFile");
-    $res = $self->{Writer}->openFile(">$psubFile");
-    if (defined($res)){
-        $self->{Logger}->error("There was a problem opening file : $commandsFile");
-        return undef;
-    }
-    my $remoteBaseDir = "";
+    # sort the job array by task id
+    my @sortedJobs = sort {$self->_sortJobsByTaskId } @{$jobHashByPath->{$jobPath}};
 
-    # set the path prefix if we are batching for another cluster otherwise dont
-    if ($self->{Config}->isClusterPartOfThisCluster($cluster) == 0){
-       $remoteBaseDir = $self->{Config}->getBaseDir($cluster);
-    }
+    # check if it is okay to submit these jobs
+    while ($self->_isItOkayToSubmitJobs($cluster,\@sortedJobs) eq "yes"){
 
-    my $walltime = $job->getWallTime();
-    my $account = $job->getAccount();
+      # grab a batchable set of those jobs 
+      my @batchableJobs = $self->_createBatchableArrayOfJobs($cluster,
+                                                             \@sortedJobs);
 
+      # generate a command file for those jobs
+      $res = $self->{CmdCreator}->create($cluster,\@batchableJobs);
+      if (defined($res)){
+        $self->{Logger}->error("Unable to create commands file : $res");
+        next;
+      }
 
-    my $runJobScript = $self->{Config}->getPanfishJobRunner($cluster)." --parallel ".$self->{Config}->getJobsPerNode($cluster);
+      # generate a psub file
+      $res = $self->{PsubCreator}->create($cluster,\@batchableJobs); 
+      if (defined($res)){
+         $self->{Logger}->error("Unable to create psub file : $res");
+         next;
+      }
+    
+      # update batched jobs in database
+      $res = $self->{JobDb}->updateArray(\@batchableJobs);
+      if (defined($res)){
+        $self->{Logger}->error("Unable to update jobs in database : $res");
+        next;
+      }
 
-    $self->{Logger}->debug("Current Directory: $curdir");
-
-    my $line = $self->{Reader}->read();
-    while(defined($line)){
-        chomp($line);
-        $line=~s/\@PANFISH_JOB_STDOUT_PATH\@/$remoteBaseDir$psubFile.stdout/g;
-        $line=~s/\@PANFISH_JOB_STDERR_PATH\@/$remoteBaseDir$psubFile.stderr/g;
-        $line=~s/\@PANFISH_JOB_NAME\@/$name/g;
-        $line=~s/\@PANFISH_JOB_CWD\@/$remoteBaseDir$curdir/g;
-        $line=~s/\@PANFISH_RUN_JOB_SCRIPT\@/$runJobScript/g;
-        $line=~s/\@PANFISH_JOB_FILE\@/$remoteBaseDir$commandsFile/g;
-        $line=~s/\@PANFISH_WALLTIME\@/$walltime/g;
-        $line=~s/\@PANFISH_ACCOUNT\@/$account/g;
-
-        $self->{Writer}->write($line."\n");
-
-        $line = $self->{Reader}->read();
+      $self->{Logger}->info("Batched ".@batchableJobs.
+                            " jobs on $cluster with base id: ".
+                            $batchableJobs[0]->getJobAndTaskId());
     } 
-      
-    $self->{Reader}->close();
-    $self->{Writer}->close();
-
-    # give the psub file execute permission for users and groups
-    $self->{FileUtil}->makePathUserGroupExecutableAndReadable($psubFile);
-    return $psubFile;
+  }
+  return undef;
 }
-
-
-#
-# Given the jobs make a psub file
-#
-#
-#
-
-sub _createPsubFileForJobs {
-    my $self = shift;
-    my $cluster = shift;
-    my $jobsArrayRef = shift;
-
-    if (@{$jobsArrayRef}<=0){
-        return "No jobs to generate a psub file for";
-    }
-
-    my $job;
-    my $commandsFile;
-    my $psubFile;
-    for (my $x = 0; $x < @{$jobsArrayRef}; $x++){
-        $job = ${$jobsArrayRef}[$x];
-  
-        # for the first job get the commands file and
-        # write out the psub file
-        # set that psub file path in every job
-        if ($x == 0){
-            $commandsFile = $job->getCommandsFile();
-
-            if (!defined($commandsFile) || 
-                ! -f $commandsFile){
-                 return "No commands file set or invalid path";
-            }
-
-            $psubFile = $self->_createPsubFile($cluster,$commandsFile,
-                                               $job);
-        }
-        # set the psub file for each job
-        $job->setPsubFile($psubFile);
-
-        # set state of job to batched
-        $job->setState(Panfish::JobState->BATCHED());
-     }
-}
-
 
 # 
 # Given an array of jobs this method
@@ -242,80 +137,33 @@ sub _createPsubFileForJobs {
 #
 
 sub _createBatchableArrayOfJobs {
-    my $self = shift;
-    my $cluster = shift;
-    my $jobsArrayRef = shift;
+  my $self = shift;
+  my $cluster = shift;
+  my $jobsArrayRef = shift;
 
-    my $jobsPerNode = $self->{Config}->getJobsPerNode($cluster);
+  # Since this is called after checking it is assumed
+  # this config value is set
+  my $jobsPerNode = $self->{Config}->getJobsPerNode($cluster);
 
-    # pop off from the jobsArrayRef until we hit jobs per node limit
-    # OR we run out of jobs in the array reference.
-    my $job = shift @{$jobsArrayRef};
-    my $jobCount = 0;
-    my $batchFactor;
-    my @batchableJobs;
-    while(defined($job) && $jobCount < $jobsPerNode){
-        $batchFactor = $job->getBatchFactor();
-        if (!defined($batchFactor) || $batchFactor <= 0){
-           $batchFactor = 1;
-        }
-           
-        $jobCount += 1/$batchFactor;
+  # pop off from the jobsArrayRef until we hit jobs per node limit
+  # OR we run out of jobs in the array reference.
+  # Assuming there are jobs initially since this is a protected call
+  my $job;
+  my $jobCount = 0;
 
-        push(@batchableJobs,$job);
-        $job = shift @{$jobsArrayRef};
+  my @batchableJobs;
+
+  while($jobCount < $jobsPerNode){
+    $job = shift @{$jobsArrayRef};
+    if (!defined($job)){
+      last;
     }
+    $jobCount += $self->_getBatchFactorForJob($job);
+    push(@batchableJobs,$job);   
+  }
 
-    return @batchableJobs;
+  return @batchableJobs;
 }
-
-sub _createCommandFileForJobs {
-    my $self = shift;
-    my $cluster = shift;
-    my $jobsArrayRef = shift;
-    my $commandFile = undef;
-    for (my $x = 0; $x < @{$jobsArrayRef}; $x++){
-               
-        my $job = ${$jobsArrayRef}[$x];
-        if (!defined($job)){
-            $self->{Logger}->error("Job # $x pulled from array is not defined. wtf");
-            return "Undefined job found";
-        }
-        # use the first job to create the cluster directory
-        # and initialize the command file
-        if ($x == 0){
-            my $commandDir = $job->getCurrentWorkingDir()."/".$cluster;
-
-            $self->{Logger}->debug("Checking to see if command directory: $commandDir exists");
-
-            if (! -d $commandDir){
-                $self->{Logger}->debug("Creating directory command directory: $commandDir");
-            
-                if (!mkdir($commandDir)){
-                    $self->{Logger}->error("There was a problem making dir: $commandDir");
-                    return "Unable to make directory $commandDir";
-                }
-            }
-            $commandFile = $commandDir."/".$job->getJobId().".".
-                           $job->getTaskId().$self->{COMMANDS_FILE_SUFFIX};
-
-            $self->{Logger}->debug("Creating command file:  $commandFile");
-            my $res = $self->{Writer}->openFile(">$commandFile");
-            if (defined($res)){
-                $self->{Logger}->error("There was a problem opening file : $commandFile");
-                return "Unable to open file $commandFile";
-            }
-        }       
-        $self->{Writer}->write($job->getCommand()."\n");
-        $job->setCommandsFile($commandFile);
-    }
-    $self->{Writer}->close();
-    return undef;
-}
-
-# sub _create
-
-
 
 #
 # If the number of jobs is greater then or equal to jobs per node
@@ -325,67 +173,83 @@ sub _createCommandFileForJobs {
 # which case a yes is returned.
 #
 sub _isItOkayToSubmitJobs {
-    my $self = shift;
-    my $cluster = shift;
-    my $jobs = shift;
+  my $self = shift;
+  my $cluster = shift;
+  my $jobs = shift;
     
-   
-    # if there are no jobs then just bail 
-    if (@{$jobs} <= 0){
-        $self->{Logger}->debug("There are no jobs to submit");
-        return "no";
-    }
-
-
-    # look at each job and examine its batch factor if a job has a batch factor of 2
-    # then 2 jobs count as one cause they run fast
-    my $jobCount = 0;
-    my $batchFactor;
-    for (my $x = 0; $x < @{$jobs}; $x++){
-          $batchFactor = ${$jobs}[$x]->getBatchFactor();
-          if (!defined($batchFactor) || $batchFactor <= 0){
-             $self->{Logger}->debug("Batch factor for job (".
-                                    ${$jobs}[$x]->getJobAndTaskId().
-                                    ") is not set.  Using default of 1");
-             $batchFactor = 1;
-          }
-          else {
-             $self->{Logger}->debug("Batch factor for job (".
-                                    ${$jobs}[$x]->getJobAndTaskId().
-                                    ") is $batchFactor");
-          }
-          $jobCount += 1/$batchFactor;
-    }
-
-    if ($jobCount >= $self->{Config}->getJobsPerNode($cluster)){
-        $self->{Logger}->debug("Job count: $jobCount exceeds threshold of ".
-                               $self->{Config}->getJobsPerNode($cluster).
-                               " for cluster $cluster.  Allowing jobs to be submitted");
-        return "yes";
-    }
     
-    my $curTimeInSec = time();
-    my $overrideTimeout = $self->{Config}->getJobBatcherOverrideTimeout($cluster);
-    if (!defined($overrideTimeout)){
-       $self->{Logger}->error("Override timeout not set for cluster : $cluster : ignoring jobs");
-       return "no";
-    }
-    $self->{Logger}->debug("Current Time $curTimeInSec and Override Time: $overrideTimeout");
-    for (my $x = 0; $x < @{$jobs};$x++){
+ 
+  # if there are no jobs then just bail 
+  if (!defined($jobs) || @{$jobs} <= 0){
+    $self->{Logger}->debug("There are no jobs to submit");
+    return "no";
+  }
 
-       # hack cause we are getting an array of jobs but the first element is not set
-       if (!defined(${$jobs}[$x])){
-            return "no";
-       }
+  # count up batch factor for jobs.
+  my $jobCount = 0;
+  for (my $x = 0; $x < @{$jobs}; $x++){ 
+    $jobCount += $self->_getBatchFactorForJob(${$jobs}[$x]);
+  }
 
-       if ((abs($curTimeInSec - ${$jobs}[$x]->getModificationTime())) < $overrideTimeout){
-           $self->{Logger}->debug("Job ".${$jobs}[$x]->getJobAndTaskId()." age is ".
-                                  abs($curTimeInSec - ${$jobs}[$x]->getModificationTime()).
-                                  " seconds which less then override timeout of $overrideTimeout not releasing jobs.");
-           return "no";
-       }
-    }
+  my $jobsPerNode = $self->{Config}->getJobsPerNode($cluster);
+  if (!defined($jobsPerNode) || $jobsPerNode eq ""){
+    $self->{Logger}->error("Jobs per node not set for cluster $cluster : ignoring jobs");
+    return "no";
+  }
+
+  if ($jobCount >= $jobsPerNode){
+    $self->{Logger}->debug("Job count: $jobCount exceeds threshold of ".
+                           $self->{Config}->getJobsPerNode($cluster).
+                           " for cluster $cluster.  Allowing jobs to".
+                           " be submitted");
     return "yes";
+  }
+    
+  my $overrideTimeout = $self->{Config}->getJobBatcherOverrideTimeout($cluster);
+  if (!defined($overrideTimeout) || $overrideTimeout eq ""){
+    $self->{Logger}->error("Override timeout not set for cluster : $cluster ".
+                           ": ignoring jobs");
+    return "no";
+  }
+
+  my $curTimeInSec = time();
+
+  $self->{Logger}->debug("Current Time $curTimeInSec and Override Time: ".
+                         $overrideTimeout);
+  for (my $x = 0; $x < @{$jobs};$x++){
+
+    # hack cause we are getting an array of jobs but the first element is not set
+    if (!defined(${$jobs}[$x])){
+      return "no";
+    }
+
+    if ((abs($curTimeInSec - ${$jobs}[$x]->getModificationTime())) < $overrideTimeout){
+      $self->{Logger}->debug("Job ".${$jobs}[$x]->getJobAndTaskId()." age is ".
+                         abs($curTimeInSec - ${$jobs}[$x]->getModificationTime()).
+                                  " seconds which is less then override timeout ".
+                                  "of $overrideTimeout seconds : not releasing jobs");
+      return "no";
+    }
+  }
+  return "yes";
+}
+
+#
+#
+#
+#
+
+sub _getBatchFactorForJob {
+  my $self = shift;
+  my $job = shift;
+   
+  my $batchFactor = $job->getBatchFactor();
+
+  if (!defined($batchFactor) || $batchFactor <= 0){
+    return 1;
+  }
+    
+  return 1/$batchFactor;
 }
 
 
@@ -399,42 +263,43 @@ sub _isItOkayToSubmitJobs {
 #
 #
 sub _buildJobHash {
-    my $self = shift;
-    my $cluster = shift;
+  my $self = shift;
+  my $cluster = shift;
     
-    $self->{Logger}->debug("Looking for jobs in submitted state for $cluster");
-    my @jobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
-                Panfish::JobState->SUBMITTED());
+  my @jobs = $self->{JobDb}->getJobsByClusterAndState($cluster,
+                                            Panfish::JobState->SUBMITTED());
+  my $numJobs;
+  if (!@jobs || @jobs <= 0){
+    $numJobs = 0;
+  }
+  else {
+    $numJobs = @jobs;
+  }
 
-    
-    if (!@jobs){
-            $self->{Logger}->debug("no jobs");
-        return undef;
-    }
+  $self->{Logger}->debug("Found $numJobs job(s) in ".
+                         Panfish::JobState->SUBMITTED()." state for $cluster");
 
-    my ($jobHashByPath,$error) = $self->{JobHashFactory}->getJobHash(\@jobs);
-   
-    return $jobHashByPath;
+  if ($numJobs <= 0){
+    return undef;
+  }
+  
+  my ($jobHashByPath,$error) = $self->{JobHashFactory}->getJobHash(\@jobs);
+
+  return $jobHashByPath;
 }
 
 
 # 
-# This function takes two jobs and sorts them
-# first by job id and then by task id
-# the lower the job id and task id wins 
+# This function is passed to sort function to
+# sort an list of jobs in ascending order by
+# job id and task id.
 #
 sub _sortJobsByTaskId {
-   # $a and $b are the jobs
-   my $a = $Panfish::JobBatcher::a;
-   my $b = $Panfish::JobBatcher::b;
-   if ($a->getJobId() < $b->getJobId()){
-       return -1;
-   }    
-   if ($a->getJobId() > $b->getJobId()){
-       return 1;
-   }
+  # $a and $b are the jobs
+  my $a = $Panfish::JobBatcher::a;
+  my $b = $Panfish::JobBatcher::b;
 
-   return $a->getTaskId() <=> $b->getTaskId();
+  return $a->compareByJobAndTaskId($b);
 }
 
 1;
