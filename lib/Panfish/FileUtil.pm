@@ -51,30 +51,30 @@ $fu->runFileTest("-f","/home/foo");
 =cut
 
 sub runFileTest {
-   my $self = shift;
-   my $flag = shift;
-   my $path = shift;
+  my $self = shift;
+  my $flag = shift;
+  my $path = shift;
 
-   if ($flag eq "-e"){
-      return -e $path;
-   }
-   if ($flag eq "-f"){
-      return -f $path;
-   }
-   
-   if ($flag eq "-M"){
-      return -M $path;
-   }
+  if ($flag eq "-e"){
+    return -e $path;
+  }
+  if ($flag eq "-f"){
+    return -f $path;
+  } 
+  if ($flag eq "-M"){
+    return -M $path;
+  }
+  if ($flag eq "-A"){
+    return -A $path;
+  }
+  if ($flag eq "-C"){
+    return -C $path;
+  }
+  if ($flag eq "-d"){
+    return -d $path;   
+  }
 
-   if ($flag eq "-A"){
-      return -A $path;
-   }
-
-   if ($flag eq "-C"){
-      return -C $path;
-   }
-
-   die "unsupported flag : $flag";
+  die "unsupported flag : $flag";
 }
 
 =head3 removeLock
