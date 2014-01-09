@@ -77,9 +77,12 @@ t/SLURMSbatchParser.t
 t/JobBatchedChummer.t
 t/Mock/JobKiller.pm
 t/Mock/SSHExecutor.pm
+t/Mock/PsubFileFromJobsCreator.pm
 t/Mock/HashKeyGenerator.pm
 t/Mock/JobHashFactory.pm
 t/Mock/FileReaderWriter.pm
+t/Mock/SortByFileAgeSorter.pm
+t/Mock/CommandsFileFromJobsCreator.pm
 t/Mock/FileUtil.pm
 t/Mock/JobDatabase.pm
 t/Mock/Executor.pm
