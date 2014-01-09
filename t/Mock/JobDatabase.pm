@@ -12,7 +12,8 @@ sub new {
      Update                   => undef,
      NumberOfJobsInState      => undef,
      JobByClusterAndId        => undef,
-     Delete                   => undef
+     Delete                   => undef,
+     UpdateArray              => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -82,6 +83,22 @@ sub update {
    my $job = shift;
    return pop(@{$self->{Update}->{$job->getJobAndTaskId()}});
 }
+
+
+sub addUpdateArrayResult {
+   my $self = shift;
+   my $jobArrayRef = shift;
+   my $res = shift;
+
+   push(@{$self->{UpdateArray}},$res);
+}
+
+sub updateArray {
+   my $self = shift;
+   my $jobArrayRef = shift;
+   return pop(@{$self->{UpdateArray}});
+}
+
 
 sub addGetNumberOfJobsInStateResult {
    my $self = shift;
