@@ -44,7 +44,6 @@ sub addGetJobHashResult {
 
 sub getJobHash {
    my $self = shift;
-   my $jobs = shift;
 
    return (pop(@{$self->{JobHash}}),pop(@{$self->{JobHashError}}));
 }
