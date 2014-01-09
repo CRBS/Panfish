@@ -12,7 +12,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 128;
+use Test::More tests => 138;
 use Panfish::FileReaderWriterImpl;
 use Panfish::FileUtil;
 use Panfish::Logger;
@@ -20,6 +20,46 @@ use Mock::Logger;
 #########################
 
 $|=1;
+
+
+# Test runFileTest
+{
+  my $logoutput;
+  my $foo;
+  open $foo,'>',\$logoutput;
+  my $blog = Panfish::Logger->new();
+  $blog->setLevelBasedOnVerbosity(2);
+  $blog->setOutput($foo);
+
+  my $fUtil = Panfish::FileUtil->new($blog);
+
+  # remove existing test directory and make a new one
+  # using external command cause its easier to do
+  my $testdir = $Bin."/testFileUtil";
+  $fUtil->recursiveRemoveDir($testdir);
+  $fUtil->makeDir($testdir);
+
+  my $writer = Panfish::FileReaderWriterImpl->new();
+
+  my $first = "$testdir/first.txt";
+
+  ok(!defined($writer->openFile(">$first")));
+  $writer->write("somedata\n");
+  $writer->close();
+
+  ok($fUtil->runFileTest("-e",$first));
+  ok(!$fUtil->runFileTest("-e","$testdir/doesnotexist"));
+  
+  ok($fUtil->runFileTest("-f",$first));
+  ok(!$fUtil->runFileTest("-f","$testdir/doesnotexist"));
+
+  ok($fUtil->runFileTest("-M",$first)<10);
+  ok($fUtil->runFileTest("-A",$first)<10);
+  ok($fUtil->runFileTest("-C",$first)<10);
+  ok(!$fUtil->runFileTest("-d",$first));
+  ok($fUtil->runFileTest("-d",$testdir));
+
+}
 
 # Test copy, move, chmod, and unlink a file and touch one too
 {
@@ -46,7 +86,7 @@ $|=1;
     ok(!defined($writer->openFile(">$first")));
     $writer->write("somedata\n");
     $writer->close();
-    ok(-f $first);
+    ok($fUtil->runFileTest("-f",$first));
     my $firstSize = -s $first;
     
 
@@ -54,7 +94,7 @@ $|=1;
     my $firstcopy = $first.".2";
     ok($fUtil->copyFile($first,$firstcopy) == 1);
     
-    ok(-f $firstcopy);
+    ok($fUtil->runFileTest("-f",$firstcopy));
     ok(-s $first == -s $firstcopy);
     
     
