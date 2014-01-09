@@ -299,7 +299,7 @@ sub _sortJobsByTaskId {
   my $a = $Panfish::JobBatcher::a;
   my $b = $Panfish::JobBatcher::b;
 
-  return $a->compareByJobAndTaskId($b);
+  return $a->compareJobByJobAndTaskId($b);
 }
 
 1;
