@@ -39,6 +39,8 @@ use Panfish::PsubIdHashKeyGenerator;
 use Panfish::FileLock;
 use Panfish::SortByFileAgeSorter;
 use Panfish::KilledJobHandler;
+use Panfish::PsubFileFromJobsCreator;
+use Panfish::CommandsFileFromJobsCreator;
 
 my $cmdLineParseResult = GetOptions ("daemon=s"     => \$daemonArgValue,
                                      "cluster=s"    => \$clusterArgValue,
@@ -115,7 +117,15 @@ my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$fUt
 my $curDirKeyGen = Panfish::CurrentWorkingDirHashKeyGenerator->new($logger);
 my $curDirJobHashFac = Panfish::JobHashFactory->new($curDirKeyGen,$logger);
 
-my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$fUtil,$reader,$writer,$curDirJobHashFac,$fileAgeSorter);
+my $psubCreator = Panfish::PsubFileFromJobsCreator->new($config,$fUtil,$reader,
+                                                        $writer,$logger);
+
+my $cmdCreator = Panfish::CommandsFileFromJobsCreator->new($config,$fUtil,
+                                                           $writer,$logger);
+
+my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$cmdCreator,
+                                       $psubCreator,$curDirJobHashFac,
+                                       $fileAgeSorter);
 
 my $psubKeyGen = Panfish::PsubHashKeyGenerator->new($logger,$fUtil);
 
