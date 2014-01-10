@@ -456,6 +456,11 @@ Example:
 
 foo.q::ddp555,blah.q::TG2342s
 
+=item B<-N name>
+
+The name of the job.  Allowed characters must conform to restrictions for B<-N> parameter in
+qsub.
+
 =item B<-t [-m[:s]]>
 
 Submits an array job with the environment variable B<SGE_TASK_ID> set to index number of job.   
