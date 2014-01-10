@@ -42,14 +42,26 @@ use Panfish::KilledJobHandler;
 use Panfish::PsubFileFromJobsCreator;
 use Panfish::CommandsFileFromJobsCreator;
 
-my $cmdLineParseResult = GetOptions ("daemon=s"     => \$daemonArgValue,
-                                     "cluster=s"    => \$clusterArgValue,
-                                     "log=s"        => \$logArgValue,
-                                     "iterations=i" => \$iterationArgValue,
-                                     "cron"        => \$cronArg,
-                                     "help|?"       => \$helpArg,
-                                     "man"          => \$manArg) or pod2usage(2);
+#catch the term signal and set a variable which will cause code to
+#leave while loop gracefully
+$SIG{TERM} = sub { $SIGTERMCALLED = 1; print "Received TERM signal\n";};
 
+#obtained from http://www.webreference.com/perl/tutorial/9/3.html
+sub daemonize {
+  chdir '/'                 or die "Can't chdir to /: $!";
+  open STDIN, '/dev/null'   or die "Can't read /dev/null: $!";
+  open STDOUT, '>>/dev/null' or die "Can't write to /dev/null: $!";
+  open STDERR, '>>/dev/null' or die "Can't write to /dev/null: $!";
+  defined(my $pid = fork)   or die "Can't fork: $!";
+  exit if $pid;
+  setsid                    or die "Can't start a new session: $!";
+  umask 0;
+}
+
+my $cmdLineParseResult = GetOptions ("cron"        => \$cronArg,
+                                     "help|?"       => \$helpArg,
+                                     "man"          => \$manArg) 
+                                     or pod2usage(2);
 
 if ($helpArg){
   pod2usage(1);
@@ -60,21 +72,6 @@ if ($manArg){
 }
 
 my $logger = Panfish::Logger->new();
-
-my $logFileHandle = undef;
-
-if (defined($logArgValue)){
-    open($logFileHandle,">$logArgValue") || die $!;
-    $logger->setOutput($logFileHandle);
-}
-
-
-# if no cluster is specified this daemon handles the shadow jobs and uses
-# ssh to run jobs on remote clusters
-#
-if (!defined($clusterArgValue)){
-  pod2usage(-exitstatus => 1, -verbose => 1);
-}
 
 my $fUtil = Panfish::FileUtil->new($logger);
 
@@ -88,31 +85,34 @@ my $writer = Panfish::FileReaderWriterImpl->new($logger);
 my $exec = Panfish::ForkExecutor->new();
 my $sshExec = Panfish::SSHExecutor->new($config,$exec,$logger);
 
-my $lockFile = "";
+if ($config->getThisCluster() eq ""){
+  $logger->fatal("this.cluster parameter not set in configuration");
+  pod2usage(-exitstatus => 1, -verbose => 1);
+}
 
-# if cron flag was set verify this is the only instance of this program running
-# by looking at the lock file
-if (defined($cronArg) || defined($iterationArgValue)){
-   my $scriptName = $0;
-   $scriptName=~s/^.*\///;
-   $lockFile = $config->getDatabaseDir($clusterArgValue)."/".$scriptName;
+my $clusterArgValue  = $config->getThisCluster();
 
-   $logger->debug("Looking for lock file $lockFile");
-   my $fLock = Panfish::FileLock->new($logger,$fUtil,$exec,$reader);
-   my $error = $fLock->create($lockFile,$$);
-   if (defined($error)){
-      $logger->fatal("Unable to create lock file : $error");
-      exit(1);
-   }
+my $scriptName = $0;
+$scriptName=~s/^.*\///;
+my $lockFile = $config->getDatabaseDir($clusterArgValue)."/".$scriptName;
 
-   if (!defined($iterationArgValue)){
-      $iterationArgValue = 1;
-   }
+$logger->debug("Looking for lock file $lockFile");
+my $fLock = Panfish::FileLock->new($logger,$fUtil,$exec,$reader);
+my $error = $fLock->create($lockFile,$$);
+if (defined($error)){
+  $logger->fatal("Unable to create lock file : $error");
+  exit(1);
+}
+
+my $iterationArgValue = undef;
+if (defined($cronArg)){
+  $iterationArgValue = 1;
 }
 
 my $uploader = Panfish::RemoteIO->new($config,$sshExec,$logger,$fUtil);
 
-my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),$fUtil,$logger);
+my $jobDb = Panfish::FileJobDatabase->new($reader,$config->getDatabaseDir(),
+                                          $fUtil,$logger);
 
 my $curDirKeyGen = Panfish::CurrentWorkingDirHashKeyGenerator->new($logger);
 my $curDirJobHashFac = Panfish::JobHashFactory->new($curDirKeyGen,$logger);
@@ -129,17 +129,22 @@ my $batcher = Panfish::JobBatcher->new($config,$jobDb,$logger,$cmdCreator,
 
 my $psubKeyGen = Panfish::PsubHashKeyGenerator->new($logger,$fUtil);
 
-my $psubDirKeyGen = Panfish::PsubDirnameHashKeyGenerator->new($logger,$psubKeyGen,$fUtil);
+my $psubDirKeyGen = Panfish::PsubDirnameHashKeyGenerator->new($logger,
+                                                           $psubKeyGen,$fUtil);
 
 my $psubDirJobHashFac = Panfish::JobHashFactory->new($psubDirKeyGen,$logger);
 
 my $batchedChummer = Panfish::JobBatchedChummer->new($config,$jobDb,
-                                                   $logger,$fUtil,$uploader,$psubDirJobHashFac,$fileAgeSorter);
+                                                     $logger,$fUtil,$uploader,
+                                                     $psubDirJobHashFac,
+                                                     $fileAgeSorter);
 
 my $psubJobHashFac = Panfish::JobHashFactory->new($psubKeyGen,$logger);
 
 my $sshSubmitter = Panfish::SSHJobSubmitter->new($config,$jobDb,$logger,
-                                           $fUtil,$sshExec,$psubJobHashFac,$fileAgeSorter);
+                                                 $fUtil,$sshExec,
+                                                 $psubJobHashFac,
+                                                 $fileAgeSorter);
 
 my $psubIdKeyGen = Panfish::PsubIdHashKeyGenerator->new($logger,$psubKeyGen);
 
@@ -160,13 +165,18 @@ elsif ($config->getEngine() eq "SLURM"){
   $sParser = Panfish::SLURMSbatchParser->new();
 }
 else {
-   $logger->fatal("Engine ".$config->getEngine(). " not supported");
-   exit(1);
+  $logger->fatal("Engine ".$config->getEngine(). " not supported");
+  exit(1);
 }
 
-my $submitCommand = Panfish::SubmitCommand->new($logger,$exec,$config->getSubmit(),$sParser,60,3,60);
+my $submitCommand = Panfish::SubmitCommand->new($logger,$exec,
+                                                $config->getSubmit(),
+                                                $sParser,60,3,60);
 
-my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,$fUtil,$submitCommand,$psubJobHashFac,$fileAgeSorter);
+my $qsubSubmitter = Panfish::QsubJobSubmitter->new($config,$jobDb,$logger,
+                                                   $fUtil,$submitCommand,
+                                                   $psubJobHashFac,
+                                                   $fileAgeSorter);
 
 my $qstatWatcher = Panfish::QstatJobWatcher->new($config,$jobDb,$logger,
                                                  $fUtil,$exec);
@@ -179,18 +189,9 @@ my $error;
 ($error,@clusterList) = $config->getClusterListAsArray();
 
 if (defined($error)){
-    $logger->fatal("Problem getting cluster list : $error");
-    $fUtil->removeLock("$0.lck");
-    exit(1);
-}
-
-
-#double check cluster set in clusterArgValue is actually valid
-($cError,@testClist) = $config->getClusterListAsArray($clusterArgValue);
-if (defined($cError)){
-   $logger->fatal("Cluster $clusterArgValue is not a valid cluster");
-   $fUtil->removeLock("$0.lck");
-   exit(1);
+  $logger->fatal("Problem getting cluster list : $error");
+  $fUtil->removeLock("$0.lck");
+  exit(1);
 }
 
 my $iterationCount = 1;
@@ -200,52 +201,54 @@ my $keepLooping = 1;
 my $exitCode = 0;
 
 # infinite loop broken only by signal or fatal error.
-while($keepLooping == 1){
-  
+while($SIGTERMCALLED == 0 && $keepLooping == 1){
     
-   for (my $x = 0; $x < @clusterList ; $x++){
-      if ($logger->isDebugEnabled() && !defined($clusterArgValue)){
-          $logger->debug("$clusterList[$x] --".
-                         $jobDb->getSummaryForCluster($clusterList[$x]));
-      }
+  for (my $x = 0; $x < @clusterList ; $x++){
+    if ($logger->isDebugEnabled() && !defined($clusterArgValue)){
+      $logger->debug("$clusterList[$x] --".
+                     $jobDb->getSummaryForCluster($clusterList[$x]));
+    }
 
-      # Obtain updated statistics on cluster
+    # Obtain updated statistics on cluster
 
-      # Check for any jobs to be killed
-      $check = $killer->removeKilledJobs($clusterList[$x]);
+    # Check for any jobs to be killed
+    $check = $killer->removeKilledJobs($clusterList[$x]);
       
-      $check = $batcher->batchJobs($clusterList[$x]);
+    $check = $batcher->batchJobs($clusterList[$x]);
       
-      $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
+    $check = $batchedChummer->chumBatchedJobs($clusterList[$x]);
       
-      # if this is the local cluster so lets see if we have to 
-      # directly submit any jobs and check the status of any
-      # local real jobs
-      # otherwise remotely submit and check on status of jobs
-      if ($clusterArgValue eq $clusterList[$x]){
-          $check = $qsubSubmitter->submitJobs($clusterList[$x]);
-          $check = $qstatWatcher->checkJobs($clusterList[$x]);
-      }
-      else {
-          $check = $sshSubmitter->submitJobs($clusterList[$x]);
-          $check = $sshWatcher->checkJobs($clusterList[$x]);
-      }
-   }
+    # if this is the local cluster so lets see if we have to 
+    # directly submit any jobs and check the status of any
+    # local real jobs
+    # otherwise remotely submit and check on status of jobs
+    if ($clusterArgValue eq $clusterList[$x]){
+      $check = $qsubSubmitter->submitJobs($clusterList[$x]);
+      $check = $qstatWatcher->checkJobs($clusterList[$x]);
+    }
+    else {
+      $check = $sshSubmitter->submitJobs($clusterList[$x]);
+      $check = $sshWatcher->checkJobs($clusterList[$x]);
+    }
+  }
 
-   if (defined($iterationArgValue)){
-     if ($iterationCount >= $iterationArgValue){
-        $logger->debug("IterationCount $iterationCount equals or exceeds $iterationArgValue exiting..");
-        $keepLooping = 0;
-     }
-   }
-   if ($keepLooping == 1){
-       $logger->debug("Sleeping ".$config->getPanfishSleepTime());
-       sleep $config->getPanfishSleepTime();
-   }
-   $iterationCount++;
-
+  if (defined($iterationArgValue)){
+    if ($iterationCount >= $iterationArgValue){
+      $logger->debug("IterationCount $iterationCount equals or exceeds ".
+                     "$iterationArgValue exiting..");
+      $keepLooping = 0;
+    }
+  }
+  if ($SIGTERMCALLED == 0 && $keepLooping == 1){
+    $logger->debug("Sleeping ".$config->getPanfishSleepTime());
+    sleep $config->getPanfishSleepTime();
+  }
+  $iterationCount++;
 }
 
+if ($SIGTERMCALLED == 1){
+  $logger->info("Received Term signal exiting");
+}
 
 $logger->info("Exit Code:  ".$exitCode);
 $fUtil->removeLock($lockFile);
@@ -256,7 +259,7 @@ __END__
 
 =head1 NAME
 
-panfish - Panfish Multicluster Grid Engine Wrapper daemon
+panfish - Panfish Multicluster Submission System Daemon
 
 =head1 SYNOPSIS
 
@@ -264,41 +267,17 @@ panfish [ B<options> ]
 
 =head1 DESCRIPTION
 
-B<Panfish> runs jobs submitted by B<cast> on remote clusters letting
+Panfish enables jobs built for Sun Grid Engine/Open Grid Scheduler to 
+run on multiple clusters in parallel utilizing tools similar to those
+used to submit jobs to Sun Grid Engine/Open Grid Scheduler.  
 
 =head1 OPTIONS
 
 =over 4
 
-=item B<--cluster name>
-
-Defines the cluster that this instance of B<panfish> is running on.
-
-=item B<--log path>
-
-Defines path to a file to write output to.
-
-=item B<--daemon>
-
-Defines if B<panfish> should be run as a daemon or not
-
-=item B<--iterations val>
-
-Defines number of iterations the program should examine all jobs.  If not set
-the program will run in a loop forever.
-
 =item B<--cron>
 
-Cron mode.  This tells B<panfish> that the command should make sure no other instance
-of B<panfish> is running by checking for a token file in the database.dir and if none 
-is found to run 1 iteration and exit.  
-
-=item B<--verbose>
-
-Verbose mode.  Causes B<panfish> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 2.
-
-NOTE:  This is not an option in B<qsub>.
+Runs B<panfish> in non daemon mode through one full iteration.
 
 =back
 
