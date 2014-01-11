@@ -6,7 +6,7 @@ use warnings;
 use File::stat;
 use File::Basename;
 use File::Copy;
-use File::Path;
+use File::Path qw(make_path rmtree);
 use Panfish::Logger;
 
 =head1 SYNOPSIS
@@ -73,6 +73,30 @@ sub runFileTest {
   if ($flag eq "-d"){
     return -d $path;   
   }
+  if ($flag eq "-r"){
+    return -r $path;
+  }
+  if ($flag eq "-w"){
+    return -w $path;
+  }
+  if ($flag eq "-x"){
+    return -x $path;
+  }
+  if ($flag eq "-o"){
+    return -o $path;
+  }
+  if ($flag eq "-R"){
+    return -R $path;
+  }
+  if ($flag eq "-W"){
+    return -W $path;
+  }
+  if ($flag eq "-X"){
+    return -X $path;
+  }
+  if ($flag eq "-O"){
+    return -O $path;
+  }
 
   die "unsupported flag : $flag";
 }
@@ -131,7 +155,8 @@ sub deleteFile {
 
 =head3 recursiveRemoteDir 
 
-Removes a directory and any data within that directory
+Removes a directory and any data within that directory using 
+File::Path rmtree
 
 =cut
 
@@ -157,6 +182,22 @@ sub makeDir {
    my $self = shift;
    my $path = shift;
    return mkdir($path);
+}
+
+=head3 recursiveMakeDir 
+
+Recursively creates directory specified using File::Path make_path.  Returns
+contents of error from make_path.  Upon success this return
+value will be an empty array.
+
+=cut
+
+sub recursiveMakeDir {
+  my $self = shift;
+  my $path = shift;
+  
+  make_path($path,{error => \my $err});
+  return $err;
 }
 
 
