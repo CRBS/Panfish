@@ -57,7 +57,8 @@ sub new {
      ACCOUNT              => "job.account",
      WALLTIME             => "job.walltime",
      COMMANDS_FILE_SUFFIX => ".commands",
-     PSUB_FILE_SUFFIX     => ".psub"
+     PSUB_FILE_SUFFIX     => ".psub",
+     REAL_JOB_FILE_DIR    => "real_jobfile_dir"
    };
 
    my $blessedself = bless($self,$class);
@@ -755,6 +756,22 @@ sub getPsubFileSuffix {
   return $self->{PSUB_FILE_SUFFIX};
 }
 
+=head3 getRealJobFileDir 
+
+Gets the directory path where real job files
+run by the LRMS's are stored.  This path
+is under the database dir for the given
+cluster
+
+=cut
+
+sub getRealJobFileDir {
+  my $self = shift;
+  my $cluster = shift;
+
+  return $self->getDatabaseDir($cluster)."/".
+         $self->{REAL_JOB_FILE_DIR};
+}
 
 
 
