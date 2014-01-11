@@ -12,7 +12,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 138;
+use Test::More tests => 144;
 use Panfish::FileReaderWriterImpl;
 use Panfish::FileUtil;
 use Panfish::Logger;
@@ -464,5 +464,34 @@ $|=1;
     my @logs = $logger->getLogs();
     ok(@logs == 1);
     ok($logs[0] =~/ERROR Reached max directory depth of 20/);
+}
+
+
+# test recursiveMakeDir
+{
+  my $logger = Mock::Logger->new();
+  my $fUtil = Panfish::FileUtil->new($logger);
+
+  my $testdir = $Bin."/testFileUtil";
+  $fUtil->recursiveRemoveDir($testdir);
+
+  my $err = $fUtil->recursiveMakeDir($testdir);
+  ok(defined($err));
+  ok(@$err == 0);
+
+  ok($fUtil->runFileTest("-d",$testdir));
+
+  my $writer = Panfish::FileReaderWriterImpl->new();
+
+  my $first = "$testdir/first.txt";
+
+  ok(!defined($writer->openFile(">$first")));
+  $writer->write("somedata\n");
+  $writer->close();
+
+  $err = $fUtil->recursiveMakeDir($first);
+
+  ok(defined($err));
+  ok(@$err > 0);
 }
 

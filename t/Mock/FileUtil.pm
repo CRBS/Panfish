@@ -8,11 +8,12 @@ use warnings;
 sub new {
    my $class = shift;
    my $self = {
-     DirName    => undef,
-     FileTest   => undef,
-     DeleteFile => undef,
-     Touch      => undef,
-     MakeDir    => undef
+     DirName          => undef,
+     FileTest         => undef,
+     DeleteFile       => undef,
+     Touch            => undef,
+     MakeDir          => undef,
+     RecursiveMakeDir => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -154,6 +155,20 @@ sub makeDir {
   my $self = shift;
   my $path = shift;
   return pop(@{$self->{MakeDir}->{$path}});
+}
+
+sub addRecursiveMakeDirResult {
+  my $self = shift;
+  my $path = shift;
+  my $result = shift;
+
+  push(@{$self->{RecursiveMakeDir}},$result);
+}
+
+sub recursiveMakeDir {
+  my $self = shift;
+  my $path = shift;
+  return pop(@{$self->{RecursiveMakeDir}});
 }
 
 1;
