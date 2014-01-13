@@ -24,7 +24,10 @@ sub new {
    my $class = shift;
    my $self = {
      Config               => shift,
-     THIS_CLUSTER         => "this.cluster",     
+     THIS_CLUSTER         => "this.cluster",    
+     NOTIFICATION_LEVEL   => "email.notification.level",
+     NOTIFICATION_EMAIL   => "notification.email",
+     NOTIFICATION_SUBJECT => "notification.subject", 
      CLUSTER_LIST         => "cluster.list",
      LINE_VERBOSITY       => "line.log.verbosity",
      PANFISH_VERBOSITY    => "panfish.log.verbosity",
@@ -112,6 +115,41 @@ sub getThisCluster {
     my $self = shift;
     return $self->_getValueFromConfig($self->{THIS_CLUSTER},"");
 
+}
+
+=head3 getEmailNotificationLevel 
+
+Gets the logging levels which should trigger
+email notification.
+
+=cut
+
+sub getEmailNotificationLevel {
+  my $self = shift;
+  return $self->_getValueFromConfig($self->{NOTIFICATION_LEVEL},"");
+}
+
+=head3 getNotificationEmail 
+
+Email that notifications should be sent to.  If there
+are multiple emails they will be comma separated.
+
+=cut
+
+sub getNotificationEmail {
+  my $self = shift;
+  return $self->_getValueFromConfig($self->{NOTIFICATION_EMAIL},"");
+}
+
+=head3 getNotificationSubject
+
+Gets the subject to use in email notifications.
+
+=cut
+
+sub getNotificationSubject {
+  my $self = shift;
+  return $self->_getValueFromConfig($self->{NOTIFICATION_SUBJECT},"");
 }
 
 =head3 isClusterPartOfThisCluster
