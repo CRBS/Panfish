@@ -105,8 +105,20 @@ sub _getCommandFile {
     $self->{Logger}->error("Current working directory not defined for job");
     return undef;
   }
-  
-  my $commandDir = $job->getCurrentWorkingDir()."/".$cluster;
+
+  my $commandDir;
+
+  # if The current working directory is owned by effective user then write
+  # the command and psub file under the current working directory of the
+  # job.  Otherwise use the alternate path from getRealJobFileDir(..) method
+  if ($self->{FileUtil}->runFileTest("-o",$job->getCurrentWorkingDir())){
+    $commandDir = $job->getCurrentWorkingDir()."/".$cluster;
+    $self->{Logger}->debug("cwd is owned by effective uid setting command dir to: $commandDir");
+  }
+  else {
+    $commandDir = $self->{Config}->getRealJobFileDir($self->{Config}->getThisCluster()).
+                   $job->getCurrentWorkingDir()."/".$cluster;
+  }
 
   $self->{Logger}->debug("Checking to see if command directory: ".
                          $commandDir." exists");
@@ -115,7 +127,8 @@ sub _getCommandFile {
     $self->{Logger}->debug("Creating directory command directory: ".
                            $commandDir);
 
-    if (!$self->{FileUtil}->makeDir($commandDir)){
+    my $err = $self->{FileUtil}->recursiveMakeDir($commandDir);
+    if (@$err > 0){
       $self->{Logger}->error("There was a problem making dir: ".
                              $commandDir);
       return undef;

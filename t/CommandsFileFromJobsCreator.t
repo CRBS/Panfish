@@ -9,7 +9,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 142;
+use Test::More tests => 155;
 
 use Mock::Logger;
 use Mock::FileUtil;
@@ -114,15 +114,19 @@ my $config = Panfish::PanfishConfig->new($bconfig);
                                undef,  # walltime
                                undef); # account
 
+  $fileUtil->addRunFileTestResult("-o","/cwd",1);
   $fileUtil->addRunFileTestResult("-d","/cwd/foo",0);
-  $fileUtil->addMakeDirResult("/cwd/foo",0);
+  my @err;
+  $err[0] = "error";
+  $fileUtil->addRecursiveMakeDirResult("/cwd/foo",\@err);
 
   ok($cmdCreator->create("foo",\@jobs) eq "Unable to get Command File");
   my @logs = $logger->getLogs();
-  ok(@logs == 3);
-  ok($logs[0] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
-  ok($logs[1] eq "DEBUG Creating directory command directory: /cwd/foo");
-  ok($logs[2] eq "ERROR There was a problem making dir: /cwd/foo");
+  ok(@logs == 4);
+  ok($logs[0] eq "DEBUG cwd is owned by effective uid setting command dir to: /cwd/foo");
+  ok($logs[1] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
+  ok($logs[2] eq "DEBUG Creating directory command directory: /cwd/foo");
+  ok($logs[3] eq "ERROR There was a problem making dir: /cwd/foo");
 }
 
 # Test create where directory does not exist make dir succeeds, but open fails
@@ -150,17 +154,18 @@ my $config = Panfish::PanfishConfig->new($bconfig);
                                undef,  # walltime
                                undef); # account
 
+  $fileUtil->addRunFileTestResult("-o","/cwd",1);
   $fileUtil->addRunFileTestResult("-d","/cwd/foo",1);
   $writer->addOpenFileResult(">/cwd/foo/1.2".$config->getCommandsFileSuffix(),"uh");
   ok($cmdCreator->create("foo",\@jobs) eq "Unable to open file /cwd/foo/1.2".
                                           $config->getCommandsFileSuffix());
 
   my @logs = $logger->getLogs();
-  ok(@logs == 3);
- 
-  ok($logs[0] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
-  ok($logs[1] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
-  ok($logs[2] eq "ERROR There was a problem opening file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
+  ok(@logs == 4);
+  ok($logs[0] eq "DEBUG cwd is owned by effective uid setting command dir to: /cwd/foo"); 
+  ok($logs[1] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
+  ok($logs[2] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
+  ok($logs[3] eq "ERROR There was a problem opening file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
 }
 
 
@@ -190,16 +195,17 @@ my $config = Panfish::PanfishConfig->new($bconfig);
                                undef); # account
   $jobs[1] = undef;
 
+  $fileUtil->addRunFileTestResult("-o","/cwd",1);
   $fileUtil->addRunFileTestResult("-d","/cwd/foo",1);
   $writer->addOpenFileResult(">/cwd/foo/1.2".$config->getCommandsFileSuffix(),undef);
   ok($cmdCreator->create("foo",\@jobs) eq "Undefined job found");
 
   my @logs = $logger->getLogs();
-  ok(@logs == 3);
-
-  ok($logs[0] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
-  ok($logs[1] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
-  ok($logs[2] eq "ERROR Job # 1 pulled from array is not defined. wtf");
+  ok(@logs == 4);
+  ok($logs[0] eq "DEBUG cwd is owned by effective uid setting command dir to: /cwd/foo");
+  ok($logs[1] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
+  ok($logs[2] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
+  ok($logs[3] eq "ERROR Job # 1 pulled from array is not defined. wtf");
 }
  
 
@@ -228,6 +234,7 @@ my $config = Panfish::PanfishConfig->new($bconfig);
                                undef,  # walltime
                                undef); # account
 
+  $fileUtil->addRunFileTestResult("-o","/cwd",1);
   $fileUtil->addRunFileTestResult("-d","/cwd/foo",1);
   $writer->addOpenFileResult(">/cwd/foo/1.2".$config->getCommandsFileSuffix(),undef);
   ok(!defined($cmdCreator->create("foo",\@jobs)));
@@ -239,11 +246,63 @@ my $config = Panfish::PanfishConfig->new($bconfig);
   ok($writes[0] eq "command\n");
 
   my @logs = $logger->getLogs();
-  ok(@logs == 2);
+  ok(@logs == 3);
 
-  ok($logs[0] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
-  ok($logs[1] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
+  ok($logs[0] eq "DEBUG cwd is owned by effective uid setting command dir to: /cwd/foo");
+  ok($logs[1] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
+  ok($logs[2] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
 }
+
+# Test create where we have one job but the effective uid of the process is not owner
+# of current working directory so the code puts the command files in the alternate location
+{
+  my $logger = Mock::Logger->new();
+  my $fileUtil = Mock::FileUtil->new();
+  my $writer = Mock::FileReaderWriter->new();
+
+  my $bconfig = Panfish::Config->new();
+  $bconfig->setParameter("this.cluster","foo");
+  $bconfig->setParameter("foo.database.dir","/db");
+  my $config = Panfish::PanfishConfig->new($bconfig);
+   
+  
+  my $cmdCreator = Panfish::CommandsFileFromJobsCreator->new($config,$fileUtil,
+                                                              $writer,
+                                                              $logger);
+
+
+  my @jobs;
+  $jobs[0] = Panfish::Job->new("foo","1","2","name",
+                               "/cwd", #current working dir
+                               "command",
+                               undef, # state
+                               12345, # modification time
+                               undef, #cmds file
+                               undef,  # psubfile
+                               undef,  # real job id
+                               undef,  # fail reason
+                               undef,  # batchfactor
+                               undef,  # walltime
+                               undef); # account
+
+  $fileUtil->addRunFileTestResult("-o","/cwd",0);
+  $fileUtil->addRunFileTestResult("-d",$config->getRealJobFileDir()."/cwd/foo",1);
+  $writer->addOpenFileResult(">".$config->getRealJobFileDir()."/cwd/foo/1.2".$config->getCommandsFileSuffix(),undef);
+  ok(!defined($cmdCreator->create("foo",\@jobs)));
+
+  ok($jobs[0]->getCommandsFile() eq $config->getRealJobFileDir()."/cwd/foo/1.2".$config->getCommandsFileSuffix());
+
+  my @writes = $writer->getWrites();
+  ok(@writes == 1);
+  ok($writes[0] eq "command\n");
+
+  my @logs = $logger->getLogs();
+  ok(@logs == 2);
+  ok($logs[0] eq "DEBUG Checking to see if command directory: ".$config->getRealJobFileDir()."/cwd/foo exists");
+  ok($logs[1] eq "DEBUG Creating command file: ".$config->getRealJobFileDir()."/cwd/foo/1.2".$config->getCommandsFileSuffix());
+}
+
+
 
 # Test create where we have two jobs
 {
@@ -283,7 +342,7 @@ my $config = Panfish::PanfishConfig->new($bconfig);
                                undef); # account
 
   
- 
+  $fileUtil->addRunFileTestResult("-o","/cwd",1); 
   $fileUtil->addRunFileTestResult("-d","/cwd/foo",1);
   $writer->addOpenFileResult(">/cwd/foo/1.2".$config->getCommandsFileSuffix(),undef);
   ok(!defined($cmdCreator->create("foo",\@jobs)));
@@ -297,10 +356,10 @@ my $config = Panfish::PanfishConfig->new($bconfig);
   ok($writes[1] eq "command2\n");
 
   my @logs = $logger->getLogs();
-  ok(@logs == 2);
-
-  ok($logs[0] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
-  ok($logs[1] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
+  ok(@logs == 3);
+  ok($logs[0] eq "DEBUG cwd is owned by effective uid setting command dir to: /cwd/foo");
+  ok($logs[1] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
+  ok($logs[2] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
 }
 
 # Test where we have 50 jobs
@@ -330,7 +389,7 @@ my $config = Panfish::PanfishConfig->new($bconfig);
                                undef); # account
 
   }
-
+  $fileUtil->addRunFileTestResult("-o","/cwd",1);
   $fileUtil->addRunFileTestResult("-d","/cwd/foo",1);
   $writer->addOpenFileResult(">/cwd/foo/1.2".$config->getCommandsFileSuffix(),undef);
   ok(!defined($cmdCreator->create("foo",\@jobs)));
@@ -344,9 +403,10 @@ my $config = Panfish::PanfishConfig->new($bconfig);
   }
 
   my @logs = $logger->getLogs();
-  ok(@logs == 2);
+  ok(@logs == 3);
 
-  ok($logs[0] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
-  ok($logs[1] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
+  ok($logs[0] eq "DEBUG cwd is owned by effective uid setting command dir to: /cwd/foo");
+  ok($logs[1] eq "DEBUG Checking to see if command directory: /cwd/foo exists");
+  ok($logs[2] eq "DEBUG Creating command file: /cwd/foo/1.2".$config->getCommandsFileSuffix());
 }
 
