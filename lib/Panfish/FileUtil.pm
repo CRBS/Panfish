@@ -6,7 +6,7 @@ use warnings;
 use File::stat;
 use File::Basename;
 use File::Copy;
-use File::Path qw(make_path rmtree);
+use File::Path qw(mkpath rmtree);
 use Panfish::Logger;
 
 =head1 SYNOPSIS
@@ -186,8 +186,8 @@ sub makeDir {
 
 =head3 recursiveMakeDir 
 
-Recursively creates directory specified using File::Path make_path.  Returns
-contents of error from make_path.  Upon success this return
+Recursively creates directory specified using File::Path mkpath.  Returns
+contents of error from mkpath.  Upon success this return
 value will be an empty array.
 
 =cut
@@ -195,9 +195,13 @@ value will be an empty array.
 sub recursiveMakeDir {
   my $self = shift;
   my $path = shift;
-  
-  make_path($path,{error => \my $err});
-  return $err;
+  my @err;
+ 
+  eval { mkpath($path) };
+  if ($@){
+    $err[0] = $@;
+  }
+  return \@err;
 }
 
 
