@@ -32,6 +32,58 @@ sub new {
    return $blessedself;
 }
 
+=head3 copy
+
+Makes a copy of this object
+
+=cut
+
+sub copy {
+  my $self = shift;
+  
+  my $configCopy = Panfish::Config->new();
+  my $paramNames = $self->getParameterNames();
+
+  if (!defined($paramNames)){
+    return $configCopy;
+  }
+
+  for (my $x = 0; $x < @$paramNames; $x++){
+    $configCopy->setParameter(${$paramNames}[$x],
+                              $self->getParameterValue(${$paramNames}[$x]));
+  }
+  return $configCopy;
+}
+
+=head3 load
+
+Updates this config object with data
+from Config object passed in
+
+=cut
+
+sub load {
+  my $self = shift;
+  my $config = shift;
+
+  if (!defined($config)){
+    return "Config passed in is not defined";
+  }
+
+  my $paramNames = $config->getParameterNames();
+
+  # nothing to do
+  if (!defined($paramNames)){
+    return undef;
+  }
+
+  for (my $x = 0; $x < @$paramNames; $x++){
+    $self->setParameter(${$paramNames}[$x],
+                        $config->getParameterValue(${$paramNames}[$x]));
+  }
+  return undef;
+}
+
 =head3 setParameter
 
 Sets a new parameter with key and value.
