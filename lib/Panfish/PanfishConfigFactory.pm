@@ -66,53 +66,61 @@ is returned to the caller
 =cut
 
 sub getPanfishConfig {
-    my $self = shift;
-    my $existingConfig = shift;
+  my $self = shift;
+  my $existingConfig = shift;
+  my $panConfig = undef;
+  my @pathList;
+  my $res;
+  if ( $ENV{"PANFISH_CONFIG"}){
+    push(@pathList,$ENV{"PANFISH_CONFIG"});
+  }
 
-    my @pathList;
-    if ( $ENV{"PANFISH_CONFIG"}){
-       push(@pathList,$ENV{"PANFISH_CONFIG"});
+  push(@pathList,"/etc/".$self->{PANFISH_CONFIG});
+  push(@pathList,"$Bin/../etc/".$self->{PANFISH_CONFIG});
+  push(@pathList,"$Bin/".$self->{PANFISH_CONFIG});
+  push(@pathList,$ENV{"HOME"}."/.".$self->{PANFISH_CONFIG});
+
+  for (my $x = 0; $x < @pathList; $x++){
+    my $config = $self->_getPanfishConfigFromPath($pathList[$x]);
+    if (defined($config)){
+
+      $self->{Logger}->debug("Updating with config: $pathList[$x]");
+      if (!defined($panConfig)){
+        $panConfig = Panfish::PanfishConfig->new($config);
+      }
+      else {
+        $res = $panConfig->updateWithConfig($config);
+        if (defined($res)){
+          $self->{Logger}->error("There was an error loading config: $pathList[$x]");
+          return undef;
+        }
+      }
     }
-    push(@pathList,$ENV{"HOME"}."/.".$self->{PANFISH_CONFIG});
-    push(@pathList,"$Bin/../etc/".$self->{PANFISH_CONFIG});
-    push(@pathList,"$Bin/".$self->{PANFISH_CONFIG});
-    push(@pathList,"/etc/".$self->{PANFISH_CONFIG});
+  }
 
-    for (my $x = 0; $x < @pathList; $x++){
-       my $config = $self->_getPanfishConfigFromPath($pathList[$x]);
-       if (defined($config)){
-
-          # if we are given a PanfishConfig, just set the config
-          # into that object and return it
-          if (defined($existingConfig)){
-             $existingConfig->setConfig($config);
-             return $existingConfig;
-          }
-          return Panfish::PanfishConfig->new($config);
-       }
-    }
-
+  if (!defined($panConfig)){
     $self->{Logger}->error("Unable to load config from any of these locations: ".join(', ',@pathList));
-    return undef;
+  }
+  return $panConfig;
 }
 
 sub _getPanfishConfigFromPath {
-    my $self = shift;
-    my $path = shift;
+  my $self = shift;
+  my $path = shift;
     
-    if (!defined($path)){
-       return undef;
-    }
+  if (!defined($path)){
+    return undef;
+  }
 
-    if (defined($self->{Logger})){
-        $self->{Logger}->debug("Attempting to parse config from: $path");
-    }
+  if (defined($self->{Logger})){
+    $self->{Logger}->debug("Attempting to parse config from: $path");
+  }
 
-    if (! $self->{FileUtil}->runFileTest("-e",$path)){
-        return undef;
-    }
+  if (! $self->{FileUtil}->runFileTest("-e",$path)){
+    return undef;
+  }
 
-    return $self->{ConfigFactory}->getConfig($path);
+  return $self->{ConfigFactory}->getConfig($path);
 }
 
 
