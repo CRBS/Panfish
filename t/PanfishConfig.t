@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 115;
+use Test::More tests => 147;
 use Panfish::PanfishConfig;
 use Panfish::Config;
 
@@ -278,6 +278,9 @@ use Panfish::Config;
    $con->setParameter("foo.".$tconfig->{PANFISH_VERBOSITY},"10");
    $con->setParameter("foo.".$tconfig->{PANFISHSUBMIT_VERBOSITY},"11");
 
+   # set an alias cluster
+   $con->setParameter("bar.".$tconfig->{ALIAS_TO},"foo");
+
    my $config = Panfish::PanfishConfig->new($con);
    my @cArray = $config->getConfigForCluster("foo");
    ok(@cArray == 13);
@@ -294,7 +297,62 @@ use Panfish::Config;
    ok($cArray[10] eq "foo.".$config->{SCRATCH}."=9");
    ok($cArray[11] eq "foo.".$config->{PANFISH_VERBOSITY}."=10");
    ok($cArray[12] eq "foo.".$config->{PANFISHSUBMIT_VERBOSITY}."=11");
+
+   # test alias cluster
+   @cArray = $config->getConfigForCluster("bar");
+   ok(@cArray == 13);
+   ok($cArray[0] eq $config->{THIS_CLUSTER}."=bar");
+   ok($cArray[1] eq $config->{CLUSTER_LIST}."=bar");
+   ok($cArray[2] eq "bar.".$config->{ENGINE}."=1");
+   ok($cArray[3] eq "bar.".$config->{BASE_DIR}."=2");
+   ok($cArray[4] eq "bar.".$config->{DATABASE_DIR}."=3");
+   ok($cArray[5] eq "bar.".$config->{SUBMIT}."=4");
+   ok($cArray[6] eq "bar.".$config->{STAT}."=5");
+   ok($cArray[7] eq "bar.".$config->{BIN_DIR}."=6");
+   ok($cArray[8] eq "bar.".$config->{MAX_NUM_RUNNING_JOBS}."=7");
+   ok($cArray[9] eq "bar.".$config->{PANFISH_SLEEP}."=8");
+   ok($cArray[10] eq "bar.".$config->{SCRATCH}."=9");
+   ok($cArray[11] eq "bar.".$config->{PANFISH_VERBOSITY}."=10");
+   ok($cArray[12] eq "bar.".$config->{PANFISHSUBMIT_VERBOSITY}."=11");
+
+   # test update with new config
+   my $newConfig = Panfish::Config->new();
+   $newConfig->setParameter("foo.".$tconfig->{MAX_NUM_RUNNING_JOBS},"7.1");
+   $config->updateWithConfig($newConfig);
+
+   @cArray = $config->getConfigForCluster("foo");
+   ok(@cArray == 13);
+   ok($cArray[0] eq $config->{THIS_CLUSTER}."=foo");
+   ok($cArray[1] eq $config->{CLUSTER_LIST}."=foo");
+   ok($cArray[2] eq "foo.".$config->{ENGINE}."=1");
+   ok($cArray[3] eq "foo.".$config->{BASE_DIR}."=2");
+   ok($cArray[4] eq "foo.".$config->{DATABASE_DIR}."=3");
+   ok($cArray[5] eq "foo.".$config->{SUBMIT}."=4");
+   ok($cArray[6] eq "foo.".$config->{STAT}."=5");
+   ok($cArray[7] eq "foo.".$config->{BIN_DIR}."=6");
+   ok($cArray[8] eq "foo.".$config->{MAX_NUM_RUNNING_JOBS}."=7.1");
+   ok($cArray[9] eq "foo.".$config->{PANFISH_SLEEP}."=8");
+   ok($cArray[10] eq "foo.".$config->{SCRATCH}."=9");
+   ok($cArray[11] eq "foo.".$config->{PANFISH_VERBOSITY}."=10");
+   ok($cArray[12] eq "foo.".$config->{PANFISHSUBMIT_VERBOSITY}."=11");
 }
+
+# test _getValueFromConfig with alias set on cluster passed in
+{
+  my $con = Panfish::Config->new();
+  my $tconfig = Panfish::PanfishConfig->new();
+  $con->setParameter("foo.".$tconfig->{ENGINE},"1");
+  $con->setParameter("bar.".$tconfig->{ALIAS_TO},"foo");
+  
+  my $config = Panfish::PanfishConfig->new($con);  
+
+  ok($config->getEngine("foo") eq "1");
+  ok($config->getEngine("bar") eq "1");
+  ok($config->getNotificationEmail("bar") eq "");
+  ok($config->getNotificationEmail("foo") eq "");
+}
+
+
 
 1;
 

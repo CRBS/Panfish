@@ -61,7 +61,8 @@ sub new {
      WALLTIME             => "job.walltime",
      COMMANDS_FILE_SUFFIX => ".commands",
      PSUB_FILE_SUFFIX     => ".psub",
-     REAL_JOB_FILE_DIR    => "real_jobfile_dir"
+     REAL_JOB_FILE_DIR    => "real_jobfile_dir",
+     ALIAS_TO             => "alias.to"
    };
 
    my $blessedself = bless($self,$class);
@@ -79,29 +80,64 @@ sub setConfig {
   $self->{Config} = shift;
 }
 
+=head3 updateWithConfig 
+
+Updates object with parameters from configuration passed
+in.  Any parameters found in this config will override
+previously set configurations.  
+
+=cut
+sub updateWithConfig {
+  my $self = shift;
+  my $config = shift;
+  if (!defined($self->{Config})){
+    $self->{Config} = $config;
+    return undef;
+  }
+
+  return $self->{Config}->load($config);
+}
 
 sub _getValueFromConfig {
-    my $self = shift;
-    my $key = shift; 
-    my $cluster = shift;
-    if (!defined($self->{Config})){
-        return "";
-    }
+  my $self = shift;
+  my $key = shift; 
+  my $cluster = shift;
+  my $keyWithCluster = $key;
 
-    if (!defined($cluster)){
-      if (!defined($self->getThisCluster())){
-         return "";
-      }
-      $key = $self->getThisCluster().".".$key;
+  # no config just bail
+  if (!defined($self->{Config})){
+    return "";
+  }
+
+  # if no cluster is defined use this cluster
+  # if that also fails bail unless the cluster is
+  # an empty string then do nothing
+  if (!defined($cluster)){
+    if (!defined($self->getThisCluster())){
+      return "";
     }
-    elsif ($cluster ne ""){
-      $key = $cluster.".".$key;
+    $keyWithCluster = $self->getThisCluster().".".$key;
+  }
+  elsif ($cluster ne ""){
+    $keyWithCluster = $cluster.".".$key;
+  }
+
+  # get parameter from config
+  my $val = $self->{Config}->getParameterValue($keyWithCluster);
+
+  # if no value was found see if the $cluster has an alias to another
+  # cluster, if yes attempt to retreive the value from that cluster config
+  if (!defined($val)){
+    my $aCluster = $self->{Config}->getParameterValue($cluster.".".$self->{ALIAS_TO});
+    if (defined($aCluster) && $aCluster ne ""){
+      $keyWithCluster = $aCluster.".".$key;
+      $val = $self->{Config}->getParameterValue($keyWithCluster);
     }
-    my $val = $self->{Config}->getParameterValue($key);
     if (!defined($val)){
       return "";
     }
-    return $val;
+  }
+  return $val;
 }
 
 =head3 getThisCluster 
