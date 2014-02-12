@@ -41,7 +41,7 @@ my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "batchfactor=s" => \$batchFactorArgValue,
                                      "listclusters" => \$listClustersArg,
                                      "writeoutputlocal" => \$writeOutputLocalArg,
-                                     "cluster=s" => \$clusterArgValue,
+                                     "stdintodb" => \$stdInToDb,
                                      "verbose+"   => \$verboseArg,
                                      "help|?"     => \$helpArg,
                                      "man"        => \$manArg) or pod2usage(2);
@@ -59,9 +59,9 @@ if ($manArg){
 # call will be receiving jobs via stdin and
 # those jobs need to be inserted into the 
 # local database
-if (defined($clusterArgValue)){
+if (defined($stdInToDb)){
   
-  submitJobsFromStdInToCluster($clusterArgValue);
+  submitJobsFromStdInToCluster();
   exit(0);
 }
 
@@ -323,7 +323,6 @@ sub generateTArgumentArray {
 #
 #
 sub submitJobsFromStdInToCluster {
-    my $clusterArgValue = shift;
 
     my $logger = Panfish::Logger->new();
 
@@ -334,10 +333,10 @@ sub submitJobsFromStdInToCluster {
     my $reader = Panfish::FileReaderWriterImpl->new($logger);
     my $configFactory = Panfish::PanfishConfigFactory->new($reader,$fUtil,$logger);
     my $config = $configFactory->getPanfishConfig();
-    $logger->setLevelBasedOnVerbosity($config->getPanfishSubmitVerbosity($clusterArgValue));
+    $logger->setLevelBasedOnVerbosity($config->getPanfishSubmitVerbosity());
 
     my $jobDb = Panfish::FileJobDatabase->new($reader,
-                                         $config->getDatabaseDir($clusterArgValue),$fUtil,$logger);
+                                         $config->getDatabaseDir(),$fUtil,$logger);
 
     my $job;
     my $line;
@@ -373,7 +372,7 @@ sub submitJobsFromStdInToCluster {
         $jobNameWithUnderscore = $jobName;
         $jobNameWithUnderscore=~s/\./_/g;
 
-        $job = Panfish::Job->new($clusterArgValue,
+        $job = Panfish::Job->new($config->getThisCluster(),
                                  $jobId,
                                  $taskId,
                                  "X".$jobNameWithUnderscore,
@@ -407,9 +406,9 @@ panfishcast - Submit a job to Panfish Multicluster Grid Engine Wrapper
 
 =head1 SYNOPSIS
 
-panfishcast [ B<options (excluding --cluster)> ] [ B<command> ]
+panfishcast [ B<options (excluding --stdintodb)> ] [ B<command> ]
 
-echo -e "1.1.job\\n2.2.job" | panfishcast --cluster foo_shadow.q
+echo -e "1.1.job\\n2.2.job" | panfishcast --stdintodb
 
 =head1 DESCRIPTION
 
@@ -528,7 +527,7 @@ If set, directs users program to write stderr and stdout files to $PANFISH_SCRAT
 JOBID.TASKID.out/err.  When the users program completes the output files are copied to destination specified
 by B<-e> and B<-o> parameters
 
-=item B<--cluster name>
+=item B<--stdintodb>
 
 Used internally by B<panfishdaemon>.  Tells B<panfishcast> that this is an internal invocation that should take 
 jobs given via standard in and insert them into the local panfish database.
