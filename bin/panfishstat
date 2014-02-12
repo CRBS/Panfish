@@ -22,8 +22,7 @@ use Panfish::ForkExecutor;
 use Panfish::SGEJobStateHashFactory;
 use Panfish::JobState;
 
-my $cmdLineParseResult = GetOptions ("cluster=s"         => \$clusterArgValue,
-                                     "statusofjobs=s"    => \$statusOfJobsArgValue,
+my $cmdLineParseResult = GetOptions ("statusofjobs=s"    => \$statusOfJobsArgValue,
                                      "jobstatusreport=s" => \$jobStatusReportArgValue,
                                      "help|?"            => \$helpArg,
                                      "verbose+"          => \$verboseArg,
@@ -50,15 +49,8 @@ my $configFactory = Panfish::PanfishConfigFactory->new($reader,$fUtil,$logger);
 my $config = $configFactory->getPanfishConfig();
 $logger->setLevelBasedOnVerbosity($verboseArg);
 
-# if the user did not set a cluster on the command just fail
-if (!defined($clusterArgValue)){
-  $clusterArgValue = $config->getThisCluster();
-  # if multiple clusters are listed just take the first one
-  $clusterArgValue=~s/,.*//;  
-}
-
 my $jobDb = Panfish::FileJobDatabase->new($reader,
-                                      $config->getDatabaseDir($clusterArgValue),$fUtil,$logger);
+                                      $config->getDatabaseDir(),$fUtil,$logger);
 
 my $job;
 my $line;
@@ -111,9 +103,9 @@ if (defined($statusOfJobsArgValue)){
      exit(1);
   }
   
-  if ($config->getEngine($clusterArgValue) ne "SGE"){
-     $logger->fatal("Only SGE engine currently supported. $clusterArgValue is using ".
-                    $config->getEngine($clusterArgValue));
+  if ($config->getEngine() ne "SGE"){
+     $logger->fatal("Only SGE engine currently supported. ".$config->getThisCluster()." is using ".
+                    $config->getEngine());
      print "status=".Panfish::JobState->UNKNOWN()."\n";
      exit(1);
   }
@@ -172,7 +164,7 @@ while(<STDIN>){
     }   
     $logger->debug("Job id: ".$jobId." task id: ".$taskId); 
 
-    my $jobState = $jobDb->getJobStateByClusterAndId($clusterArgValue,$jobId,$taskId);
+    my $jobState = $jobDb->getJobStateByClusterAndId($config->getThisCluster(),$jobId,$taskId);
 
     print $line."=".$jobState."\n";    
 }  
@@ -197,10 +189,6 @@ B<panfishstat> is run on remote cluster to check status of jobs
 =head1 OPTIONS
 
 =over 4
-
-=item B<--cluster name>
-
-Defines cluster this program is invoked on
 
 =item B<--statusofjobs file>
 
