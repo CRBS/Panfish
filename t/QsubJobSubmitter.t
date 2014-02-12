@@ -57,6 +57,7 @@ my $timeout = 60; #default timeout
     my $pConfig = Panfish::PanfishConfig->new();
     
     $config->setParameter($pConfig->{THIS_CLUSTER},"othercluster");
+    $config->setParameter("foo.".$pConfig->{HOST},"blah");
     $pConfig->setConfig($config);
 
     my $submitter = Panfish::QsubJobSubmitter->new($pConfig,$jobDb,$logger,$fUtil,$exec,$hashFac,$pathSorter);
