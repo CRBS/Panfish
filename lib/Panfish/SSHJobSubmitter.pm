@@ -145,7 +145,7 @@ sub _submitPsubFilesViaSSH {
    
 
     #need to tell the command what cluster it is.  yeah its weird
-    $panfishSubmit = $panfishSubmit." --cluster $cluster";
+    $panfishSubmit = $panfishSubmit." --stdintodb";
  
     # set to correct cluster
     $self->{SSHExecutor}->setCluster($cluster);   
