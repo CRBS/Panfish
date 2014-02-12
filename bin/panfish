@@ -222,7 +222,7 @@ while($SIGTERMCALLED == 0 && $keepLooping == 1){
     # directly submit any jobs and check the status of any
     # local real jobs
     # otherwise remotely submit and check on status of jobs
-    if ($clusterArgValue eq $clusterList[$x]){
+    if ($config->isClusterPartOfThisCluster($clusterList[$x]) == 1){
       $check = $qsubSubmitter->submitJobs($clusterList[$x]);
       $check = $qstatWatcher->checkJobs($clusterList[$x]);
     }
