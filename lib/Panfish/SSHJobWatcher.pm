@@ -141,13 +141,11 @@ sub _getPsubJobStateViaSSH {
     my $self = shift;
     my $cluster = shift;
     my $psubFileArrayRef = shift;
-    my $panfishSubmit = $self->{Config}->getPanfishStat($cluster);
+    my $panfishStat = $self->{Config}->getPanfishStat($cluster);
     my %noJobs;
     
     # set to correct cluster
     $self->{SSHExecutor}->setCluster($cluster);   
-
-    $panfishSubmit = $panfishSubmit." --cluster $cluster";
 
     # build echo command to pipe to submitter program via ssh
     # need to get all keys and
@@ -175,7 +173,7 @@ sub _getPsubJobStateViaSSH {
 
     $self->{SSHExecutor}->setStandardInputCommand("/bin/echo -e \"$echoArgs\"");
 
-    $exit = $self->{SSHExecutor}->executeCommand($panfishSubmit,60);
+    $exit = $self->{SSHExecutor}->executeCommand($panfishStat,60);
     if ($exit != 0){
         $self->{Logger}->error("Unable to run ".$self->{SSHExecutor}->getCommand().
                                "  : ".$self->{SSHExecutor}->getOutput());
