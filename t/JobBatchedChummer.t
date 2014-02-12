@@ -33,6 +33,7 @@ my $CLUSTER = "foo";
 my $baseConfig = Panfish::Config->new();
 $baseConfig->setParameter("this.cluster",$CLUSTER);
 $baseConfig->setParameter($CLUSTER.".basedir","base");
+$baseConfig->setParameter("foo2.host","blah");
 my $config = Panfish::PanfishConfig->new($baseConfig);
 
 #
@@ -110,13 +111,14 @@ my $config = Panfish::PanfishConfig->new($baseConfig);
    my $keyGen = Mock::HashKeyGenerator->new();
    my $hashFac = Panfish::JobHashFactory->new($keyGen,$logger);
 
-
+   
    my @clusterJobs = ();
    $clusterJobs[0] = Panfish::Job->new("foo2","1","2","name","cwd","command",
                                        Panfish::JobState->BATCHED(),1,undef,"psub",undef,undef);
    $db->addGetJobsByClusterAndStateResult("foo2",Panfish::JobState->BATCHED(),\@clusterJobs);
 
    $remote->addUploadResult("psubdir","foo2",undef,"uploadfail");
+   $fu->addGetDirnameResult("psubdir","/");
 
    $keyGen->addGetKeyResult($clusterJobs[0],"psubdir");
 
