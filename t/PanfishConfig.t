@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 147;
+use Test::More tests => 134;
 use Panfish::PanfishConfig;
 use Panfish::Config;
 
@@ -46,34 +46,15 @@ use Panfish::Config;
 
    # this cluster set to single cluster
    $con->setParameter($config->{THIS_CLUSTER},"beer");
+   $con->setParameter("foo.".$config->{HOST},"bla\@somehost.com");
+   $con->setParameter("beer.".$config->{HOST},"bla\@somehost.com");
+   $con->setParameter("cheese.".$config->{HOST},"");
    ok($config->isClusterPartOfThisCluster("") == 0);
    ok($config->isClusterPartOfThisCluster(" ") == 0);
    ok($config->isClusterPartOfThisCluster("foo") == 0);
    ok($config->isClusterPartOfThisCluster("beer") == 1);
-   ok($config->isClusterPartOfThisCluster("some,beer,yo") == 0);
-
-   #this cluster is set to list of 2 clusters
-   $con->setParameter($config->{THIS_CLUSTER},"beer,soda");
-   ok($config->isClusterPartOfThisCluster("") == 0);
-   ok($config->isClusterPartOfThisCluster(" ") == 0);
-   ok($config->isClusterPartOfThisCluster("soda") == 1);
-   ok($config->isClusterPartOfThisCluster("beer") == 1);
-   ok($config->isClusterPartOfThisCluster("beer,soda") == 0); # only one cluster can be specified, commas result in no match
-   ok($config->isClusterPartOfThisCluster("soda,beer") == 0); 
-
-   #this cluster is set to list of 3 clusters
-   $con->setParameter($config->{THIS_CLUSTER},"beer,soda,cheese");
-   ok($config->isClusterPartOfThisCluster("") == 0);
-   ok($config->isClusterPartOfThisCluster(" ") == 0);
-   ok($config->isClusterPartOfThisCluster("soda") == 1);
-   ok($config->isClusterPartOfThisCluster("beer") == 1);
+   ok($config->isClusterPartOfThisCluster("some,beer,yo") == 1);
    ok($config->isClusterPartOfThisCluster("cheese") == 1);
-   ok($config->isClusterPartOfThisCluster("beer,soda") == 0);
-   ok($config->isClusterPartOfThisCluster("soda,beer") == 0);
-   ok($config->isClusterPartOfThisCluster("beer,soda,cheese") == 0);
- 
-  
-
 }
 
 # test getClusterListAsArray with no config set and with empty cluster list
