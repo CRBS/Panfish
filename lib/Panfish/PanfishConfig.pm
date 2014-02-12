@@ -199,32 +199,26 @@ Returns 1 for yes and 0 for no.
 =cut
 
 sub isClusterPartOfThisCluster {
-    my $self = shift;
-    my $cluster = shift;
-    my $thisCluster = $self->getThisCluster();
+  my $self = shift;
+  my $cluster = shift;
+  my $thisCluster = $self->getThisCluster();
 
-    # if This.Cluster is undefined or empty string. Fail or
-    # if cluster argument is undef
-    if (!defined($cluster) || 
-        !defined($thisCluster) ||
-        $thisCluster eq ""){
-       return 0;
-    }
-   
-    # if there is a comma as part of the cluster name just
-    # fail the test
-    if (index($cluster,',') > -1){
-       return 0;
-    }
 
-    # return 1 if cluster passed in matches This.Cluster or
-    # if the cluster is an element in a comma delimited list
-    if ($thisCluster eq $cluster ||
-        $thisCluster =~ /,\s*$cluster\s*$/ ||
-        $thisCluster =~ /,\s*$cluster\s*,/ ||
-        $thisCluster =~ /^\s*$cluster\s*,/){
-      return 1;
-    }
+  if (!defined($cluster) || $cluster =~/^\s*$/ || 
+      !defined($thisCluster) || 
+      $thisCluster =~/^\s*$/){
+    return 0;
+  }
+
+  if ($cluster eq $thisCluster){
+    return 1;
+  }
+
+  # an empty host entry or a non existant one implies
+  # cluster is local
+  if ($self->getHost($cluster) =~ /^\s*$/){
+    return 1;
+  }
 
   return 0;
 }
