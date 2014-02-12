@@ -326,6 +326,7 @@ $baseConfig->setParameter("foo.basedir","/base");
   $bConfig->setParameter("bar.panfishjobrunner","runner");
   $bConfig->setParameter("bar.job.template.dir","/template");
   $bConfig->setParameter("bar.basedir","/bardir");
+  $bConfig->setParameter("bar.host","ha");
 
   my $config = Panfish::PanfishConfig->new($bConfig);
 
