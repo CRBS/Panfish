@@ -2,6 +2,7 @@
 #
 #$ -V
 #$ -S /bin/sh
+#$ -p -100
 #$ -wd @PANFISH_JOB_CWD@
 #$ -o @PANFISH_JOB_STDOUT_PATH@
 #$ -e @PANFISH_JOB_STDERR_PATH@
