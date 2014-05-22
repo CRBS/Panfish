@@ -24,6 +24,7 @@ use Panfish::JobState;
 
 my $cmdLineParseResult = GetOptions ("statusofjobs=s"    => \$statusOfJobsArgValue,
                                      "jobstatusreport=s" => \$jobStatusReportArgValue,
+                                     "statusofjobids=s"  => \$statusOfJobIdsArgValue,
                                      "help|?"            => \$helpArg,
                                      "verbose+"          => \$verboseArg,
                                      "man"               => \$manArg) or pod2usage(2);
@@ -145,7 +146,32 @@ if (defined($statusOfJobsArgValue)){
   exit(0);
 }
 
+#
+# User has passed in a set of job ids.  Assume
+# they are comma delimited, parse and return
+# status for each job as obtained from job database
+#
+if (defined($statusOfJobIdsArgValue)){
+  my @jobs = split(",",$statusOfJobIdsArgValue);
 
+  for (my $x = 0; $x < @jobs; $x++){
+    my ($jobId,$taskId) = parseJobAndTaskId($jobs[$x]);
+    $logger->debug("Parsed ".$jobs[$x]." to Job id: ".$jobId." task id: ".$taskId); 
+    my $jobState = $jobDb->getJobStateByClusterAndId($config->getThisCluster(),$jobId,$taskId);
+    print $jobs[$x]."=".$jobState."\n";    
+  }
+
+
+
+  exit(0);
+}
+
+#
+# If no arguments were passed to command assume
+# a list of job ids are being passed via stdin
+# for each job obtain its status and output it to
+# standard out
+#
 while(<STDIN>){
     chomp();
     $line = $_;
@@ -154,20 +180,37 @@ while(<STDIN>){
     # write the command to a file using the job database
     # and print out the psub file minus .psub and path prefix.
      
-    if ($line=~/^(.*)\.(.*)$/){
-        $jobId = $1;
-        $taskId = $2;
-    }
-    else {
-        $jobId = $line;
-        $taskId = "";
-    }   
+    my ($jobId,$taskId) = parseJobAndTaskId($line);
+
     $logger->debug("Job id: ".$jobId." task id: ".$taskId); 
 
     my $jobState = $jobDb->getJobStateByClusterAndId($config->getThisCluster(),$jobId,$taskId);
 
     print $line."=".$jobState."\n";    
 }  
+
+#
+# Given a job id in format ###.### or JOB_ID.TASK_ID parse
+# out the JOB_ID and TASK_ID and return in two separate variables.
+# If no '.' exists set $taskid below to empty string
+#
+# ie my ($jobid,$taskid) = parseJobAndTaskId($string);
+#
+sub parseJobAndTaskId {
+  my $input = shift;
+  my $jobId = undef;
+  my $taskId = undef;
+  if ($input=~/^(.*)\.(.*)$/){
+        $jobId = $1;
+        $taskId = $2;
+  }
+  else {
+        $jobId = $input;
+        $taskId = "";
+  }   
+  return ($jobId,$taskId);
+}
+
     
 exit($exitVal);
 1;
@@ -198,6 +241,19 @@ The resulting output in a simple one line with this format
 status=<JOBSTATUS>
 
 where <JOBSTATUS> is either RUNNING, DONE, or UNKNOWN.
+
+=item B<--statusofjobids ids>
+
+Given a comma delimited list of job ids (ie JOB_ID.TASK_ID,JOB_ID.TASK_ID,...) This option
+returns the status of these jobs as currently set in the B<Panfish> database.  The format:
+
+JOB_ID.TASK_ID=<JOBSTATUS>
+
+where <JOBSTATUS> is submitted, queued, batched, batchedandchummed, running, done, or failed
+
+Please note that if the given job being queried is a shadow job id on current cluster, this status 
+may show the job as completed, but it might still be running on SGE since the shadow job has not 
+detected the change and exited.
 
 =item B<--jobstatusreport type>
 
