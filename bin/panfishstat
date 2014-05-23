@@ -154,15 +154,30 @@ if (defined($statusOfJobsArgValue)){
 if (defined($statusOfJobIdsArgValue)){
   my @jobs = split(",",$statusOfJobIdsArgValue);
 
-  for (my $x = 0; $x < @jobs; $x++){
-    my ($jobId,$taskId) = parseJobAndTaskId($jobs[$x]);
-    $logger->debug("Parsed ".$jobs[$x]." to Job id: ".$jobId." task id: ".$taskId); 
-    my $jobState = $jobDb->getJobStateByClusterAndId($config->getThisCluster(),$jobId,$taskId);
-    print $jobs[$x]."=".$jobState."\n";    
+  my $exec = Panfish::ForkExecutor->new();
+  my $jobStatusFactory = Panfish::SGEJobStateHashFactory->new($config,$logger,$exec);
+
+  my ($jobStatusHash,$err) = $jobStatusFactory->getJobStateHash();
+
+  if (defined($err)){
+    $logger->fatal("$err");
+    exit(1);
   }
 
+  my $status;
+  for (my $x = 0; $x < @jobs; $x++){
+    my ($jobId,$taskId) = parseJobAndTaskId($jobs[$x]);
+    $logger->debug("Parsed ".$jobs[$x]." to Job id: ".$jobId." task id: ".$taskId);
 
-
+    # This is not going to work since the shadow job deletes the job file from the database
+    $status = $jobStatusHash->{$jobId};
+    if (defined($status)){
+      print $jobs[$x]."=".$status."\n";    
+    }
+    else {
+      print $jobs[$x]."=".Panfish::JobState->DONE()."\n";
+    }
+  }
   exit(0);
 }
 
