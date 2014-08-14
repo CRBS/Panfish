@@ -117,7 +117,11 @@ if [ "$DEPLOY_ENV" == "prod" ] ; then
    SCP_ARG="${HOST}:${DEPLOY_BASE_DIR}/."
 fi
 
-
+if [ "$DEPLOY_ENV" == "cws_cylume" ] ; then
+   HOST="churas@cylume.camera.calit2.net"
+   DEPLOY_BASE_DIR="/home/churas/cws/bin"
+   SCP_ARG="${HOST}:${DEPLOY_BASE_DIR}/."
+fi
 
 if [ "$HOST" == "NOTSET" ] ; then
   echo "Please setup $DEPLOY_ENV in this script $0"
