@@ -13,7 +13,8 @@ sub new {
      DeleteFile       => undef,
      Touch            => undef,
      MakeDir          => undef,
-     RecursiveMakeDir => undef
+     RecursiveMakeDir => undef,
+     FilesInDir       => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -36,6 +37,23 @@ sub runFileTest {
 }
 
 
+sub addGetFilesInDirectoryResult {
+  my $self = shift;
+  my $path = shift;
+  my $result = shift;
+  push(@{$self->{FilesInDir}->{$path}},$result);
+}
+
+sub getFilesInDirectory {
+  my $self = shift;
+  my $path = shift;
+  my $filesInDir = pop(@{$self->{FilesInDir}->{$path}});
+  if (!defined($filesInDir)){
+    return undef;
+  }
+
+  return @$filesInDir;
+}
 
 =head3 addGetDirnameResult
 
