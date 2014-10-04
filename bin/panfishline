@@ -53,6 +53,7 @@ my $cmdLineParseResult = GetOptions ("e=s"      => \$eArgValue,
                                      "walltime=s"       => \$wallTimeArgValue,
                                      "batchfactor=s"    => \$batchFactorArgValue,
                                      "writeoutputlocal" => \$writeOutputLocalArg,
+                                     "exitaftersubmit"  => \$exitAfterSubmitArg,
                                      "help|?"   => \$helpArg,
                                      "man"      => \$manArg) or pod2usage(2);
 
@@ -165,6 +166,12 @@ my $res = $jobDb->insert($job);
 if (defined($res)){
    $logger->error("Unable to update job state: $res");
    exit(1);
+}
+
+# exit if the --exitaftersubmit arg is set via the command line
+if (defined($exitAfterSubmitArg)){
+  $logger->debug("Exit after submission argument set.  Exiting...");
+  exit(0);
 }
 
 handleSignal($jobDb,$job,$logger);
@@ -476,6 +483,10 @@ Z<>
 
 This value can also be set within the B<command> using
 the B<#$PANFISH> directive.
+
+=item B<--exitaftersubmit>
+
+Causes this program to exit after submission of the job to the B<panfish> database.  
 
 =item B<-o path,...>
 
