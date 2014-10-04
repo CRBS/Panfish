@@ -38,11 +38,12 @@ my $cmdLineParseResult = GetOptions ("q=s"        => \$qArgValue,
                                      "walltime=s" => \$wallTimeArgValue,
                                      "sync=s"     => \$syncArgValue,
                                      "retry=i"    => \$retryArgValue,
-                                     "batchfactor=s" => \$batchFactorArgValue,
-                                     "listclusters" => \$listClustersArg,
+                                     "batchfactor=s"    => \$batchFactorArgValue,
+                                     "listclusters"     => \$listClustersArg,
                                      "writeoutputlocal" => \$writeOutputLocalArg,
-                                     "stdintodb" => \$stdInToDb,
+                                     "stdintodb"  => \$stdInToDb,
                                      "verbose+"   => \$verboseArg,
+                                     "noshadow"   => \$noShadowArg,
                                      "help|?"     => \$helpArg,
                                      "man"        => \$manArg) or pod2usage(2);
 
@@ -197,7 +198,10 @@ if (defined($wallTimeArgValue)){
    $wallTimeArg = " --walltime $wallTimeArgValue";
 }
 
-
+my $exitAfterSubmitArg = " ";
+if (defined($noShadowArg)){
+  $exitAfterSubmitArg = " --exitaftersubmit";
+}
 
 my $exitCode;
 
@@ -220,7 +224,7 @@ for (my $x = 0; $x < @tArgArray; $x++){
 
    $cmd = $config->getSubmit()." $tArgArray[$x] $newArgList -j y -o ".
           $lineStdOutPath." ".
-          $config->getLineCommand().$wallTimeArg.$accountArg.$stdout.$stderr.$batchFactorArg.$writeOutputLocal." -c \"'$command'\"";
+          $config->getLineCommand().$exitAfterSubmitArg.$wallTimeArg.$accountArg.$stdout.$stderr.$batchFactorArg.$writeOutputLocal." -c \"'$command'\"";
 
     $logger->info("Running command: $cmd");
 
@@ -538,6 +542,11 @@ Verbose mode.  Causes B<panfishcast> to print debugging messages.  Multiple B<--
 verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
+
+=item B<--noshadow>
+
+Causes shadow jobs to exit immediately after submission into the B<panfish> database.  When using
+this option use B<panfishstat> to monitor job status.
 
 =item B<--batchfactor factor(s)>
 
