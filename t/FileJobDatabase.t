@@ -10,7 +10,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 115;
+use Test::More tests => 136;
 use Panfish::FileReaderWriterImpl;
 use Mock::FileReaderWriter;
 use Panfish::FileUtil;
@@ -296,6 +296,95 @@ use Panfish::Job;
    my @logs = $logger->getLogs();
    ok(@logs == 1);
    ok($logs[0] =~ /DEBUG.*Looking for job: 1 under \/foo\/cluster/);
+}
+
+# getJobStatesByCluster no jobs
+{
+  my $logger = Mock::Logger->new();
+  my $readerWriter = Mock::FileReaderWriter->new();
+  my $testdir = "/foo";
+  my $fUtil = Mock::FileUtil->new();
+  my @emptyArr;
+  $fUtil->addGetFilesInDirectoryResult($testdir."/cluster/".Panfish::JobState->SUBMITTED(),\@emptyArr);
+  
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$logger);
+
+  my $jobHash = $jobDb->getJobStatesByCluster("cluster");
+  ok(defined($jobHash));
+  ok(keys(%$jobHash) == 0);
+}
+
+# getJobStatesByCluster 1 job in submitted
+{
+  my $logger = Mock::Logger->new();
+  my $readerWriter = Mock::FileReaderWriter->new();
+  my $testdir = "/foo";
+  my $fUtil = Mock::FileUtil->new();
+  my @myArr;
+  push(@myArr,$testdir."/cluster/".Panfish::JobState->SUBMITTED()."/1.2");
+  $fUtil->addGetFilesInDirectoryResult($testdir."/cluster/".Panfish::JobState->SUBMITTED(),\@myArr);
+
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$logger);
+
+  my $jobHash = $jobDb->getJobStatesByCluster("cluster");
+  ok(defined($jobHash));
+  ok(keys(%$jobHash) == 1);
+  ok($jobHash->{"1.2"} eq Panfish::JobState->SUBMITTED());
+}
+
+# getJobStatesByCluster multiple jobs in different states
+{
+  my $logger = Mock::Logger->new();
+  my $readerWriter = Mock::FileReaderWriter->new();
+  my $testdir = "/foo";
+  my $fUtil = Mock::FileUtil->new();
+  my @myArr;
+  push(@myArr,$testdir."/cluster/".Panfish::JobState->SUBMITTED()."/1.2");
+  push(@myArr,$testdir."/cluster/".Panfish::JobState->SUBMITTED()."/1.3");
+  $fUtil->addGetFilesInDirectoryResult($testdir."/cluster/".Panfish::JobState->SUBMITTED(),\@myArr);
+
+  my @doneArr;
+  push(@doneArr,$testdir."/cluster/".Panfish::JobState->DONE()."/4.4");
+  push(@doneArr,$testdir."/cluster/".Panfish::JobState->DONE()."/4.5");
+  push(@doneArr,$testdir."/cluster/".Panfish::JobState->DONE()."/6.4");
+  $fUtil->addGetFilesInDirectoryResult($testdir."/cluster/".Panfish::JobState->DONE(),\@doneArr);
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$logger);
+
+  my $jobHash = $jobDb->getJobStatesByCluster("cluster");
+  ok(defined($jobHash));
+  ok(keys(%$jobHash) == 5);
+  ok($jobHash->{"1.2"} eq Panfish::JobState->SUBMITTED());
+  ok($jobHash->{"1.3"} eq Panfish::JobState->SUBMITTED());
+  ok($jobHash->{"4.4"} eq Panfish::JobState->DONE());
+  ok($jobHash->{"4.5"} eq Panfish::JobState->DONE());
+  ok($jobHash->{"6.4"} eq Panfish::JobState->DONE());
+}
+
+# getJobStatesByCluster 1 job in each state
+{
+  my $logger = Mock::Logger->new();
+  my $readerWriter = Mock::FileReaderWriter->new();
+  my $testdir = "/foo";
+  my $fUtil = Mock::FileUtil->new();
+
+  my @states = Panfish::JobState->getAllStates();
+  my $numStates = @states;
+  my $cntr = 1;
+  for (my $x = 0; $x < @states; $x++){
+    my @myArr;
+    push(@myArr,$testdir."/cluster/".$states[$x]."/1.".$cntr++);
+    $fUtil->addGetFilesInDirectoryResult($testdir."/cluster/".$states[$x],\@myArr);
+  }
+
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,$fUtil,$logger);
+
+  my $jobHash = $jobDb->getJobStatesByCluster("cluster");
+  ok(defined($jobHash));
+  ok(keys(%$jobHash) == $numStates);
+  $cntr = 1;
+  for (my $x = 0; $x < @states; $x++){
+    ok($jobHash->{"1.".$cntr++} eq $states[$x]);
+  }
 }
 
 

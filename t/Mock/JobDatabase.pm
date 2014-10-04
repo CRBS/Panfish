@@ -13,7 +13,8 @@ sub new {
      NumberOfJobsInState      => undef,
      JobByClusterAndId        => undef,
      Delete                   => undef,
-     UpdateArray              => undef
+     UpdateArray              => undef,
+     JobStatesByCluster       => undef
    };
 
    my $blessedself = bless($self,$class);
@@ -142,7 +143,7 @@ sub addDeleteResult {
   my $job = shift;
   my $res = shift;
  
-  return push(@{$self->{Delete}->{$job->getJobAndTaskId()}},$res);
+  push(@{$self->{Delete}->{$job->getJobAndTaskId()}},$res);
 
 }
 
@@ -152,6 +153,21 @@ sub delete {
 
   return pop(@{$self->{Delete}->{$job->getJobAndTaskId()}});
 
+}
+
+
+sub addGetJobStatesByClusterResult {
+  my $self = shift;
+  my $cluster = shift;
+  my $result = shift;
+  push(@{$self->{JobStatesByCluster}->{$cluster}},$result);
+}
+
+sub getJobStatesByCluster {
+  my $self = shift;
+  my $cluster = shift;
+
+  return pop(@{$self->{JobStatesByCluster}->{$cluster}});
 }
 
 

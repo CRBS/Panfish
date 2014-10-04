@@ -363,6 +363,45 @@ sub updateArray {
    return undef;
 }
 
+=head3 getJobStatesByCluster
+
+Generates a hash of jobids to states for a given cluster.
+my $stateHash = $jobDb->getJobStatesByCluster("gordon_shadow.q");
+
+# state hash will have the following:
+# JOBID.TASKID => STATE
+#
+
+=cut
+
+sub getJobStatesByCluster {
+  my $self = shift;
+  my $cluster = shift;
+  my %jobStateHash = ();
+  my $searchDir;
+  my $jobId;
+
+  my @states = Panfish::JobState->getAllStates();
+  for (my $x = 0; $x < @states; $x++){
+    $searchDir = $self->{SubmitDir}."/".$cluster."/".$states[$x];
+   
+    my @files = $self->{FileUtil}->getFilesInDirectory($searchDir);
+    if (!@files){
+      next;
+    }
+    for (my $y = 0; $y < @files; $y++){
+      if (!defined($files[$y])){
+        next;
+      }
+      $jobId = $files[$y];
+      $jobId=~s/^.*\///;
+      $jobStateHash{$jobId} = $states[$x];
+    }
+  }
+ 
+  return \%jobStateHash;
+}
+
 
 =head3 getJobsByClusterAndState
 
@@ -428,7 +467,7 @@ sub getNumberOfJobsInState {
     return $len;
 }
 
-=head3 getJob
+=head3 getJobByClusterAndId
 
 Gets a job from the database if any exist.  This is done
 by searching the submit directory (set in the constructor) for
