@@ -129,6 +129,13 @@ if [ "$DEPLOY_ENV" == "cws_vizwall" ] ; then
    SCP_ARG="${HOST}:${DEPLOY_BASE_DIR}/."
 fi
 
+if [ "$DEPLOY_ENV" == "megashark" ] ; then
+   HOST="churas@megashark.crbs.ucsd.edu"
+   DEPLOY_BASE_DIR="/sharktopus/megashark/cws/bin"
+   SCP_ARG="${HOST}:${DEPLOY_BASE_DIR}/."
+fi
+
+
 
 if [ "$HOST" == "NOTSET" ] ; then
   echo "Please setup $DEPLOY_ENV in this script $0"
