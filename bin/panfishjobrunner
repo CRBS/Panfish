@@ -178,6 +178,9 @@ sub haveAnyJobsFinished {
                   $logger->info("Kill file detected. Killing job ".
                                 $jobIdHash->{$cpid}." running with process id ".
                                 $cpid);
+                  #need to optionally send usr2 and add delay
+                  #so the script can do the right thing
+                  #kill("USR2",$cpid);
                   kill("TERM",$cpid);
                   delete $pidHash->{$cpid};
                   delete $jobIdHash->{$cpid};
