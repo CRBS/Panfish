@@ -16,6 +16,7 @@ lib/Panfish/Job.pm
 lib/Panfish/SSHExecutor.pm
 lib/Panfish/JobBatchedChummer.pm
 lib/Panfish/QsubJobSubmitter.pm
+lib/Panfish/FileJobDatabaseJobStateHashFactory.pm
 lib/Panfish/FileReaderWriterImpl.pm
 lib/Panfish/ForkExecutor.pm
 lib/Panfish/PBSQsubParser.pm
@@ -41,6 +42,7 @@ lib/Panfish/FileJobDatabase.pm
 lib/Panfish/JobState.pm
 lib/Panfish/SGEQsubParser.pm
 lib/Panfish/FileLock.pm
+t/FileJobDatabaseJobStateHashFactory.t
 t/SortByFileAgeSorter.t
 t/ForkExecutor.t
 t/PsubDirnameHashKeyGenerator.t
