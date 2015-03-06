@@ -7,7 +7,7 @@
 #$ -o @PANFISH_JOB_STDOUT_PATH@
 #$ -e @PANFISH_JOB_STDERR_PATH@
 #$ -N @PANFISH_JOB_NAME@
-#$ -q all.q
+#$ -q kepler.q
 #$ -l h_rt=@PANFISH_WALLTIME@
 
 echo "SGE Id:  ${JOB_ID}.${SGE_TASK_ID}"
