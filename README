@@ -1,54 +1,231 @@
-Panfish version 0.1
+Panfish version 1.0
 ====================
 
-Panfish is a set of tools and daemons that let users submit jobs in a similar 
-process they use for their local cluster, running Oracle/Sun/Open Grid Engine, 
-with the advantage of those jobs optionally being sent to XSEDE compute 
-clusters.  Utilizing a Panfish tool (chum) the user first uploads data to XSEDE 
-compute clusters.  The user then invokes a Panfish command (cast) to submit 
-their jobs.  This command is a dropin replacement for the one in 
-Oracle/Sun/Open Grid Engine (qsub.) The user then monitors the jobs via the id 
-returned by the submission command (cast) as with any normally submitted job.  
-Upon job completion the user invokes a Panfish command (land) to retrieve the 
-data.  
+NAME
+  Panfish - Multicluster job submission
 
-What happens in the above steps is the Panfish submission command (cast) submits 
-what is known as a “shadow” job to a set of “shadow” queues that correspond to 
-the local cluster and other XSEDE compute clusters.  Oracle/Sun/Open Grid Engine 
-handles the scheduling of these “shadow” jobs to the appropriate “shadow” queue.  
-Once scheduled and running these “shadow” jobs examine what queue they are under 
-and let the Panfish daemon  know.  The Panfish daemon on the local compute 
-cluster then submits those jobs to the corresponding compute resource notifying 
-the “shadow” job upon completion.  The “shadow” job then exits letting the user 
-know the work has completed.  The (chum) and (land) commands are wrappers that 
-simplify the transfer of data to and from remote resources.
+SYNOPSIS
 
-Panfish can be run as a cron on the local compute cluster and as a cron job on 
-each remote XSEDE cluster.  The current implementation runs as a single user and 
-all jobs are run as that user.  Panfish requires only ssh and rsync and no 
-configuration adjustment on the remote clusters other than enabling ssh from the 
-local compute resources to the remote compute resources.  
+  # stages data
+  panfishchum --path /home/foo -q myshadow.q
+
+  # submits a job
+  panfishcast -q myshadow.q myjob.sh
+  
+  # check status
+  qstat ... 
+  
+  # retreives data 
+  panfishland --path /home/foo -q myshadow.q
+
+
+DESCRIPTION
+
+  Panfish is a set of tools and daemons that let users submit jobs in a similar 
+  process they use for their local cluster, running Open Grid Engine, 
+  with the advantage of those jobs optionally being sent to XSEDE compute 
+  clusters.  
+
+  Utilizing a Panfish tool (panfishchum) the user first uploads 
+  data to XSEDE compute clusters.  The user then invokes a Panfish command 
+  (panfishcast) to submit their jobs.  This command is a replacement 
+  for the one in Oracle/Sun/Open Grid Engine (qsub.) The user then monitors 
+  the jobs via the id returned by the submission command via qsub command. 
+  Upon job completion the user invokes a Panfish command (panfishland) to 
+  retrieve the data.  
+
+  What happens in the above steps is the Panfish submission command 
+  (panfishcast) submits what is known as a “shadow” job to a set of “shadow” 
+  queues on the local cluster that correspond to the local cluster and 
+  other XSEDE compute clusters.  
+
+  Open Grid Engine handles the scheduling of these “shadow” jobs to 
+  the appropriate “shadow” queue.  Once scheduled and running these “shadow” 
+  jobs examine what queue they are under and let the Panfish daemon know.  
+  The Panfish daemon on the local compute cluster then submits those jobs to 
+  the corresponding compute resource notifying the “shadow” job upon 
+  completion.  
+
+  The “shadow” job then exits letting the user know the work has completed.  
+  The (panfishchum) and (panfishland) commands are wrappers that simplify the 
+  transfer of data to and from remote resources.
+  
+  Panfish can be run as a cron on the local compute cluster and as a cron job i
+  on each remote XSEDE cluster.  The current implementation runs as a single 
+  user and all jobs are run as that user.  Panfish requires only ssh and rsync 
+  and no  configuration adjustment on the remote clusters other than enabling 
+  ssh from the local compute resources to the remote compute resources.  
+
+DEPENDENCIES
+
+  Panfish is designed to only work on linux operating systems that
+  have command line binaries for ssh and rsync.  The main installation
+  machine must have Sun/Oracle/Open Grid Engine 6.1+ installed and properly
+  configured to run jobs on the cluster.
+
+  In addition, a special "shadow" queue should be setup for each cluster
+  that will be setup to run jobs, including the local cluster.  
+
+  This can be done with the qconf -aq command which will bring up a 
+  template queue that can be edited.  Simply replace qname value of 
+  NONE with the name of the cluster followed by _shadow.q (foo_shadow.q) 
+  and replace the value for hostlist to @allhosts.  
+
+  The value of slots dictates number of shadow jobs Open Grid Engine will 
+  schedule.  For the local cluster its best to leave at 1.  For the remote 
+  cluster its okay to do more slots per node since these jobs are just place 
+  holders, but be careful not to hit the limit of processes per node 
+  (keep it under 100).
+
+  Example partial config of shadow queue for a local cluster named foo:
+
+    qname                 foo_shadow.q
+    hostlist              @allhosts
+    seq_no                0
+    load_thresholds       np_load_avg=1.75
+    suspend_thresholds    NONE
+    nsuspend              1
+    suspend_interval      00:05:00
+    priority              0
+    min_cpu_interval      00:05:00
+    processors            UNDEFINED
+    qtype                 BATCH INTERACTIVE
+    ckpt_list             NONE
+    pe_list               make
+    rerun                 FALSE
+    slots                 1
+    .
+    .
+    .
+
+   
+
+
 
 
 
 INSTALLATION
 
-To install this module type the following:
+  To install this module type the following:
 
-   perl Makefile.PL
-   make
-   make test
-   make install
+     perl Makefile.PL
+     make
+     make test
+     make install
 
-DEPENDENCIES
+  After the above steps a configuration file must be created which tells 
+  Panfish about the cluster it is on as well as information on the remote 
+  clusters
 
-Panfish is designed to only work on linux operating systems that
-have command line binaries for ssh and rsync.  The main installation
-machine must have Sun/Oracle/Open Grid Engine 6.1+ installed and properly
-configured.
+  Panfish will look for configuration in the following locations and load 
+  them in the order below.  Any parameters found in subsequent configuration
+  files will override the previously loaded configuration file.  This 
+  means any values in PANFISH_CONFIG configuration file will override
+  all other parameters.
 
+  1) /etc/panfish.config
+  2) <install bin directory>/../etc/panfish.config
+  3) <install bin directory>/panfish.config
+  4) $HOME/.panfish.config
+  5) Path set in environment variable PANFISH_CONFIG
+ 
 
+  The configuration file follows format of:
+
+  key = value
+
+  The configuration file has two parts, one part consists of 
+  global parameters (this.cluster and cluster.list) and the second 
+  are cluster specific parameters.  The cluster specific parameters
+  are prefixed with the cluster's shadow queue name.  
+ 
+
+  Configuration file fields:
+
+  this.cluster
+    Shadow queue for this cluster.  This should match the name of
+    the shadow queue setup on the local Open Grid Engine ie foo_shadow.q
+
+  cluster.list
+    Comma delimited list of clusters that Panfish can submit jobs to.
+    The local cluster needs to be specified on this list as well.
+
+  Cluster specific configurations:
   
+  <shadow queue>.host
+     Host to connect for interation with remote cluster via ssh.
+
+  <shadow queue>.engine
+     SGE, PBS, and SLURM are currently supported.  Note: Only SGE is 
+     supported for the local cluster
+
+  <shadow queue>.basedir
+     Base directory on remote cluster for Panfish 
+ 
+  <shadow queue>.submit
+     Path to qsub or sbatch on remote cluster (include the qsub | sbatch)
+
+  <shadow queue>.stat
+     Path to qstat or squeue on remote cluster (include the qstat | squeue)
+
+  <shadow queue>.bin.dir
+     Path where Panfish scripts will be installed on remote cluster
+
+  <shadow queue>.database.dir
+     Directory where database file of jobs on remote cluster will be stored
+
+  <shadow queue>.max.num.running.jobs
+     Number of running jobs allowed on remote cluster
+
+  <shadow queue>.submit.sleep
+     Number of seconds to sleep between submits of jobs
+
+  <shadow queue>.scratch
+     Tmp or scratch directory that job can use.  If needed a command
+     can be set if backticks are wrapped around ie 
+     `/bin/ls /scratch/$USER/[0-9]* -d`
+
+  <shadow queue>.jobs.per.node
+     Used with batching and determines number of same jobs to be batched
+     on a single compute node.  Usually set to number of cores on 
+     machine.
+
+  <shadow queue>.job.batcher.override.timeout
+     Number of seconds to wait before sending out a batch job with an
+     insufficient number of jobs batched together.
+
+  <shadow queue>.line.sleep.time
+     Number of seconds the panfishline shadow job should sleep before
+     querying the database to see if the real job has changed state
+
+  <shadow queue>.panfish.log.verbosity
+     0 for none, 1 for a bit of debugging 2 or more for lots of debugging
+     of Panfish cron daemon
+
+  <shadow queue>.panfishsubmit.log.verbosity
+    0 for none, 1 for a bit of debugging 2 or more for lots of debugging
+     of panfishsubmit 
+
+  <shadow queue>.io.retry.count
+    Number of times to retry an IO operation such as ssh or copy
+
+  <shadow queue>.io.retry.sleep
+    Seconds to wait before a retry of an IO operation
+
+  <shadow queue>io.timeout
+    Seconds to set for timeout of IO operation
+
+  <shadow queue>.connect.timeout
+    Seconds to set for connection timeout of IO operation
+
+  <shadow queue>.job.account
+    Account, if any, that should be set when submitting a job
+    on remote cluster
+
+  <shadow queue>.job.walltime
+    Walltime to set for job on remote cluster.  For currently supported
+    clusters format should be HH:MM:SS 
+
 
 COPYRIGHT AND LICENCE
 
