@@ -54,6 +54,43 @@ Panfish enables jobs built for Sun Grid Engine/Open Grid Scheduler to
 run on multiple clusters in parallel utilizing tools similar to those
 used to submit jobs to Sun Grid Engine/Open Grid Scheduler.  
 
+=head1 SETUP
+
+Setup of B<Panfish> involves several steps as denoted below.  
+
+=item 1) Creation of shadow queues on Open Grid Scheduler
+
+=item 2) Enabling ssh/rsync access to remote clusters
+
+=item 3) Creation of configuration file
+
+=item 4) Setup of Panfish on remote clusters
+
+=item 5) Setup of Panfish cron on local cluster
+
+Z<>
+
+=item B<1) Creation of shadow queues on Open Grid Scheduler>
+
+B<Panfish> relies on Open Grid Scheduler to decide where jobs should 
+be run.  This is done through "shadow" queues that B<panfishcast> 
+submits "shadow" jobs to.  These "shadow" jobs merely provide handles 
+to the real jobs run on various clusters.  
+
+A "shadow" queue should be created for every cluster that jobs will be 
+run on, including one for the local cluster.  The number of I<slots> 
+should correspond to number of jobs that is desired to be run on the 
+cluster. 
+
+B<NOTE:> I<slots> on Open Grid Scheduler corresponds to tasks per node.
+
+A queue can be created via the B<queue -aq> command.  Details of queue
+creation are beyond the scope of this document.  Please refer to 
+documentation on <http://gridscheduler.sourceforge.net/>
+
+B<NOTE:> A good convention is to name these queues with a B<_shadow.q> 
+suffix.  
+
 =head1 CONFIGURATION FILE
 
 B<Panfish> requires a configuration file.  Any configuration files
