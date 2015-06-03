@@ -7,8 +7,8 @@ By Christopher Churas
 Overview
 ========
 
-Panfish is a set of applications that enable Grid Engine serial jobs to be run on
-remote clusters.  
+Panfish is a set of applications that enable Open Grid Engine serial jobs to 
+be run on remote clusters.  
 
 This specification will discuss the Panfish technical implementation.
 
@@ -18,7 +18,7 @@ THIS SPECIFICATION MAY CONTAIN ERRORS AND OMISSIONS.  YOU HAVE BEEN WARNED.
 Requirements
 ============
 
-* Must support Sun Grid Engine/Grid Engine or OpenPBS/Torque on remote clusters.
+* Must support Open Grid Engine or OpenPBS/Torque on remote clusters.
 
 * Only access to the remote clusters will be through ssh.  This requirement is here
   because most XSEDE resources only offer an ssh account and some storage on the 
@@ -26,7 +26,7 @@ Requirements
   
     Upload data ---> Run job ---> Download data ---> repeat if needed.
 
-* Local cluster must be Sun Grid Engine/Grid Engine.
+* Local cluster must be Open Grid Engine.
 
 
 How Panfish Works
@@ -37,13 +37,13 @@ cluster.  In addition, Panfish also assists in the serialization and deserializa
 of data on those clusters.
 
 Panfish is not a batch processing scheduler on its own, it can be thought of as
-a wrapper on top of Sun Grid Engine that handles the logistics of ferrying jobs
+a wrapper on top of Open Grid Engine that handles the logistics of ferrying jobs
 to/from remote clusters.    
 
-The benefit of a wrapper is most jobs that work in Sun Grid Engine could in 
+The benefit of a wrapper is most jobs that work in Open Grid Engine could in 
 theory be run through Panfish with only minimal changes.  Panfish also benefits from
 not having to reinvent the wheel when deciding what job to run, that task is left
-to Sun Grid Engine.
+to Open Grid Engine.
 
 In a normal scenario the user does the following:
 
@@ -61,12 +61,12 @@ In a normal scenario the user does the following:
 
 With **Panfish** the user does the following:
 
-    User ----> [invokes] ----> chum
+    User ----> [invokes] ----> panfishchum
      ||                         ||
      ||                         \/
      ||  <--------------- [transfers data]
      \/
-    User ----> [invokes] ----> cast
+    User ----> [invokes] ----> panfishcast
      ||                         ||
      ||                         \/
      ||  <--------- [returns job id to caller]
@@ -76,36 +76,37 @@ With **Panfish** the user does the following:
      ||                         \/
      ||  <------------- [returns job status]
      \/
-    User ----> [invokes] ----> land
+    User ----> [invokes] ----> panfishland
      ||                         ||
      ||                         \/
     Done <-------- [data retreived from clusters]
 
 
-The user first uploads data for the job by calling **chum**  The user
-then calls **cast** which submits a shadow job to the local queuing system.  
-As part of the submission, is a list of valid shadow queues which 
+The user first uploads data for the job by calling **panfishchum**  The user
+then calls **panfishcast** which submits a shadow job to the local queuing 
+system.  As part of the submission, is a list of valid shadow queues which 
 correspond to remote clusters the job can run under.  The user is given 
-the id of the shadow job by the **cast** command.  The user then simply waits 
-for those jobs to complete through calls to **qstat**
+the id of the shadow job by the **panfishcast** command.  The user then 
+simply waits for those jobs to complete through calls to **qstat**
 
-Grid Engine then schedules the shadow job to an available shadow queue.  
+Open Grid Engine then schedules the shadow job to an available shadow queue.  
 Once the shadow job starts it informs **Panfish** that a job can be run on a 
-cluster as defined by the queue the shadow job was run under.  **Panfish** runs 
-the job on the remote cluster, and informs the shadow job when the real 
-job completes.  
+cluster as defined by the queue the shadow job was run under.  **Panfish** 
+runs the job on the remote cluster, and informs the shadow job when the 
+real job completes.  
 
-Upon detecting all jobs have completed, the user invokes **land** to retreive
-data from all the clusters.
+Upon detecting all jobs have completed, the user invokes **panfishland** to 
+retreive data from all the clusters.
 
 Before any job can run on the remote clusters, the job and its corresponding 
 data need to reside there.  Something needs to upload the data and that 
-responsibility can be left to the user or to **Panfish** by setting a directive on
-the command line or within script saying "hey upload this directory." 
+responsibility can be left to the user or to **Panfish** by setting a 
+directive on the command line or within script 
+saying "hey upload this directory." 
 
-**Panfish** requires all file paths to be prefixed with the environment variable 
-**PANFISH_BASEDIR** which will be set appropriately on each cluster, 
-(or not set at all if the job ends up locally.)  
+**Panfish** requires all file paths to be prefixed with the environment 
+variable **PANFISH_BASEDIR** which will be set appropriately on each 
+cluster, (or not set at all if the job ends up locally.)  
 
 For example say we had this job script:
 
@@ -113,9 +114,9 @@ For example say we had this job script:
 
     echo "Today is: `date`" > /home/foo/j1/thedate.txt
 
-If the above was run on the remote cluster it may fail cause **/home/foo/j1** may not
-exist on that cluster.  To deal with this, the job needs to prefix all paths with 
-**PANFISH_BASEDIR**  as seen here:
+If the above was run on the remote cluster it may fail cause 
+**/home/foo/j1** may not exist on that cluster.  To deal with this, the 
+job needs to prefix all paths with **PANFISH_BASEDIR**  as seen here:
 
     #!/bin/bash
 
@@ -129,7 +130,7 @@ Diagram of Panfish setup
 ------------------------
     User ---> [ Sets up password ssh on remote clusters]
      ||
-     ||  ---> [invokes] ----------> panfish_setup
+     ||  ---> [invokes] ----------> panfishsetup
      ||                                  ||
      ||                                  \/
      ||                   [asks users questions on clusters] 
@@ -137,10 +138,12 @@ Diagram of Panfish setup
      ||                                  \/
      ||  <------- [creates config and uploads/configs remote clusters]
      \/
-    User ---> [invokes] ----> panfish_test
+    User ---> [invokes] ----> panfishtest
      ||                           ||
      ||                           \/
-     ||                [creates test job submits] ---> [invokes] ----> Cast/qstat/land
+     ||                [creates test job submits] ---> [invokes] ---->  panfishcast/
+     ||                                                                    qstat/
+     ||                                                                 panfishland
      ||                           ||                                         ||
      ||                           ||                                         \/
      ||                           ||  <------------------------------- [ runs test job]
@@ -151,21 +154,21 @@ Diagram of Panfish setup
 
 Diagram of job flow
 -------------------
-    User ---> [invokes] ----> Chum
+    User ---> [invokes] ----> panfishchum
      ||                        ||
      ||                        \/
      ||  <------ [uploads data to remote clusters]
      \/                        
-    User ---> [invokes] ----> Cast
+    User ---> [invokes] ----> panfishcast
      ||                        ||
      ||                        \/
-     ||          [Invokes qsub on line command]  
+     ||          [Invokes qsub on panfishline command]  
      ||                        ||
      ||                        \/
-     ||  <------ [returns submitted line job id] ---->  line
+     ||  <------ [returns submitted line job id] ----> panfishline
      \/                                                  ||
     User ---> [invokes] ---> qstat                       \/
-     ||                       ||            [Generates job file based on queue] --------->  Panfish
+     ||                       ||            [Generates job file based on queue] ---------> Panfish
      ||                       ||                         ||                                 ||
      ||                       ||                         ||                                 \/
      ||                       ||                         ||                          [batches up jobs]
@@ -198,24 +201,26 @@ From the user perspective Panfish is composed of the following programs:
 User Programs and Configuration files
 -------------------------------------
 
-* **chum**                Command to upload data to remote clusters.  This command
+* **panfishchum**         Command to upload data to remote clusters.  This command
                           is complemented by **land** which retreives the data.  
 
-* **cast**                Drop in replacement for **qsub**  This command is responsible
+* **panfishcast**         Drop in replacement for **qsub**  This command is responsible
                           for submitting a shadow job to the local queueing system.
 
-* **land**                Command to retreive data from remote clusters.  Should be
+* **panfishland**         Command to retreive data from remote clusters.  Should be
                           invoked after all jobs submitted by **cast** have completed.
 
-* **panfish_setup**       Assists in configuration of Panfish.
+* **panfishsetup**        Assists in configuration of Panfish.
 
-* **panfish_test**        Tool to test Panfish and verify working configuration.
+* **panfishtest**         Tool to test Panfish and verify working configuration.
 
        
-* **panfish.config**      Configuration file located in the same directory as **cast** and
-                          **land**  This file contains information about the remote clusters
-                          as well as the submit directory where the shadow jobs put their
-                          job files that are picked up by server side of Panfish.
+* **panfish.config**      Configuration file located in the same directory as 
+                          **panfishcast** and **panfishland**  This file 
+                          contains information about the remote clusters
+                          as well as the submit directory where the shadow 
+                          jobs put their job files that are picked up by 
+                          server side of Panfish.
 
 System side Programs
 --------------------
@@ -226,7 +231,7 @@ System side Programs
                           needs to run on the local cluster this daemon also submits it 
                           to whatever Batch processing system is on the cluster.
                           
-* **line**                Shadow job that generates a job file and puts it into the
+* **panfishline**         Shadow job that generates a job file and puts it into the
                           submit directory for the appropriate cluster.  The
                           program then watches for the suffix on that job file to 
                           change to either **.failed**, denoting failure, or **.done**
@@ -238,7 +243,7 @@ System side Programs
 
 * **panfishstat**         Takes a **panfishsubmit** job file and returns status of the job.
 
-* **panfishjobrunner**       Runs serial jobs in parallel on a cluster node.
+* **panfishjobrunner**    Runs serial jobs in parallel on a cluster node.
 
 Panfish.config
 ==============
