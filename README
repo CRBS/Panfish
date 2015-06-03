@@ -1,4 +1,4 @@
-Panfish version 1.0
+Panfish version 0.2
 ====================
 
 NAME
@@ -12,7 +12,7 @@ SYNOPSIS
   # submits a job
   panfishcast -q myshadow.q myjob.sh
   
-  # check status
+  # check status using Open Grid Engine command
   qstat ... 
   
   # retreives data 
@@ -21,138 +21,50 @@ SYNOPSIS
 
 DESCRIPTION
 
-  Panfish provides a way to run jobs on multiple clusters in parallel.  Designed
-  to operate with Open Grid Engine, Panfish lets a user submit jobs in a process 
-  similar to submitting a job on the local cluster. 
+  Panfish is a tool that enables Open Grid Engine serial jobs to be run 
+  on remote clusters.
 
-  Utilizing a Panfish tool (panfishchum) the user first uploads 
-  data to the remote clusters.  The user then invokes a Panfish command 
-  (panfishcast) to submit their jobs.  This command is a replacement 
-  for the one in Open Grid Engine (qsub.) The user then monitors 
-  the jobs via the id returned by the submission command via qsub command. 
-  Upon job completion the user invokes a Panfish command (panfishland) to 
+  In a standard usage scenario the user first uploads data to the 
+  remote clusters via panfishchum.  The user then invokes a Panfish 
+  command panfishcast to submit their jobs.  The user then monitors 
+  the jobs via the id returned by the submission command using the qsub
+  command.  Upon job completion the user invokes panfishland to 
   retrieve the data.  
 
-  What happens in the above steps is the Panfish submission command 
-  (panfishcast) submits what is known as a “shadow” job to a set of “shadow” 
-  queues on the local cluster that correspond to the local cluster and 
-  other XSEDE compute clusters.  
+  Run "perldoc Panfish" while in source directory before installation
+  for more documentation.
 
-  Open Grid Engine handles the scheduling of these “shadow” jobs to 
-  the appropriate “shadow” queue.  Once scheduled and running these “shadow” 
-  jobs examine what queue they are under and let the Panfish daemon know.  
-  The Panfish daemon on the local compute cluster then submits those jobs to 
-  the corresponding compute resource notifying the “shadow” job upon 
-  completion.  
-
-  The “shadow” job then exits letting the user know the work has completed.  
-  The (panfishchum) and (panfishland) commands are wrappers that simplify the 
-  transfer of data to and from remote resources.
-  
-  Panfish can be run as a cron on the local compute cluster and as a cron job
-  on each remote XSEDE cluster.  The current implementation runs as a single 
-  user and all jobs are run as that user.  Panfish requires only ssh and rsync 
-  and no  configuration adjustment on the remote clusters other than enabling 
-  ssh from the local compute resources to the remote compute resources.  
 
 DEPENDENCIES
 
-  Panfish is designed to only work on linux operating systems that
-  have command line binaries for ssh and rsync.  The main installation
-  machine must have Sun/Oracle/Open Grid Engine 6.1+ installed and properly
-  configured to run jobs on the cluster.
-
-  In addition, a special "shadow" queue should be setup for each cluster
-  that will be setup to run jobs, including the local cluster.  
-
-  This can be done with the qconf -aq command which will bring up a 
-  template queue that can be edited.  Simply replace qname value of 
-  NONE with the name of the cluster followed by _shadow.q (foo_shadow.q) 
-  and replace the value for hostlist to @allhosts.  
-
-  The value of slots dictates number of shadow jobs Open Grid Engine will 
-  schedule.  For the local cluster its best to leave at 1.  For the remote 
-  cluster its okay to do more slots per node since these jobs are just place 
-  holders, but be careful not to hit the limit of processes per node 
-  (keep it under 100).
-
-  Example partial config of shadow queue for a local cluster named foo:
-
-    qname                 foo_shadow.q
-    hostlist              @allhosts
-    seq_no                0
-    load_thresholds       np_load_avg=1.75
-    suspend_thresholds    NONE
-    nsuspend              1
-    suspend_interval      00:05:00
-    priority              0
-    min_cpu_interval      00:05:00
-    processors            UNDEFINED
-    qtype                 BATCH INTERACTIVE
-    ckpt_list             NONE
-    pe_list               make
-    rerun                 FALSE
-    slots                 1
-    .
-    .
-    .
-
+  * Linux (tested Centos 6)
+  * Perl 5.10+
+  * Bash 4+
+  * Ssh 5+
+  * Rsync 3+
+  * Open Grid Engine or Sun Grid Engine 6.1+
 
 
 INSTALLATION
 
   To install this module type the following:
 
-     perl Makefile.PL
-     make
+     # For alternate install location use PREFIX= on perl Makefile.PL
+     # command below
+
+     perl Makefile.PL  
+     make 
      make test
      make install
-
-  Note: To install in a non default location pass the PREFIX to 
-        perl Makefile.PL command like so:
-
-          perl Makefile.PL PREFIX=/tmp
-
-  After the above steps, a configuration file must be created which tells 
-  Panfish about the cluster it is on as well as information on the remote 
-  clusters.
-
-  Panfish will look for configuration in the following locations and load 
-  them in the order below.  Any parameters found in subsequent configuration
-  files will override the previously loaded configuration file.
-
-  1) /etc/panfish.config
-  2) <install bin directory>/../etc/panfish.config
-  3) <install bin directory>/panfish.config
-  4) $HOME/.panfish.config
-  5) Path set in environment variable PANFISH_CONFIG
-
  
-  An example config can be found in Panfish source tree named:
-    example.panfish.config
+  After installation run 
 
-  This config is setup for a local cluster with a shadow queue named foo_shadow.q
-  and designed to be installed in /tmp.  
+     panfishsetup --setup
+   
 
-  This config includes configurations
-  for gordon,comet, and stampede XSEDE clusters, but they are not enabled until
-  added to cluster.list parameter
-
-  In addition, example template job files for gordon, comet, and stampede can
-  be found under templates/ folder.  These should be copied to the directory 
-  specified by foo_shadow.q.job.template.dir 
-  
-
-  To setup the local database type the following:
-
-    panfishsetup --setupdball
-
-  To setup the remote clusters type the following:
-
-    panfishsetup --syncall
-
-  NOTE:  Panfish uses ssh & rsync for IO to remote clusters so running the 
-         above command may result in password prompts.
+  For more information run "perldoc Panfish" while in source directory
+  before installation, or man Panfish after installation.
+     
 
 COPYRIGHT AND LICENCE
 
