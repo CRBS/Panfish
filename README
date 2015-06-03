@@ -57,13 +57,11 @@ INSTALLATION
      make test
      make install
  
-  After installation run 
+  After installation run:
 
-     panfishsetup --setup
-   
+     man panfish
 
-  For more information run "perldoc Panfish" while in source directory
-  before installation, or man Panfish after installation.
+  for setup instructions.
      
 
 COPYRIGHT AND LICENCE
