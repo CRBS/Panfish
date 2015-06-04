@@ -54,9 +54,48 @@ Panfish enables jobs built for Sun Grid Engine/Open Grid Scheduler to
 run on multiple clusters in parallel utilizing tools similar to those
 used to submit jobs to Sun Grid Engine/Open Grid Scheduler.  
 
+
+This document is broken into several parts:
+
+=over
+
+=item B<SETUP>
+
+Describes on how to configure B<Panfish>
+
+=item B<HOW IT WORKS>
+
+=item B<CREATING A JOB>
+
+Describes how to create a job runnable in B<Panfish>
+
+=item B<CUSTOM TEMPLATE>
+
+Describes structure of templates
+
+=item B<EXAMPLE panfish.config file>
+
+Contains an example F<panfish.config>
+
+=item B<EXAMPLE SGE template file>
+
+Example template for SGE
+
+=item B<EXAMPLE Slurm (stampede) template file>
+
+Example template for Slurm
+
+=item B<EXAMPLE PBS (gordon) template file>
+
+Example template for PBS
+
+=back
+
 =head1 SETUP
 
 Setup of B<Panfish> involves several steps as denoted below.  
+
+=over
 
 =item 1) Creation of shadow queues on Open Grid Scheduler
 
@@ -64,9 +103,11 @@ Setup of B<Panfish> involves several steps as denoted below.
 
 =item 3) Creation of configuration file
 
-=item 4) Setup of Panfish on remote clusters
+=item 4) Setup of Panfish database
 
-=item 5) Setup of Panfish cron on local cluster
+=item 5) Setup of Panfish on remote clusters
+
+=item 6) Setup of Panfish cron on local and remote clusters
 
 Z<>
 
@@ -82,18 +123,42 @@ run on, including one for the local cluster.  The number of I<slots>
 should correspond to number of jobs that is desired to be run on the 
 cluster. 
 
-B<NOTE:> I<slots> on Open Grid Scheduler corresponds to tasks per node.
+B<NOTE:> I<slots> on Open Grid Scheduler sets number of jobs per node.
 
 A queue can be created via the B<queue -aq> command.  Details of queue
 creation are beyond the scope of this document.  Please refer to 
-documentation on <http://gridscheduler.sourceforge.net/>
+documentation on L<http://gridscheduler.sourceforge.net/>
 
 B<NOTE:> A good convention is to name these queues with a B<_shadow.q> 
 suffix.  
 
-=head1 CONFIGURATION FILE
+=item B<2) Enabling ssh/rsync access to remote clusters>
 
-B<Panfish> requires a configuration file.  Any configuration files
+B<Panfish> relies on ssh/rsync for interacting with remote clusters.  
+ssh/rsync is invoked by the following commands: 
+B<panfish, panfishchum, panfishland, panfishsetup>
+
+Basically one should be able to ssh <remote host> to all clusters
+that will be utilized by B<Panfish>  It is suggested to employ
+some sort of passwordless authentication system to avoid repeated 
+password prompts.  
+
+How to enable this is well documented and the approaches described
+have various security implications:
+
+L<http://linuxconfig.org/passwordless-ssh>
+L<http://www.tecmint.com/ssh-passwordless-login-using-ssh-keygen-in-5-easy-steps/>
+L<http://www.phcomp.co.uk/Tutorials/Unix-And-Linux/ssh-passwordless-login.html>
+
+
+=item B<3) Creation of configuration file>
+
+B<Panfish> requires a configuration file.  An example configuration
+file can be found in B<Panfish> source tree named F<example.panfish.config>.
+Also example template files can be found under B<templates/> directory
+in B<Panfish> source tree.
+
+Configuration files
 found in the following paths are loaded in this order:
 
  1) /etc/panfish.config
@@ -104,7 +169,7 @@ found in the following paths are loaded in this order:
 
 
 B<NOTE:> In case of duplicate parameters, the value from last loaded configuration 
-file takes precedence
+file takes precedence.
 
 The configuration file has two parts, one part consists of
 global parameters (this.cluster and cluster.list) and the second
@@ -159,7 +224,8 @@ Directory where database of jobs is stored
 
 Contains job template files for the various clusters
 Each template file has the same name as the shadow queue
-See templates/ folder in Panfish source tree for examples
+
+See B<templates/> folder in Panfish source tree for examples.
 
 =item I<<shadow_queue>>.B<submit>
 
@@ -284,10 +350,317 @@ Walltime to set for job.  Format is: HH:MM:SS ie 12:00:00 means
 
 =back
 
+=item B<4) Setup of Panfish database>
+
+Once the configuration file from previous step is correctly configured setting
+up the database can be done via this invocation:
+
+C<panfishsetup --setupdball>
+
+The above command creates a file system jobs database in the path set
+via I<<shadow_queue>>.B<database.dir> parameter for the cluster where
+I<<shadow_queue>> matches the "shadow" queue set in B<this.cluster> 
+parameter 
+
+See C<man panfishsetup> for more information.
+
+=item B<5) Setup of Panfish on remote clusters>
+
+B<Panfish> requires scripts and other files to be persisted to the
+remote clusters.  This can be accomplished via this command:
+
+C<panfishsetup --syncall>
+
+The above command uploads needed B<Panfish> scripts and a copy of the
+configuration file to the remote cluster.  
+
+See C<man panfishsetup> for more information.
+
+=item B<6) Setup of Panfish cron on local and remote clusters>
+
+B<panfish> command needs to be run on the local cluster periodically to submit
+jobs to local and remote clusters and to update status of completed jobs to the
+database.  One option is to manually invoke B<panfish> --cron periodically on the
+local cluster and on the remote clusters.  Another option is to leverage
+cron.
+
+Here is a cron for the local cluster that runs once every 5 minutes:
+
+C<*/5 * * * * . /opt/ge2011.11/default/common/settings.sh;/usr/local/bin/panfish --cron E<gt>E<gt> /tmp/panfish.log 2E<gt>&1>
+
+On remote clusters a similar cron can be added:
+
+C<*/10 * * * * panfish --cron E<gt>E<gt> <path to a log fileE<gt> 2E<gt>&1>
+
+=back
+
+=head1 HOW IT WORKS
+
+Panfish takes a script based commandline job and runs that job on a local or remote
+cluster.  In addition, Panfish also assists in the serialization and deserialization
+of data on those clusters.
+
+Panfish is not a batch processing scheduler on its own, it can be thought of as
+a wrapper on top of Open Grid Scheduler that handles the logistics of ferrying jobs
+to/from remote clusters.
+
+The benefit of a wrapper is most jobs that work in Open Grid Engine could in
+theory be run through Panfish with only minimal changes.  Panfish also benefits from
+not having to reinvent the wheel when deciding what job to run, that task is left
+to Open Grid Scheduler.
+
+In a normal scenario using Open Grid Scheduler the user does the following:
+
+    User ----> [invokes] ----> qsub
+     ||                         ||
+     ||                         \/
+     ||  <---------- [returns job id to caller]
+     \/
+    User ----> [invokes] ----> qstat
+     ||                         ||
+     ||                         \/
+     ||  <------------- [returns job status]
+     \/
+    Done
+
+With B<Panfish> the user does the following:
+
+    User ----> [invokes] ----> panfishchum
+     ||                         ||
+     ||                         \/
+     ||  <--------------- [transfers data]
+     \/
+    User ----> [invokes] ----> panfishcast
+     ||                         ||
+     ||                         \/
+     ||  <--------- [returns job id to caller]
+     \/
+    User ----> [invokes] ----> qstat
+     ||                         ||
+     ||                         \/
+     ||  <------------- [returns job status]
+     \/
+    User ----> [invokes] ----> panfishland
+     ||                         ||
+     ||                         \/
+    Done <-------- [data retreived from clusters]
+
+The user first uploads data for the job by calling B<panfishchum>.  The 
+user then calls B<panfishcast> which submits a "shadow" job to the local 
+queuing system.  As part of the submission, is a list of valid "shadow" 
+queues which correspond to remote clusters the job can run under.  The 
+user is given the id of the shadow job by the B<panfishcast> command.  
+The user then simply waits for those jobs to complete through calls to 
+B<qstat>.
+
+Open Grid Scheduler then schedules the "shadow" job to an available 
+"shadow" queue.  Once the "shadow" job starts it informs B<Panfish> 
+that a job can be run on a cluster as defined by the queue the "shadow" 
+job was run under.  B<Panfish> runs the job on the remote cluster, and
+informs the "shadow" job when the real job completes.
+
+Upon detecting all jobs have completed, the user invokes B<panfishland> 
+to retreive data from all the clusters.
+
+Before any job can run on the remote clusters, the job and its 
+corresponding data need to reside there.  The job script is transferred by
+B<Panfish> daemon, but something needs to upload the data and that 
+responsibility is left to the user to invoke B<panfishchum> and 
+B<panfishland>.
+
+B<Panfish> requires all file paths to be prefixed with the environment
+variable B<PANFISH_BASEDIR> which will be set appropriately on each
+cluster, (or not set at all if the job ends up locally.)
+
+For example say we had this job script:
+
+ #!/bin/bash
+  
+ echo "Today is: `date`" > /home/foo/j1/thedate.txt
+
+If the above was run on the remote cluster it may fail cause
+B</home/foo/j1> may not exist on that cluster.  To deal with this, the
+job needs to prefix all paths with B<PANFISH_BASEDIR>  as seen here:
+
+ !/bin/bash
+
+ echo "Today is: `date`" > $PANFISH_BASEDIR/home/foo/j1/thedate.txt
+
+Now B<Panfish> can run the job under an alternate path.
+ 
+
+=head1 CREATING A JOB
+
+
+
+=head1 EXAMPLE panfish.config file 
+
+Below is an example F<panfish.config> file.  The configuration below
+puts the panfish job database and template directory under B</tmp/panfish>
+directory.  
+
+ this.cluster=foo_shadow.q
+ cluster.list=foo_shadow.q,gordon_shadow.q,stampede_shadow.q
+
+ #
+ # config for foo_shadow local SGE cluster
+ # 
+ foo_shadow.q.host=
+ foo_shadow.q.engine=SGE
+ foo_shadow.basedir=
+ foo_shadow.q.database.dir=/tmp/panfish/jobs
+ foo_shadow.q.job.template.dir=/tmp/panfish/templates
+ foo_shadow.q.submit=/opt/gridengine/bin/linux-x64/qsub
+ foo_shadow.q.stat=/opt/gridengine/bin/linux-x64/qstat
+ foo_shadow.q.bin.dir=/tmp/panfish/bin
+ foo_shadow.q.max.num.running.jobs=1
+ foo_shadow.q.submit.sleep=1
+ foo_shadow.q.scratch=/tmp
+ foo_shadow.q.jobs.per.node=1
+ foo_shadow.q.job.batcher.override.timeout=10
+ foo_shadow.q.line.sleep.time=180
+ foo_shadow.q.line.stdout.path=/dev/null
+ foo_shadow.q.line.log.verbosity=1
+ foo_shadow.q.land.max.retries=10
+ foo_shadow.q.land.wait=100
+ foo_shadow.q.land.rsync.timeout=180
+ foo_shadow.q.land.rsync.contimeout=100
+ foo_shadow.q.panfish.log.verbosity=1
+ foo_shadow.q.panfishsubmit.log.verbosity=1
+ foo_shadow.q.io.retry.count=2
+ foo_shadow.q.io.retry.sleep=5
+ foo_shadow.q.io.timeout=30
+ foo_shadow.q.io.connect.timeout=30
+ foo_shadow.q.job.account=
+ foo_shadow.q.job.walltime=12:00:00
+
+ #
+ # Example config for Gordon XSEDE cluster
+ #
+ gordon_shadow.q.host=<YOUR USERNAME>@gordon.sdsc.edu
+ gordon_shadow.q.engine=PBS
+ gordon_shadow.q.basedir=/oasis/scratch/$USER/temp_project
+ gordon_shadow.q.submit=/opt/torque/bin/qsub
+ gordon_shadow.q.stat=/opt/torque/bin/qstat
+ gordon_shadow.q.bin.dir=/home/$USER/panfish/bin
+ gordon_shadow.q.database.dir=/home/$USER/panfish/jobs
+ gordon_shadow.q.max.num.running.jobs=20
+ gordon_shadow.q.submit.sleep=5
+ gordon_shadow.q.scratch=`/bin/ls /scratch/$USER/[0-9]* -d`
+ gordon_shadow.q.jobs.per.node=16
+ gordon_shadow.q.job.batcher.override.timeout=1800
+ gordon_shadow.q.line.sleep.time=60
+ gordon_shadow.q.land.max.retries=10
+ gordon_shadow.q.land.wait=100
+ gordon_shadow.q.land.rsync.timeout=180
+ gordon_shadow.q.land.rsync.contimeout=100
+ gordon_shadow.q.panfish.log.verbosity=1
+ gordon_shadow.q.panfishsubmit.log.verbosity=1
+ gordon_shadow.q.panfish.sleep=60
+ gordon_shadow.q.io.retry.count=2
+ gordon_shadow.q.io.retry.sleep=5
+ gordon_shadow.q.io.timeout=30
+ gordon_shadow.q.io.connect.timeout=30
+ gordon_shadow.q.job.account=<YOUR ACCOUNT>
+ gordon_shadow.q.job.walltime=12:00:00
+
+ #
+ # Example config for Stampede XSEDE cluster
+ #
+ stampede_shadow.q.host=<YOUR USERNAME>@stampede.tacc.xsede.org
+ stampede_shadow.q.engine=SLURM
+ stampede_shadow.q.basedir=<YOUR $WORK DIR>/panfish
+ stampede_shadow.q.database.dir=<YOUR $HOME DIR>/panfish/jobs
+ stampede_shadow.q.submit=/usr/bin/sbatch
+ stampede_shadow.q.stat=/usr/bin/squeue -u tg802810
+ stampede_shadow.q.bin.dir=<YOUR $HOME DIR>/panfish/bin
+ stampede_shadow.q.max.num.running.jobs=50
+ stampede_shadow.q.submit.sleep=1
+ stampede_shadow.q.scratch=/tmp
+ stampede_shadow.q.jobs.per.node=16
+ stampede_shadow.q.job.batcher.override.timeout=1800
+ stampede_shadow.q.panfish.log.verbosity=2
+ stampede_shadow.q.panfishsubmit.log.verbosity=1
+ stampede_shadow.q.panfish.sleep=60
+ stampede_shadow.q.io.retry.count=2
+ stampede_shadow.q.io.retry.sleep=5
+ stampede_shadow.q.io.timeout=30
+ stampede_shadow.q.io.connect.timeout=30
+ stampede_shadow.q.job.account=<YOUR ACCOUNT>
+ stampede_shadow.q.job.walltime=12:00:00
+
+=head1 EXAMPLE SGE template file
+
+This is an example template file for Open Grid Scheduler 
+L<http://gridscheduler.sourceforge.net/>
+
+ #!/bin/sh
+ #
+ # request Bourne shell as shell for job
+ #$ -S /bin/sh
+ #$ -V
+ #$ -wd @PANFISH_JOB_CWD@
+ #$ -o @PANFISH_JOB_STDOUT_PATH@
+ #$ -e @PANFISH_JOB_STDERR_PATH@
+ #$ -N @PANFISH_JOB_NAME@
+ #$ -q all.q
+ #$ -l h_rt=@PANFISH_WALLTIME@
+
+ echo "SGE Id:  ${JOB_ID}.${SGE_TASK_ID}"
+
+ /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
+
+=head1 EXAMPLE Slurm (stampede) template file
+
+This is an example template file for Slurm 
+L<http://computing.llnl.gov/linux/slurm/> and
+is configured for Stampede L<https://www.tacc.utexas.edu/stampede/>
+
+ #!/bin/sh
+ #
+ #SBATCH -D @PANFISH_JOB_CWD@
+ #SBATCH -A @PANFISH_ACCOUNT@
+ #SBATCH -o @PANFISH_JOB_STDOUT_PATH@
+ #SBATCH -e @PANFISH_JOB_STDERR_PATH@
+ #SBATCH -J @PANFISH_JOB_NAME@
+ #SBATCH -p normal
+ #SBATCH -t @PANFISH_WALLTIME@
+ #SBATCH -n 1
+ #SBATCH --export=SLURM_UMASK=0022
+
+ /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
+
+=head1 EXAMPLE PBS (gordon) template file
+
+This is an example template file for PBS Portal Batch System
+and is configured for Gordon L<https://portal.xsede.org/sdsc-gordon>
+
+ !/bin/sh
+ #
+ #PBS -q normal
+ #PBS -m n
+ #PBS -A @PANFISH_ACCOUNT@
+ #PBS -W umask=0022
+ #PBS -o @PANFISH_JOB_STDOUT_PATH@
+ #PBS -e @PANFISH_JOB_STDERR_PATH@
+ #PBS -V
+ #PBS -l nodes=1:ppn=16,walltime=@PANFISH_WALLTIME@
+ #PBS -N @PANFISH_JOB_NAME@
+ #PBS -d @PANFISH_JOB_CWD@
+
+ /usr/bin/time -p @PANFISH_RUN_JOB_SCRIPT@ @PANFISH_JOB_FILE@
+
 
 
 =head1 SEE ALSO
 
+L<panfishcast(1)>, 
+L<panfishchum(1)>,
+L<panfishjobrunner(1)>,
+L<panfishland(1)>,
+L<panfishline(1)>,
+L<panfishsetup(1)>,
+L<panfishstat(1)>
 
 =head1 AUTHOR
 
