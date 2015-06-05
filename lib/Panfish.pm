@@ -65,6 +65,8 @@ Describes on how to configure B<Panfish>
 
 =item B<HOW IT WORKS>
 
+Describes how B<Panfish> works
+
 =item B<CREATING A JOB>
 
 Describes how to create a job runnable in B<Panfish>
@@ -158,8 +160,8 @@ file can be found in B<Panfish> source tree named F<example.panfish.config>.
 Also example template files can be found under B<templates/> directory
 in B<Panfish> source tree.
 
-Configuration files
-found in the following paths are loaded in this order:
+Configuration files found in the following paths are loaded in this 
+order:
 
  1) /etc/panfish.config
  2) <install bin directory>/../etc/panfish.config
@@ -174,7 +176,7 @@ file takes precedence.
 The configuration file has two parts, one part consists of
 global parameters (this.cluster and cluster.list) and the second
 part consists of cluster specific parameters.  The cluster
-specific parameters are prefixed with the cluster's shadow queue
+specific parameters are prefixed with the cluster's "shadow" queue
 name
 
 B<NOTE:> I<<shadow_queue>> should be replaced with the B<"shadow queue"> name
@@ -182,7 +184,7 @@ configured for the remote or local cluster (ie: foo_shadow.q)
 
 The format of the parameters is:
 
-key = value
+C<key = value>
 
 =over 4
 
@@ -396,18 +398,18 @@ C<*/10 * * * * panfish --cron E<gt>E<gt> <path to a log fileE<gt> 2E<gt>&1>
 
 =head1 HOW IT WORKS
 
-Panfish takes a script based commandline job and runs that job on a local or remote
-cluster.  In addition, Panfish also assists in the serialization and deserialization
+B<Panfish> takes a script based commandline job and runs that job on a local or remote
+cluster.  In addition, B<Panfish> also assists in the serialization and deserialization
 of data on those clusters.
 
 Panfish is not a batch processing scheduler on its own, it can be thought of as
 a wrapper on top of Open Grid Scheduler that handles the logistics of ferrying jobs
 to/from remote clusters.
 
-The benefit of a wrapper is most jobs that work in Open Grid Engine could in
-theory be run through Panfish with only minimal changes.  Panfish also benefits from
-not having to reinvent the wheel when deciding what job to run, that task is left
-to Open Grid Scheduler.
+The benefit of the wrapper is most jobs that work in Open Grid Engine 
+could in theory be run through B<Panfish> with only minimal changes.
+B<Panfish> also benefits from not having to reinvent the wheel when 
+deciding what job to run, that task is left to Open Grid Scheduler.
 
 In a normal scenario using Open Grid Scheduler the user does the following:
 
@@ -430,7 +432,7 @@ With B<Panfish> the user does the following:
      ||                         \/
      ||  <--------------- [transfers data]
      \/
-    User ----> [invokes] ----> panfishcast
+    User ----> [invokes] ----> panfishcast (instead of qsub)
      ||                         ||
      ||                         \/
      ||  <--------- [returns job id to caller]
@@ -453,18 +455,18 @@ user is given the id of the shadow job by the B<panfishcast> command.
 The user then simply waits for those jobs to complete through calls to 
 B<qstat>.
 
-Open Grid Scheduler then schedules the "shadow" job to an available 
-"shadow" queue.  Once the "shadow" job starts it informs B<Panfish> 
-that a job can be run on a cluster as defined by the queue the "shadow" 
-job was run under.  B<Panfish> runs the job on the remote cluster, and
-informs the "shadow" job when the real job completes.
+Open Grid Scheduler then schedules the "shadow" job, B<panfishline>, to 
+an available "shadow" queue.  Once the "shadow" job starts it informs 
+B<Panfish> that a job can be run on a cluster as defined by the queue 
+the "shadow" job was run under.  B<Panfish> runs the job on the remote 
+cluster, and informs the "shadow" job when the real job completes.
 
 Upon detecting all jobs have completed, the user invokes B<panfishland> 
 to retreive data from all the clusters.
 
 Before any job can run on the remote clusters, the job and its 
-corresponding data need to reside there.  The job script is transferred by
-B<Panfish> daemon, but something needs to upload the data and that 
+corresponding data need to reside there.  The job script is transferred 
+by B<Panfish> daemon, but something needs to upload the data and that 
 responsibility is left to the user to invoke B<panfishchum> and 
 B<panfishland>.
 
@@ -490,6 +492,65 @@ Now B<Panfish> can run the job under an alternate path.
  
 
 =head1 CREATING A JOB
+
+Here is an example serial job script that can be run via B<Panfish>:
+
+ #!/bin/bash
+ 
+ echo "cwd: `pwd`"
+ echo "output for stderr" 1>&2
+ echo "JOB_ID = $JOB_ID"
+ echo "SGE_TASK_ID = $SGE_TASK_ID"
+ echo "SGE_TASK_STEPSIZE = $SGE_TASK_STEPSIZE"
+ echo "SGE_TASK_LAST = $SGE_TASK_LAST"
+ echo "PANFISH_BASEDIR = $PANFISH_BASEDIR"
+ echo "PANFISH_SCRATCH = $PANFISH_SCRATCH"
+ echo "sleeping 1" 
+ sleep 1
+
+ exit 0
+
+On a shared file system visible to compute nodes on cluster create a
+directory named B<foo> and put the above script in a file named F<myjob.sh>
+
+change to B<foo> directory and make F<myjob.sh> executable by running:
+ 
+B<chmod a+x myjob.sh>
+
+Test running script directly by invoking:
+
+B<./myjob.sh>
+
+Output like the following should be seen:
+
+ cwd: <path you created foo dir>/foo
+ output for stderr
+ JOB_ID = 
+ SGE_TASK_ID = 
+ SGE_TASK_STEPSIZE = 
+ SGE_TASK_LAST = 
+ PANFISH_BASEDIR = 
+ PANFISH_SCRATCH = 
+ sleeping 1
+
+To run this job on local cluster try the following
+
+B<panfishcast -q foo_shadow.q -e `pwd`/\$JOB_ID\.\$TASK_ID.err -o `pwd`/\$JOB_ID\.\$TASK_ID.out `pwd`/myjob.sh>
+
+Which should output something like this:
+
+ Your job 29401 ("panfishline") has been submitted
+
+Invoking B<qstat> will reveal this which will go away when the job is completed:
+
+ $ qstat
+
+ job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID 
+
+ ----------------------------------------------------------------------------
+ 29401 0.55500 panfishlin churas       r     06/05/2015 14:07:10 foo_shadow.q@foo-3   1        
+
+
 
 
 
