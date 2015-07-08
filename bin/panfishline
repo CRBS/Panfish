@@ -386,14 +386,14 @@ panfishline [ B<options> ]
 
 =head1 DESCRIPTION
 
-B<Line> is the shadow job submitted by B<cast> and is responsible for
-submitting the real job to Panfish Multicluster Grid Engine Wrapper.  This
-command also monitors the real job for completion.
+B<panfishline> is the shadow job submitted by B<panfishcast> and is 
+responsible for submitting the real job to Panfish Multicluster Grid 
+Engine Wrapper.  This command also monitors the real job for completion.
 
 The advantage of this design is the user can invoke standard Grid Engine
 commands (qdel, qstat,etc.) on B<panfishline> to administer the job.
 
-B<NOTE:>  It is the responsibility of the caller to invoke B<land> to 
+B<NOTE:>  It is the responsibility of the caller to invoke B<panfishland> to 
 retrieve the data from the remote cluster once the job completes.
 
 =head1 OPTIONS
@@ -404,11 +404,12 @@ Lots of options here
 
 =item B<-A Account(s)>
 
-Defines account(s) to set in remote cluster scheduler.  This parameter can be in two
-formats.  The basic format is just to set a single account string which will be set
-for all remote clusters.  The complex format goes with queue followed by two colons and
-then then account to use for that queue.  If more then one queue needs to be specified
-then use commas with no spaces to delimit.
+Defines account(s) to set in remote cluster scheduler.  This parameter can 
+be in two formats.  The basic format is just to set a single account string 
+which will be set for all remote clusters.  The complex format goes with 
+queue followed by two colons and then then account to use for that queue.  
+If more then one queue needs to be specified then use commas with no spaces 
+to delimit.
 
 Format:
 
@@ -420,14 +421,19 @@ foo.q::ddp555,blah.q::TG2342s
 
 =item B<--batchfactor factor(s)>
 
-Defines a multiplier known as a batch job factor which causes jobs to be batched by X times on each node and run through
-in a serial fashion.  This exists to reduce demand on schedulers for fast running jobs.  For example, if a compute node can
-run 8 jobs in parallel and a batch factor of 2 is set then a panfish job submitted to that compute node will be given 16 jobs
-to run in 8 job batches.  This multiplier also works for values less then 1, but greater then 0.  In this case the batchfactor
-reduces the number of concurrent jobs allowed to run per node.  For example, say a cluster runs 8 jobs on a node, if the
-batchfactor is set to 0.5 then only 4 jobs will be batched and run concurrently on those nodes.  This parameter can be in
-two formats.  The basic format is just to set a single factor X which will be set for all remote clusters.  If more then
-one queue needs to be specified then use commas with no spaces to delimit.
+Defines a multiplier known as a batch job factor which causes jobs to be 
+batched by X times on each node and run through in a serial fashion.  This 
+exists to reduce demand on schedulers for fast running jobs.  For example, 
+if a compute node can run 8 jobs in parallel and a batch factor of 2 is set 
+then a panfish job submitted to that compute node will be given 16 jobs to 
+run in 8 job batches.  This multiplier also works for values less then 1, 
+but greater then 0.  In this case the batchfactor reduces the number of 
+concurrent jobs allowed to run per node.  For example, say a cluster runs 8 
+jobs on a node, if the batchfactor is set to 0.5 then only 4 jobs will be 
+batched and run concurrently on those nodes.  This parameter can be in two 
+formats.  The basic format is just to set a single factor X which will be 
+set for all remote clusters.  If more then one queue needs to be specified 
+then use commas with no spaces to delimit.
 
 Format:
 
@@ -441,24 +447,29 @@ foo.q::0.25,blah.q::0.5
 
 Defines the command to run.  This needs to be a bash shell script.
 
-This B<command> must be a script file, its the last argument and must meet the following conditions:
+This B<command> must be a script file, its the last argument and must meet 
+the following conditions:
 
 =over 12
 
-=item Any Grid Engine directives ie B<#$> in the B<command> script will be ignored.  Please use B<#$PANFISH> directives.
+=item Any Grid Engine directives ie B<#$> in the B<command> script will be 
+ignored.
 
 Z<>
 
-=item B<Command> must be a bash script invoking commands and tools that can be run on any of the remote clusters.
+=item B<Command> must be a bash script invoking commands and tools that can 
+be run on any of the remote clusters.
 
 Z<>
 
-=item B<Command> must use B<PANFISH_BASEDIR> variable to prefix any paths.  A list of all environment variables that will be
-set can be seen in the B<ENVIRONMENT VARIABLES> section below.
+=item B<Command> must use B<PANFISH_BASEDIR> variable to prefix any paths.  
+A list of all environment variables that will be set can be seen in the 
+B<ENVIRONMENT VARIABLES> section below.
 
 Z<>
 
-=item B<Command> must NOT assume output from any other job enqueued or running in B<Panfish> will be available to it.
+=item B<Command> must NOT assume output from any other job enqueued or 
+running in B<Panfish> will be available to it.
 
 Z<>
 
@@ -466,8 +477,8 @@ Z<>
 
 =item B<-e path,...>
 
-Defines path of standard error stream.  
-The following variables can be used in construction of the path and will be set appropriately:
+Defines path of standard error stream.  The following variables can be used 
+in construction of the path and will be set appropriately:
 
 =over 8
 
@@ -481,12 +492,10 @@ Z<>
 
 =back
 
-This value can also be set within the B<command> using
-the B<#$PANFISH> directive.
-
 =item B<--exitaftersubmit>
 
-Causes this program to exit after submission of the job to the B<panfish> database.  
+Causes this program to exit after submission of the job to the B<panfish> 
+database.  
 
 =item B<-o path,...>
 
@@ -496,23 +505,25 @@ the B<#$PANFISH> directive.
 
 =item B<--writeoutputlocal>
 
-If set, directs users program to write stderr and stdout files to $PANFISH_SCRATCH folder naming them 
-JOBID.TASKID.out/err.  When the users program completes the output files are copied to destination specified
-by B<-e> and B<-o> parameters
+If set, directs users program to write stderr and stdout files to 
+$PANFISH_SCRATCH folder naming them JOBID.TASKID.out/err.  When the users 
+program completes the output files are copied to destination specified by 
+B<-e> and B<-o> parameters.
 
 =item B<--verbose>
 
-Verbose mode.  Causes B<cast> to print debugging messages.  Multiple B<--verbose> increase
-verbosity.  The maximum is 2.
+Verbose mode.  Causes B<panfishcast> to print debugging messages.  
+Multiple B<--verbose> increase verbosity.  The maximum is 2.
 
 NOTE:  This is not an option in B<qsub>.
 
 =item B<--walltime HH:MM:SS>
 
-Defines walltime to specify in hours:minutes:seconds for all remote clusters in the basic format. In
-complex format walltime can be specified for each cluster by first listing the cluster followed
-by two colons and then the walltime.  If multiple clusters need to be set then delimit with a
-comma and no spaces.
+Defines walltime to specify in hours:minutes:seconds for all remote clusters 
+in the basic format. In complex format walltime can be specified for each 
+cluster by first listing the cluster followed by two colons and then the 
+walltime.  If multiple clusters need to be set then delimit with a comma and 
+no spaces.
 
 Format:
 
@@ -537,29 +548,22 @@ foo.q::12:00:00,blah.q::08:00:00
 
 =back
 
-=head1 EXAMPLES
-
-=head1 FILES
-
- hello
-
 =head1 AUTHOR
 
 Christopher Churas <churas@ncmir.ucsd.edu>
 
 =head1 REPORTING BUGS
 
-bugs
-
+Report bugs at Panfish github page 
+<http://github.com/slash-segmentation/Panfish>
 
 =head1 COPYRIGHT
 
-blah blah
+Copyright 2013 The Regents of the University of California All Rights Reserved
 
 =head1 SEE ALSO
 
-more blah
-
-
+L<panfish(1)>, L<panfishchum(1)>, L<panfishcast(1)>, L<panfishjobrunner(1)>, 
+L<panfishland(1)>, L<panfishsetup(1)>, L<panfishstat(1)>
 
 =cut

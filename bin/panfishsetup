@@ -410,15 +410,16 @@ The AA is set to "yes" if the path exists or "no" if it does not.
 
 =item B<--removedir directory>
 
-Removes directory specified.  Code will exit with 0 exit code upon success or 1 upon failure.
+Removes directory specified.  Code will exit with 0 exit code upon success 
+or 1 upon failure.
 
 =item B<--generatetestjob path>
 
 B<SORRY NOT IMPLEMENTED YET>
 
-Generates a testjob in B<path> specified.  This job can be invoked by the caller
-by following the directions in the README file.  An associated validation script
-is included to verify correct operation.
+Generates a testjob in B<path> specified.  This job can be invoked by the 
+caller by following the directions in the README file.  An associated 
+validation script is included to verify correct operation.
 
 =item B<--setup>
 
@@ -481,5 +482,10 @@ Report bugs at Panfish github page
 =head1 COPYRIGHT
 
 Copyright 2013 The Regents of the University of California All Rights Reserved
+
+=head1 SEE ALSO
+
+L<panfish(1)>, L<panfishchum(1)>, L<panfishcast(1)>, L<panfishjobrunner(1)>, 
+L<panfishland(1)>, L<panfishline(1)>, L<panfishstat(1)>
 
 =cut

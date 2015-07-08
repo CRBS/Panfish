@@ -663,22 +663,23 @@ listed above.
 
 =back
 
-=head1 EXAMPLES
-
-=head1 FILES
-
 =head1 AUTHOR
 
 Christopher Churas <churas@ncmir.ucsd.edu>
 
 =head1 REPORTING BUGS
 
-
+Report bugs at Panfish github page 
+<http://github.com/slash-segmentation/Panfish>
 
 =head1 COPYRIGHT
 
+Copyright 2013 The Regents of the University of California All Rights Reserved
 
 =head1 SEE ALSO
+
+L<panfish(1)>, L<panfishchum(1)>, L<panfishjobrunner(1)>, L<panfishland(1)>, 
+L<panfishline(1)>, L<panfishsetup(1)>, L<panfishstat(1)>
 
 
 =cut

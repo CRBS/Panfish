@@ -297,29 +297,22 @@ verbosity.  The maximum is 2.
 
 =back
 
-=head1 EXAMPLES
-
-=head1 FILES
-
- hello
-
 =head1 AUTHOR
 
 Christopher Churas <churas@ncmir.ucsd.edu>
 
 =head1 REPORTING BUGS
 
-bugs
-
+Report bugs at Panfish github page 
+<http://github.com/slash-segmentation/Panfish>
 
 =head1 COPYRIGHT
 
-blah blah
+Copyright 2013 The Regents of the University of California All Rights Reserved
 
 =head1 SEE ALSO
 
-more blah
-
-
+L<panfish(1)>, L<panfishchum(1)>, L<panfishcast(1)>, L<panfishjobrunner(1)>, 
+L<panfishline(1)>, L<panfishsetup(1)>, L<panfishstat(1)>
 
 =cut

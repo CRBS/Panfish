@@ -245,21 +245,18 @@ panfishjobrunner [ B<options> ] [ B<command file> ]
 =head1 DESCRIPTION
 
 B<Panfishjobrunner> takes a file containing commands and runs them in
-parallel.  
-
-B<Panfishjobrunner> simply runs each command as a child process and waits
-for them to finish.
+parallel.  The commands are run as child processes, which B<Panfishjobrunner> 
+ then waits for completion.  This program is run internally by B<Panfish>
+to run batched jobs.  
 
 =head1 OPTIONS
-
-As of now there are no options, but there should be :)
 
 =over 4
 
 =item B<--parallel #>
 
-Defines number of commands to run in parallel.  If unset all the commands set in the command file
-will be run in parallel.
+Defines number of commands to run in parallel.  If unset all the commands 
+set in the command file will be run in parallel.
 
 =item B<--help>
 
@@ -286,29 +283,22 @@ verbosity.  The maximum is 2.
 
 =back
 
-=head1 EXAMPLES
-
-=head1 FILES
-
- hello
-
 =head1 AUTHOR
 
 Christopher Churas <churas@ncmir.ucsd.edu>
 
 =head1 REPORTING BUGS
 
-bugs
-
+Report bugs at Panfish github page 
+<http://github.com/slash-segmentation/Panfish>
 
 =head1 COPYRIGHT
 
-blah blah
+Copyright 2013 The Regents of the University of California All Rights Reserved
 
 =head1 SEE ALSO
 
-more blah
-
-
+L<panfish(1)>, L<panfishchum(1)>, L<panfishcast(1)>, L<panfishland(1)>, 
+L<panfishline(1)>, L<panfishsetup(1)>, L<panfishstat(1)>
 
 =cut
