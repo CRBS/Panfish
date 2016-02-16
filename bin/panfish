@@ -267,9 +267,12 @@ panfish [ B<options> ]
 
 =head1 DESCRIPTION
 
-Panfish enables jobs built for Sun Grid Engine/Open Grid Scheduler to 
-run on multiple clusters in parallel utilizing tools similar to those
-used to submit jobs to Sun Grid Engine/Open Grid Scheduler.  
+B<Panfish> handles submission and status update of jobs by monitoring
+the job database stored in the path set in B<panfish.config> configuration
+file parameter I<<shadow_queue>>B<.database.dir> where I<<shadow_queue>> matches
+the value of B<this.cluster> also defined in the configuration file.
+
+
 
 =head1 OPTIONS
 
@@ -277,7 +280,7 @@ used to submit jobs to Sun Grid Engine/Open Grid Scheduler.
 
 =item B<--cron>
 
-Runs B<panfish> in non daemon mode through one full iteration.
+Runs B<panfish> in non daemon mode through one full iteration
 
 =back
 
@@ -291,29 +294,22 @@ Runs B<panfish> in non daemon mode through one full iteration.
 
 =back
 
-=head1 EXAMPLES
-
-=head1 FILES
-
- hello
-
 =head1 AUTHOR
 
 Christopher Churas <churas@ncmir.ucsd.edu>
 
 =head1 REPORTING BUGS
 
-bugs
-
+Report bugs at Panfish github page 
+L<http://github.com/slash-segmentation/Panfish>
 
 =head1 COPYRIGHT
 
-blah blah
+Copyright 2013 The Regents of the University of California All Rights Reserved
 
 =head1 SEE ALSO
 
-more blah
-
-
+L<panfishchum(1)>, L<panfishcast(1)>, L<panfishjobrunner(1)>, 
+L<panfishland(1)>, L<panfishline(1)>, L<panfishsetup(1)>, L<panfishstat(1)>
 
 =cut

@@ -71,14 +71,16 @@ sub getPanfishConfig {
   my $panConfig = undef;
   my @pathList;
   my $res;
-  if ( $ENV{"PANFISH_CONFIG"}){
-    push(@pathList,$ENV{"PANFISH_CONFIG"});
-  }
 
   push(@pathList,"/etc/".$self->{PANFISH_CONFIG});
   push(@pathList,"$Bin/../etc/".$self->{PANFISH_CONFIG});
   push(@pathList,"$Bin/".$self->{PANFISH_CONFIG});
   push(@pathList,$ENV{"HOME"}."/.".$self->{PANFISH_CONFIG});
+
+  if ( $ENV{"PANFISH_CONFIG"}){
+    push(@pathList,$ENV{"PANFISH_CONFIG"});
+  }
+
 
   for (my $x = 0; $x < @pathList; $x++){
     my $config = $self->_getPanfishConfigFromPath($pathList[$x]);
