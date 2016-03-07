@@ -33,7 +33,7 @@ DESCRIPTION
 
   Run "perldoc Panfish" while in source directory before installation
   for more documentation or visit:
-  https://github.com/slash-segmentation/panfish/wiki
+  https://github.com/CRBS/Panfish/wiki
 
 
 DEPENDENCIES
@@ -58,7 +58,7 @@ INSTALLATION
      make test
      make install
  
-  Visit https://github.com/slash-segmentation/panfish/wiki
+  Visit https://github.com/CRBS/Panfish/wiki
   for setup instructions.
 
 
