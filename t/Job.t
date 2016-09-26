@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 73;
+use Test::More tests => 74;
 use Panfish::Job;
 
 #########################
@@ -291,4 +291,9 @@ use Panfish::Job;
 
   ok($a->compareJobByJobAndTaskId($a) == 0);
 
+  # try uuid jobid
+  $a = Panfish::Job->new("foo","68779844-399f-431d-af66-e851f0838f06");
+  $b = Panfish::Job->new("foo","e77e079e-da9d-408f-bb4f-f7fab4449ceb");
+
+  ok($a->compareJobByJobAndTaskId($b) == -1);
 }

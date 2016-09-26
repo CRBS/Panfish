@@ -62,11 +62,24 @@ sub new {
      COMMANDS_FILE_SUFFIX => ".commands",
      PSUB_FILE_SUFFIX     => ".psub",
      REAL_JOB_FILE_DIR    => "real_jobfile_dir",
-     ALIAS_TO             => "alias.to"
+     ALIAS_TO             => "alias.to",
+     UNASSIGNED_CLUSTER   => "unassigned"
    };
 
    my $blessedself = bless($self,$class);
    return $blessedself;
+}
+
+=head3 getUnassignedCluster 
+
+Gets name of unassigned cluster for jobs that have get to
+be assigned to a cluster
+
+=cut
+
+sub getUnassignedCluster {
+  my $self = shift;
+  return $self->{UNASSIGNED_CLUSTER};
 }
 
 =head3 setConfig

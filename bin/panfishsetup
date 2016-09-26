@@ -171,6 +171,10 @@ if (defined($setupDbArg) || defined($setupDbAllArg)){
       $logger->fatal("Problems getting list of clusters needed to initialize db : $error");
       exit(1);
    }
+   if ($jobDb->initializeUnassignedDatabase() == 0){
+      $logger->fatal("unable to initialize unassigned database");
+      exit(1);
+   }
    for (my $x = 0; $x < @clusterList; $x++){
       if ($jobDb->initializeDatabase($clusterList[$x]) == 0){
           $logger->fatal("unable to initialize database $clusterList[$x]");

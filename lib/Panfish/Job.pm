@@ -436,11 +436,11 @@ sub compareJobByJobAndTaskId {
     return -1;
   }
 
-  if ($self->getJobId() < $b->getJobId()){
+  if ($self->getJobId() lt $b->getJobId()){
     return -1;
   }
 
-  if ($self->getJobId() > $b->getJobId()){
+  if ($self->getJobId() gt $b->getJobId()){
     return 1;
   }
 
@@ -509,6 +509,168 @@ sub getJobAsString {
   }     
   return $res;
 }
+
+=head3
+
+sets value of raw writeoutputlocal for job that has not been assigned
+
+=cut
+
+sub setRawWriteOutputLocal {
+  my $self = shift;
+  $self->{RawWriteOutputLocal} = shift;
+}
+
+=head3
+
+gets value of raw writeoutputlocal for job that has not been assigned
+
+=cut
+
+sub getRawWriteOutputLocal {
+  my $self = shift;
+  return $self->{RawWriteOutputLocal};
+}
+
+=head3
+
+sets raw command for job that has not been assigned
+
+=cut
+
+sub setRawCommand {
+  my $self = shift;
+  $self->{RawCommand} = shift;
+}
+
+=head3
+
+gets raw command for job that has not been assigned
+
+=cut
+
+sub getRawCommand {
+  my $self = shift;
+  return $self->{RawCommand};
+}
+ 
+=head3
+
+sets raw output path for job that has not been assigned
+
+=cut
+
+sub setRawOutPath {
+  my $self = shift;
+  $self->{RawOutPath} = shift;
+}
+
+=head3
+
+gets raw output path for job that has not been assigned
+
+=cut
+
+sub getRawOutPath {
+  my $self = shift;
+  return $self->{RawOutPath};
+}
+
+
+=head3 
+
+sets raw error path for job that has not been assigned
+
+=cut
+
+sub setRawErrorPath {
+  my $self = shift;
+  $self->{RawErrorPath} = shift;
+}
+
+
+=head3
+
+gets raw error path for job that has not been assigned
+
+=cut
+
+sub getRawErrorPath {
+  my $self = shift;
+  return $self->{RawErrorPath};
+}
+
+=head3 
+
+sets raw walltime for job that has not been assigned
+
+=cut
+
+sub setRawWalltime {
+  my $self = shift;
+  $self->{RawWalltime} = shift;
+}
+
+
+=head3
+
+gets raw walltime for job that has not been assigned
+
+=cut
+
+sub getRawWalltime {
+  my $self = shift;
+  return $self->{RawWalltime};
+}
+
+=head3 
+
+sets raw batchfactor for job that has not been assigned
+
+=cut
+
+sub setRawBatchfactor {
+  my $self = shift;
+  $self->{RawBatchfactor} = shift;
+}
+
+
+=head3
+
+gets raw batchfactor for job that has not been assigned
+
+=cut
+
+sub getRawBatchfactor {
+  my $self = shift;
+  return $self->{RawBatchfactor};
+}
+
+=head3 
+
+sets raw account for job that has not been assigned
+
+=cut
+
+sub setRawAccount {
+  my $self = shift;
+  $self->{RawAccount} = shift;
+}
+
+
+=head3
+
+gets raw account for job that has not been assigned
+
+=cut
+
+sub getRawAccount {
+  my $self = shift;
+  return $self->{RawAccount};
+}
+
+
+
 1;
 
 __END__

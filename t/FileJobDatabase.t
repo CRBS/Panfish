@@ -10,7 +10,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 136;
+use Test::More tests => 137;
 use Panfish::FileReaderWriterImpl;
 use Mock::FileReaderWriter;
 use Panfish::FileUtil;
@@ -70,22 +70,25 @@ use Panfish::Job;
    ok($rows[2]=~/ERROR.*Unable to load config for file /);
 
    #try with a non numeric job id first gotta write out the file
-   my $job = Panfish::Job->new("gee","grr",undef,"name","/tmp",undef,
-                     Panfish::JobState->BATCHED(),undef,undef,undef,undef);
+   my $job = Panfish::Job->new("gee","e5549316-fd60-4c08-8891-bb3a24459d3e",
+                               undef,"name","/tmp",undef,
+                               Panfish::JobState->BATCHED(),undef,undef,
+                               undef,undef);
    ok(!defined($jobDb->insert($job)));
 
-   ok(!defined($jobDb->_getJobFromJobFile("$testdir/gee/".Panfish::JobState->BATCHED()."/grr","gee",
-                                          Panfish::JobState->BATCHED())));
- 
+   my $checkJob = $jobDb->_getJobFromJobFile("$testdir/gee/".Panfish::JobState->BATCHED()."/e5549316-fd60-4c08-8891-bb3a24459d3e","gee",
+                                          Panfish::JobState->BATCHED());
+   ok(defined($checkJob));
+   ok($job->equals($checkJob)); 
    @rows = split("\n",$logoutput);
    ok(@rows == 6);
-   ok($rows[5]=~/ERROR.*Job id is not numeric/);
+   ok($rows[5]=~/DEBUG.*Job e5549316-fd60-4c08-8891-bb3a24459d3e in cluster gee in state batched/);
 
    #try a valid job, but dont pass in the state to see if that is parsed correctly
    $job = Panfish::Job->new("gee",1,undef,"name","/tmp",undef,
                      Panfish::JobState->BATCHED(),undef,undef,undef,undef);
    ok(!defined($jobDb->insert($job)));
-   my $checkJob = $jobDb->_getJobFromJobFile("$testdir/gee/".Panfish::JobState->BATCHED()."/1","gee");
+   $checkJob = $jobDb->_getJobFromJobFile("$testdir/gee/".Panfish::JobState->BATCHED()."/1","gee");
    ok(defined($checkJob));
    ok($job->equals($checkJob) == 1);
 

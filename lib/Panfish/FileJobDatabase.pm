@@ -41,6 +41,7 @@ sub new {
      FileUtil          => shift,
      Logger            => shift,
      ConfigFactory     => undef,
+     UNASSIGNED_CLUSTER => "unassigned",
      JOB_NAME_KEY      => "job.name",
      COMMAND_KEY       => "command.to.run",
      CURRENT_DIR_KEY   => "current.working.dir",
@@ -50,7 +51,15 @@ sub new {
      FAIL_REASON_KEY   => "fail.reason",
      BATCH_FACTOR_KEY  => "batch.factor",
      WALLTIME_KEY      => "walltime",
-     ACCOUNT_KEY       => "account"
+     ACCOUNT_KEY       => "account",
+     RAW_WRITE_OUTPUT_LOCAL_KEY => "raw.write.output.local",
+     RAW_COMMAND_KEY        => "raw.command",
+     RAW_OUT_PATH_KEY       => "raw.out.path",
+     RAW_ERROR_PATH_KEY     => "raw.error.path",
+     RAW_WALLTIME_KEY       => "raw.walltime",
+     RAW_BATCH_FACTOR_KEY   => "raw.batch.factor",
+     RAW_ACCOUNT_KEY         => "raw.account",
+     
    };
 
    if (!defined($self->{FileReaderWriter})){
@@ -105,15 +114,50 @@ sub initializeDatabase {
     push (@jStates,Panfish::JobState->KILL());
 
     for (my $x = 0; $x < @jStates; $x++){
-      if (! -d $self->{SubmitDir}."/".$cluster."/".$jStates[$x]){
-         if ($self->{FileUtil}->makeDir($self->{SubmitDir}."/".$cluster."/".$jStates[$x]) != 1){
-             $self->{Logger}->error("Unable to create ".$self->{SubmitDir}."/".$cluster."/".
-                                    $jStates[$x]." directory");
+      my $statedir = $self->{SubmitDir}."/".$cluster."/".$jStates[$x];
+      if (! -d $statedir){
+         if ($self->{FileUtil}->makeDir($statedir) != 1){
+             $self->{Logger}->error("Unable to create ".$statedir." directory");
              return 0;
          }
       }
     }
 
+    return 1;
+}
+
+sub _createClusterDir {
+    my $self = shift;
+    my $cluster = shift;
+    if (! -d $self->{SubmitDir}){
+       if ($self->{FileUtil}->makeDir($self->{SubmitDir}) != 1){
+           $self->{Logger}->error("Unable to create ".$self->{SubmitDir}." directory");
+           return 0;
+       }
+    }
+    my $clusterdir = $self->{SubmitDir}."/".$cluster;
+    if (! -d $clusterdir){
+       if ($self->{FileUtil}->makeDir($clusterdir) != 1){
+           $self->{Logger}->error("Unable to create ".$clusterdir." directory");
+           return 0;
+       }
+    }
+    return 1;
+}
+
+sub initializeUnassignedDatabase {
+    my $self = shift;
+    my $cluster = "unassigned";
+    if ($self->_createClusterDir($cluster) == 0){
+       return 0;
+    }
+    my $submitdir = $self->{SubmitDir}."/".$cluster."/".Panfish::JobState->SUBMITTED();
+    if (! -d $submitdir){
+       if ($self->{FileUtil}->makeDir($submitdir) != 1){
+             $self->{Logger}->error("Unable to create ".$submitdir." directory");
+             return 0;
+         }
+    }
     return 1;
 }
 
@@ -272,6 +316,34 @@ sub insert {
 
    if (defined($job->getAccount())){
       $self->{FileReaderWriter}->write($self->{ACCOUNT_KEY}."=".$job->getAccount()."\n");
+   }
+   
+   if (defined($job->getRawWriteOutputLocal())){
+      $self->{FileReaderWriter}->write($self->{RAW_WRITE_OUTPUT_LOCAL_KEY}."=".$job->getRawWriteOutputLocal()."\n");
+   }
+  
+   if (defined($job->getRawCommand())){
+      $self->{FileReaderWriter}->write($self->{RAW_COMMAND_KEY}."=".$job->getRawCommand()."\n");
+   }
+
+   if (defined($job->getRawOutPath())){
+      $self->{FileReaderWriter}->write($self->{RAW_OUT_PATH_KEY}."=".$job->getRawOutPath()."\n");
+   }
+
+   if (defined($job->getRawErrorPath())){
+      $self->{FileReaderWriter}->write($self->{RAW_ERROR_PATH_KEY}."=".$job->getRawErrorPath()."\n");
+   }
+
+   if (defined($job->getRawWalltime())){
+      $self->{FileReaderWriter}->write($self->{RAW_WALLTIME_KEY}."=".$job->getRawWalltime()."\n");
+   }
+
+   if (defined($job->getRawBatchfactor())){
+      $self->{FileReaderWriter}->write($self->{RAW_BATCH_FACTOR_KEY}."=".$job->getRawBatchfactor()."\n");
+   }
+
+   if (defined($job->getRawAccount())){
+      $self->{FileReaderWriter}->write($self->{RAW_ACCOUNT_KEY}."=".$job->getRawAccount()."\n");
    }
 
    $self->{FileReaderWriter}->close();
@@ -606,11 +678,11 @@ sub _getJobFromJobFile {
         }
         return undef;
     }
-
-    if ($jobFile=~/^.*\/([0-9]+)$/){
-       $jobId = $1;
-    }
-    elsif ($jobFile=~/^.*\/([0-9]+)\.([0-9]+)$/){
+    my $jFileName = $jobFile;
+    $jFileName=~s/^.*\///;
+    $jobId = $jFileName;
+ 
+    if ($jFileName=~/^.*\/(.+)\.([0-9]+)$/){
        $jobId = $1;
        $taskId = $2;
     }
@@ -621,11 +693,6 @@ sub _getJobFromJobFile {
 
         $state =~s/\/.*$//;
     }
-
-   if (!defined($jobId)){
-      $self->{Logger}->error("Job id is not numeric");
-      return undef;
-   }
 
        
    $self->{Logger}->debug("Job $jobId".
@@ -643,7 +710,15 @@ sub _getJobFromJobFile {
                             $config->getParameterValue($self->{FAIL_REASON_KEY}),
                             $config->getParameterValue($self->{BATCH_FACTOR_KEY}),
                             $config->getParameterValue($self->{WALLTIME_KEY}),
-                            $config->getParameterValue($self->{ACCOUNT_KEY}));
+                            $config->getParameterValue($self->{ACCOUNT_KEY}),
+                            
+                            $config->getParameterValue($self->{RAW_WRITE_OUTPUT_LOCAL_KEY}),
+                            $config->getParameterValue($self->{RAW_COMMAND_KEY}),
+                            $config->getParameterValue($self->{RAW_OUT_PATH_KEY}),
+                            $config->getParameterValue($self->{RAW_ERROR_PATH_KEY}),
+                            $config->getParameterValue($self->{RAW_WALLTIME_KEY}),
+                            $config->getParameterValue($self->{RAW_BATCHFACTOR_KEY}),
+                            $config->getParameterValue($self->{RAW_ACCOUNT_KEY}));
 }
 
 
