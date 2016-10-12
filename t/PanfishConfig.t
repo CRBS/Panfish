@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 134;
+use Test::More tests => 136;
 use Panfish::PanfishConfig;
 use Panfish::Config;
 
@@ -333,7 +333,17 @@ use Panfish::Config;
   ok($config->getNotificationEmail("foo") eq "");
 }
 
+# test getMaximumNumberOfQueuedJobs and getMaximumNumberOfRunningJobs
+{
+  my $con = Panfish::Config->new();
+  my $tconfig = Panfish::PanfishConfig->new();
+  $con->setParameter("foo.".$tconfig->{MAX_NUM_RUNNING_JOBS},"10");
+  $con->setParameter("foo.".$tconfig->{MAX_NUM_QUEUED_JOBS}, "20");
+  my $config = Panfish::PanfishConfig->new($con);
+  ok($config->getMaximumNumberOfRunningJobs("foo") eq "10");
+  ok($config->getMaximumNumberOfQueuedJobs("foo") eq "20");
 
+}
 
 1;
 

@@ -49,6 +49,7 @@ sub new {
      SUBMIT               => "submit",
      STAT                 => "stat",
      MAX_NUM_RUNNING_JOBS => "max.num.running.jobs",
+     MAX_NUM_QUEUED_JOBS  => "max.num.queued.jobs",
      ENGINE               => "engine",
      SCRATCH              => "scratch",
      PANFISH_SLEEP        => "panfish.sleep",  
@@ -272,6 +273,18 @@ sub getPanfishSleepTime {
    my $self = shift;
    my $cluster = shift;
    return $self->_getValueFromConfig($self->{PANFISH_SLEEP},$cluster);
+}
+
+=head3 getMaximumNumberOfQueuedJobs 
+
+Gets Maximum number of queued jobs allowed on this cluster
+
+=cut
+
+sub getMaximumNumberOfQueuedJobs {
+    my $self = shift;
+    my $cluster = shift;
+    return $self->_getValueFromConfig($self->{MAX_NUM_QUEUED_JOBS},$cluster);
 }
 
 =head3 getMaximumNumberOfRunningJobs 
