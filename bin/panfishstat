@@ -105,13 +105,7 @@ if (defined($statusOfJobsArgValue)){
   }
   my $exec = Panfish::ForkExecutor->new();
   
-  $jobStatusFactory = getJobHashFactory($config,$logger,$exec);
-  if (!defined($jobStatusFactory)){
-     $logger->fatal("The scheduler ".$config->getEngine()." ".$config->getThisCluster()." is using ".
-                    "is not supported");
-     print "status=".Panfish::JobState->UNKNOWN()."\n";
-     exit(1);
-  }
+  $jobStatusFactory = getJobHashFactory($config,$logger,$jobDb);
 
   my ($jobStatusHash,$err) = $jobStatusFactory->getJobStateHash();
 
@@ -157,13 +151,9 @@ if (defined($statusOfJobsArgValue)){
 if (defined($statusOfJobIdsArgValue)){
   my @jobs = split(",",$statusOfJobIdsArgValue);
 
-  my $exec = Panfish::ForkExecutor->new();
-  my $jobStatusFactory = $jobStatusFactory = getJobHashFactory($config,$logger,$exec);
-  if (!defined($jobStatusFactory)){
-     $logger->fatal("The scheduler ".$config->getEngine()." ".$config->getThisCluster()." is using ".
-                    "is not supported");
-     exit(1);
-  }
+  my $jobStatusFactory = $jobStatusFactory = getJobHashFactory($config,
+                                                               $logger,
+                                                               $jobDb);
 
   my ($jobStatusHash,$err) = $jobStatusFactory->getJobStateHash();
 
@@ -237,18 +227,11 @@ sub parseJobAndTaskId {
 sub getJobHashFactory {
   my $config = shift;
   my $logger = shift;
-  my $exec = shift;
+  my $jobDb = shift;
 
-  if ($config->getEngine() eq "SGE"){
-    return Panfish::SGEJobStateHashFactory->new($config,$logger,$exec);
-  }
-  elsif ($config->getEngine() eq "PBS"){
-    return Panfish::PBSJobStateHashFactory->new($config,$logger,$exec);
-  }
-  elsif ($config->getEngine() eq "SLURM"){
-    return Panfish::SLURMJobStateHashFactory->new($config,$logger,$exec);
-  }
-  return undef;
+  return Panfish::FileJobDatabaseJobStateHashFactory->new($config,
+                                                          $logger,
+                                                          $jobDb);
 }
 
     
