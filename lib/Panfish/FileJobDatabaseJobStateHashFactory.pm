@@ -71,6 +71,9 @@ sub getJobStateHash {
     return \%jobStatusHash;
   }
 
+  # Add unassigned cluster
+  push(@cArray,$self->{Config}->getUnassignedCluster());
+
   for (my $x = 0; $x < @cArray; $x++){
 
     # get states of all jobs in cluster
