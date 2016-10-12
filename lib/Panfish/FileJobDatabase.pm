@@ -151,12 +151,17 @@ sub initializeUnassignedDatabase {
     if ($self->_createClusterDir($cluster) == 0){
        return 0;
     }
-    my $submitdir = $self->{SubmitDir}."/".$cluster."/".Panfish::JobState->SUBMITTED();
-    if (! -d $submitdir){
-       if ($self->{FileUtil}->makeDir($submitdir) != 1){
-             $self->{Logger}->error("Unable to create ".$submitdir." directory");
-             return 0;
-         }
+    my @jStates;
+    push(@jStates,Panfish::JobState->SUBMITTED());
+    push(@jStates,Panfish::JobState->KILL());
+    for (my $x = 0; $x < @jStates; $x++){
+      my $submitdir = $self->{SubmitDir}."/".$cluster."/".$jStates[$x];
+      if (! -d $submitdir){
+         if ($self->{FileUtil}->makeDir($submitdir) != 1){
+               $self->{Logger}->error("Unable to create ".$submitdir." directory");
+               return 0;
+           }
+      }
     }
     return 1;
 }

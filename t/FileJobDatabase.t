@@ -10,7 +10,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 137;
+use Test::More tests => 142;
 use Panfish::FileReaderWriterImpl;
 use Mock::FileReaderWriter;
 use Panfish::FileUtil;
@@ -24,6 +24,29 @@ use Panfish::Job;
 
 #########################
 
+# test initializeUnassignedDatabase
+{
+  my $logger = Mock::Logger->new();
+  my $testdir = $Bin."/testFileJobDatabase";
+  my $fUtil = Panfish::FileUtil->new($logger);
+  my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,
+                                            $fUtil,$logger);
+
+  # try when directory has not been created
+  ok($jobDb->initializeUnassignedDatabase() == 1);
+  ok($fUtil->runFileTest("-d", $testdir."/unassigned"));
+  ok($fUtil->runFileTest("-d",
+                         $testdir."/unassigned/".Panfish::JobState->KILL()));
+  ok($fUtil->runFileTest("-d",
+                         $testdir."/unassigned/".Panfish::JobState->SUBMITTED()));
+
+  # try when directories already exist
+  ok($jobDb->initializeUnassignedDatabase() == 1);
+   
+  $fUtil->recursiveRemoveDir($testdir);
+
+}
 
 # test _getTaskSuffix
 {
