@@ -243,6 +243,15 @@ sub getCluster {
   return $self->{Cluster};
 }
 
+=head3 setCluster
+
+=cut
+
+sub setCluster {
+  my $self = shift;
+  $self->{Cluster} = shift;
+}
+
 =head3 getJobId
 
 =cut
@@ -273,6 +282,18 @@ sub getCurrentWorkingDir {
   return $self->{CurrentWorkingDir};
 }
 
+=head3 setCurrentWorkingDir
+
+Sets the current working directory for the job
+
+=cut
+
+sub setCurrentWorkingDir {
+  my $self = shift;
+  $self->{CurrentWorkingDir} = shift;
+}
+
+
 =head3 getJobName
 
 Gets the Job Name
@@ -294,6 +315,18 @@ sub getCommand {
   my $self = shift;
   return $self->{Command};
 }
+
+=head3 setCommand
+
+Sets the Command to run
+
+=cut
+
+sub setCommand {
+  my $self = shift;
+  $self->{Command} = shift;
+}
+
 
 =head3 getState
 
@@ -669,6 +702,28 @@ sub getRawAccount {
   return $self->{RawAccount};
 }
 
+=head3 
+
+sets raw cluster for job that has not been assigned
+
+=cut
+
+sub setRawCluster {
+  my $self = shift;
+  $self->{RawCluster} = shift;
+}
+
+
+=head3
+
+gets raw cluster for job that has not been assigned
+
+=cut
+
+sub getRawCluster {
+  my $self = shift;
+  return $self->{RawCluster};
+}
 
 
 1;
