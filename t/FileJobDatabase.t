@@ -10,7 +10,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 142;
+use Test::More tests => 171;
 use Panfish::FileReaderWriterImpl;
 use Mock::FileReaderWriter;
 use Panfish::FileUtil;
@@ -46,6 +46,165 @@ use Panfish::Job;
    
   $fUtil->recursiveRemoveDir($testdir);
 
+}
+
+# test _getHashtableSummaryForCluster
+{
+  my $logger = Mock::Logger->new();
+  my $testdir = $Bin."/testFileJobDatabase";
+  my $fUtil = Panfish::FileUtil->new($logger);
+  my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,
+                                            $fUtil,$logger);
+
+  my @states;
+  push(@states, Panfish::JobState->SUBMITTED());
+  my $ht = $jobDb->_getHashtableSummaryForCluster("foo",\@states);
+  ok($ht->{Panfish::JobState->SUBMITTED()} == 0);
+
+  # try a couple directories with files in it
+  push(@states, Panfish::JobState->RUNNING());
+  $jobDb->initializeDatabase("foo");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->SUBMITTED()."/123");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->SUBMITTED()."/222");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->RUNNING()."/66");
+  $ht = $jobDb->_getHashtableSummaryForCluster("foo",\@states);
+  ok($ht->{Panfish::JobState->SUBMITTED()} == 2);
+  ok($ht->{Panfish::JobState->RUNNING()} == 1);
+  
+  $fUtil->recursiveRemoveDir($testdir);
+}
+
+# test getHashtableSummaryForCluster
+{
+  my $logger = Mock::Logger->new();
+  my $testdir = $Bin."/testFileJobDatabase";
+  my $fUtil = Panfish::FileUtil->new($logger);
+  my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,
+                                            $fUtil,$logger);
+
+  $jobDb->initializeDatabase("foo");
+  
+  # try 0 jobs
+  my $ht = $jobDb->getHashtableSummaryForCluster("foo");
+  my @states = Panfish::JobState->getAllStates();
+  for (my $x = 0; $x < @states; $x++){
+    ok($ht->{$states[$x]} == 0);
+  }
+  # lets add some jobs
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->SUBMITTED()."/123");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->SUBMITTED()."/222");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->RUNNING()."/66");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->QUEUED()."/123");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->QUEUED()."/222");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->QUEUED()."/66");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/123");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/222");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/66");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/67");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/1");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/2");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/3");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/4");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/5");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/1");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/2");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/3");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/4");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/5");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/6");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/1");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/2");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/3");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/4");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/5");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/6");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/7");
+  
+  $ht = $jobDb->getHashtableSummaryForCluster("foo");
+  ok($ht->{Panfish::JobState->SUBMITTED()} == 2);
+  ok($ht->{Panfish::JobState->RUNNING()} == 1);
+  ok($ht->{Panfish::JobState->QUEUED()} == 3);
+  ok($ht->{Panfish::JobState->DONE()} == 4);
+  ok($ht->{Panfish::JobState->FAILED()} == 5);
+  ok($ht->{Panfish::JobState->BATCHED()} == 6);
+  ok($ht->{Panfish::JobState->BATCHEDANDCHUMMED()} == 7);
+ 
+  $fUtil->recursiveRemoveDir($testdir);
+}
+
+# test getHashtableSummaryOfAllNotCompleteForCluster
+{
+  my $logger = Mock::Logger->new();
+  my $testdir = $Bin."/testFileJobDatabase";
+  my $fUtil = Panfish::FileUtil->new($logger);
+  my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,
+                                            $fUtil,$logger);
+
+  $jobDb->initializeDatabase("foo");
+   
+  # try 0 jobs
+  my $ht = $jobDb->getHashtableSummaryOfAllNotCompleteForCluster("foo");
+  my @states = Panfish::JobState->getAllNotCompleteStates();
+  for (my $x = 0; $x < @states; $x++){
+    ok($ht->{$states[$x]} == 0);
+  }
+ 
+  # test with jobs
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->SUBMITTED()."/123");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->SUBMITTED()."/222");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->RUNNING()."/66");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->QUEUED()."/123");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->QUEUED()."/222");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->QUEUED()."/66");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/123");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/222");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/66");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->DONE()."/67");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/1");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/2");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/3");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/4");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->FAILED()."/5");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/1");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/2");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/3");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/4");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/5");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHED()."/6");
+
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/1");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/2");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/3");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/4");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/5");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/6");
+  $fUtil->touch($testdir."/foo/".Panfish::JobState->BATCHEDANDCHUMMED()."/7");
+
+  $ht = $jobDb->getHashtableSummaryOfAllNotCompleteForCluster("foo");
+  ok($ht->{Panfish::JobState->SUBMITTED()} == 2);
+  ok($ht->{Panfish::JobState->RUNNING()} == 1);
+  ok($ht->{Panfish::JobState->QUEUED()} == 3);
+  ok(!defined($ht->{Panfish::JobState->DONE()}));
+  ok(!defined($ht->{Panfish::JobState->FAILED()}));
+  ok($ht->{Panfish::JobState->BATCHED()} == 6);
+  ok($ht->{Panfish::JobState->BATCHEDANDCHUMMED()} == 7);
+
+
+  $fUtil->recursiveRemoveDir($testdir);
 }
 
 # test _getTaskSuffix
