@@ -59,6 +59,7 @@ sub new {
      RAW_WALLTIME_KEY       => "raw.walltime",
      RAW_BATCH_FACTOR_KEY   => "raw.batch.factor",
      RAW_ACCOUNT_KEY         => "raw.account",
+     RAW_CLUSTER_KEY        => "raw.cluster"
      
    };
 
@@ -211,23 +212,44 @@ print $hTable->{Panfish::JobState->RUNNING()}." jobs in state ".Panfish::JobStat
 =cut
 
 sub getHashtableSummaryForCluster {
-    my $self = shift;
-    my $cluster = shift;
-    my %summaryHash = ();
-    # basically get # of files in each directory and report it
-    #     # in a string
-    my $outStr = "";
-    my @states = Panfish::JobState->getAllStates();
-    my $count = 0;
-    for (my $x = 0; $x < @states; $x++){
-        $count = $self->{FileUtil}->getNumberFilesInDirectory($self->{SubmitDir}.
-                                                              "/".$cluster.
-                                                              "/".$states[$x]);
-        $summaryHash{$states[$x]} = $count;
-    }
-
-    return \%summaryHash;
+  my $self = shift;
+  my $cluster = shift;
+  my @states = Panfish::JobState->getAllStates();
+  return $self->_getHashtableSummaryForCluster($cluster, \@states);
 }
+
+=head3 getHashtableSummaryOfAllNotCompleteForCluster
+
+Works exactly like getHashtableSummaryForCluster() except job states
+of DONE and FAILED are skipped
+
+=cut
+
+sub getHashtableSummaryOfAllNotCompleteForCluster {
+  my $self = shift;
+  my $cluster = shift;
+  my @states = Panfish::JobState->getAllNotCompleteStates();
+  return $self->_getHashtableSummaryForCluster($cluster, \@states);
+}
+
+
+sub _getHashtableSummaryForCluster {
+  my $self = shift;
+  my $cluster = shift;
+  my $states = shift;
+  my %summaryHash = ();
+  my $outStr = "";
+  my $count = 0;
+  for (my $x = 0; $x < @{$states}; $x++){
+    $count = $self->{FileUtil}->getNumberFilesInDirectory($self->{SubmitDir}.
+                                                          "/".$cluster.
+                                                          "/".${$states}[$x]);
+    $summaryHash{${$states}[$x]} = $count;
+  }
+
+  return \%summaryHash;
+}
+
 
 =head3 insert
 
@@ -349,6 +371,10 @@ sub insert {
 
    if (defined($job->getRawAccount())){
       $self->{FileReaderWriter}->write($self->{RAW_ACCOUNT_KEY}."=".$job->getRawAccount()."\n");
+   }
+   
+  if (defined($job->getRawCluster())){
+      $self->{FileReaderWriter}->write($self->{RAW_CLUSTER_KEY}."=".$job->getRawCluster()."\n");
    }
 
    $self->{FileReaderWriter}->close();
@@ -704,26 +730,30 @@ sub _getJobFromJobFile {
                           $self->_getTaskSuffix($taskId).
                           " in cluster $cluster in state $state");
 
-   return Panfish::Job->new($cluster,$jobId,$taskId,
-                            $config->getParameterValue($self->{JOB_NAME_KEY}),
-                            $config->getParameterValue($self->{CURRENT_DIR_KEY}),
-                            $config->getParameterValue($self->{COMMAND_KEY}),$state,
-                            $self->{FileUtil}->getModificationTimeOfFile($jobFile),
-                            $config->getParameterValue($self->{COMMANDS_FILE_KEY}),
-                            $config->getParameterValue($self->{PSUB_FILE_KEY}),
-                            $config->getParameterValue($self->{REAL_JOB_ID_KEY}),
-                            $config->getParameterValue($self->{FAIL_REASON_KEY}),
-                            $config->getParameterValue($self->{BATCH_FACTOR_KEY}),
-                            $config->getParameterValue($self->{WALLTIME_KEY}),
-                            $config->getParameterValue($self->{ACCOUNT_KEY}),
+   my $job = Panfish::Job->new($cluster,$jobId,$taskId,
+                               $config->getParameterValue($self->{JOB_NAME_KEY}),
+                               $config->getParameterValue($self->{CURRENT_DIR_KEY}),
+                               $config->getParameterValue($self->{COMMAND_KEY}),$state,
+                               $self->{FileUtil}->getModificationTimeOfFile($jobFile),
+                               $config->getParameterValue($self->{COMMANDS_FILE_KEY}),
+                               $config->getParameterValue($self->{PSUB_FILE_KEY}),
+                               $config->getParameterValue($self->{REAL_JOB_ID_KEY}),
+                               $config->getParameterValue($self->{FAIL_REASON_KEY}),
+                               $config->getParameterValue($self->{BATCH_FACTOR_KEY}),
+                               $config->getParameterValue($self->{WALLTIME_KEY}),
+                               $config->getParameterValue($self->{ACCOUNT_KEY}));
                             
-                            $config->getParameterValue($self->{RAW_WRITE_OUTPUT_LOCAL_KEY}),
-                            $config->getParameterValue($self->{RAW_COMMAND_KEY}),
-                            $config->getParameterValue($self->{RAW_OUT_PATH_KEY}),
-                            $config->getParameterValue($self->{RAW_ERROR_PATH_KEY}),
-                            $config->getParameterValue($self->{RAW_WALLTIME_KEY}),
-                            $config->getParameterValue($self->{RAW_BATCHFACTOR_KEY}),
-                            $config->getParameterValue($self->{RAW_ACCOUNT_KEY}));
+  $job->setRawWriteOutputLocal($config->getParameterValue($self->{RAW_WRITE_OUTPUT_LOCAL_KEY}));
+  
+  $job->setRawCommand($config->getParameterValue($self->{RAW_COMMAND_KEY}));
+  
+  $job->setRawOutPath($config->getParameterValue($self->{RAW_OUT_PATH_KEY}));
+  $job->setRawErrorPath($config->getParameterValue($self->{RAW_ERROR_PATH_KEY}));
+  $job->setRawWalltime($config->getParameterValue($self->{RAW_WALLTIME_KEY}));
+  $job->setRawBatchfactor($config->getParameterValue($self->{RAW_BATCHFACTOR_KEY}));
+  $job->setRawAccount($config->getParameterValue($self->{RAW_ACCOUNT_KEY}));
+  $job->setRawCluster($config->getParameterValue($self->{RAW_CLUSTER_KEY}));
+  return $job;
 }
 
 
