@@ -41,6 +41,7 @@ use Panfish::SortByFileAgeSorter;
 use Panfish::KilledJobHandler;
 use Panfish::PsubFileFromJobsCreator;
 use Panfish::CommandsFileFromJobsCreator;
+use Panfish::JobToClusterAssigner;
 
 #catch the term signal and set a variable which will cause code to
 #leave while loop gracefully
@@ -183,6 +184,8 @@ my $qstatWatcher = Panfish::QstatJobWatcher->new($config,$jobDb,$logger,
 
 my $killer = Panfish::KilledJobHandler->new($jobDb,$logger,$fUtil,$uploader);
 
+my $assigner = Panfish::JobToClusterAssigner->new($config,$jobDb,$logger);
+
 my @clusterList;
 my $error;
 
@@ -204,7 +207,7 @@ my $exitCode = 0;
 while($SIGTERMCALLED == 0 && $keepLooping == 1){
   
   # check for unassigned jobs and assign to clusters as appropriate
-  # $jobAssigner->assignJobs();
+  $jobAssigner->assignJobs();
    
   for (my $x = 0; $x < @clusterList ; $x++){
     if ($logger->isDebugEnabled() && !defined($clusterArgValue)){
