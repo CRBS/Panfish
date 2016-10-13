@@ -10,7 +10,7 @@ use FindBin qw($Bin);
 use lib "$Bin/../lib";
 use lib $Bin;
 
-use Test::More tests => 11;
+use Test::More tests => 15;
 use Panfish::FileReaderWriterImpl;
 use Mock::FileReaderWriter;
 use Panfish::FileUtil;
@@ -67,10 +67,6 @@ use Panfish::Job;
   $ht = $assigner->_getHashOfOpenSlotsPerCluster();
   ok($ht->{"foo"} == 0);
   ok($ht->{"bar"} == $assigner->{DEFAULT_MAX_QUEUED_JOBS});
-
-
-
-
 }
 
 # test assignJobs no jobs to assign 
@@ -90,5 +86,25 @@ use Panfish::Job;
                                                     $logger);
   ok($assigner->assignJobs() == 0);
  
+  $fUtil->recursiveRemoveDir($testdir);
+}
+
+# test _getArgumentValueForCluster
+{
+  my $logger = Mock::Logger->new();
+  my $testdir = $Bin."/JobToClusterAssigner";
+  my $fUtil = Panfish::FileUtil->new($logger);
+  my $readerWriter = Panfish::FileReaderWriterImpl->new($logger);
+  my $jobDb = Panfish::FileJobDatabase->new($readerWriter,$testdir,
+                                            $fUtil,$logger);
+  ok($jobDb->initializeUnassignedDatabase() == 1);
+
+  my $config = Panfish::PanfishConfig->new();
+  my $assigner = Panfish::JobToClusterAssigner->new($config, $jobDb,
+                                                    $logger);
+
+  ok($assigner->_getArgumentValueForCluster("bar","foo") eq "foo");
+  ok($assigner->_getArgumentValueForCluster("foo","foo::yo") eq "yo"); 
+  ok($assigner->_getArgumentValueForCluster("foo2","uh::ha,foo2::yo") eq "yo"); 
   $fUtil->recursiveRemoveDir($testdir);
 }
