@@ -8,7 +8,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/../lib";
 
-use Test::More tests => 16;
+use Test::More tests => 22;
 use Panfish::JobState;
 
 #########################
@@ -43,3 +43,16 @@ use Panfish::JobState;
    ok($states[6] eq Panfish::JobState->FAILED());
    
 }
+
+# test getAllNotCompleteStates
+{
+   my @states = Panfish::JobState->getAllNotCompleteStates();
+
+   ok(@states == 5);
+   ok($states[0] eq Panfish::JobState->SUBMITTED());
+   ok($states[1] eq Panfish::JobState->QUEUED());
+   ok($states[2] eq Panfish::JobState->BATCHED());
+   ok($states[3] eq Panfish::JobState->BATCHEDANDCHUMMED());
+   ok($states[4] eq Panfish::JobState->RUNNING());
+}
+

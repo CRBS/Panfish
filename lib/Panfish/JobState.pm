@@ -35,6 +35,21 @@ sub getAllStates {
     return @stateArr;
 }
 
+=head3 getAllNotCompleteStates
+
+Gets a list of all states other then DONE, UNKNOWN, and FAILED
+
+=cut
+sub getAllNotCompleteStates {
+    my @stateArr;
+    my $cnt = 0;
+    $stateArr[$cnt++] = Panfish::JobState->SUBMITTED();
+    $stateArr[$cnt++] = Panfish::JobState->QUEUED();
+    $stateArr[$cnt++] = Panfish::JobState->BATCHED();
+    $stateArr[$cnt++] = Panfish::JobState->BATCHEDANDCHUMMED();
+    $stateArr[$cnt++] = Panfish::JobState->RUNNING();
+    return @stateArr;
+}
 
 =head3 UNKNOWN
 
