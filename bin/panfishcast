@@ -185,7 +185,11 @@ for (my $x = 0; $x < @tArgArray; $x++){
                              Panfish::JobState->SUBMITTED(),
                              undef,undef,undef,undef,undef,
                              undef, undef, undef);
-    $job->setRawWriteOutputLocal($writeOutputLocalArg);
+
+    if (defined($writeOutputLocalArg)){
+      $job->setRawWriteOutputLocal("true");
+    }
+
     $job->setRawCommand($command);
     $job->setRawOutPath($oArgValue);
     $job->setRawErrorPath($eArgValue);
