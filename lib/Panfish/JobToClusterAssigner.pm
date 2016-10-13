@@ -14,8 +14,9 @@ Panfish::JobToClusterAssigner -- Assigns Jobs to clusters
 
   use Panfish::JobToClusterAssigner;
   my $logger = Panfish::Logger->new();
-  my $jobDb = Panfish::FileJobDatabase->new(...)
-  my $assigner = Panfish::JobToClusterAssigner->new($logger,$jobDb);
+  my $jobDb = Panfish::FileJobDatabase->new(...);
+  my $config = Panfish::PanfishConfig->new(...);
+  my $assigner = Panfish::JobToClusterAssigner->new($config,$jobDb,$logger);
 
   $assigner->assignJobs($args);
   					   
@@ -31,7 +32,7 @@ Instances of this class submit a job using command line program.
 =head3 new
 
   Creates new Panfish::JobToClusterAssigner
-  my $assigner = Panfish::JobToClusterAssigner->new($logger,$jobDb);
+  my $assigner = Panfish::JobToClusterAssigner->new($config,$jobDb,$logger);
 
 =cut 
 
@@ -68,17 +69,33 @@ sub assignJobs {
   # Look for any open slots in clusters
   # Get a hash table of cluster => # free slots
   my $ht = $self->_getHashOfOpenSlotsPerCluster();
- 
+  
+  foreach my $key (keys %$ht){
+    $self->{Logger}->debug($key." ".$ht->{$key}." open slots");
+  }
+
+  my $assignedCount = 0;
   for (my $x = 0; $x < @jobs; $x++){
     my ($skippedClusters,$cArray) = $self->{Config}->getClusterListAsArray($jobs[$x]->getRawCluster());
     for (my $y = 0; $y < @{$cArray}; $y++){
       if ($ht->{${$cArray}[$y]} > 0){
-        $self->_moveJobToCluster($jobs[$x],${$cArray}[$y]);
-        $ht->{${$cArray}[$y]}--;
-        $y = @{$cArray};
+        my $updateMsg = $self->_moveJobToCluster($jobs[$x],${$cArray}[$y]);
+        if (defined($updateMsg)){
+          $self->{Logger}->warn("Unable to assign job ".
+                                $jobs[$x]->getJobAndTaskId().
+                                " to cluster ".${$cArray}[$y]." ".
+                                $updateMsg);
+        }
+        else {
+          $ht->{${$cArray}[$y]}--;
+          $y = @{$cArray};
+          $assignedCount++;
+        }
+   
       }
     }
   }
+  return $assignedCount;
 }
 
 sub _moveJobToCluster {
@@ -102,7 +119,8 @@ sub _moveJobToCluster {
   if (!defined($exportableTaskId)){
     $exportableTaskId = "";
   }
-
+  $self->{Logger}->debug("Assigning job ".$job->getJobAndTaskId().
+                         " to cluster ".$cluster);
 
   my $command = "export PANFISH_BASEDIR=\"".$baseDir."\";".
                 "export PANFISH_SCRATCH=\"".$scratch."\";".
@@ -142,6 +160,7 @@ running/queued jobs and subtracting it from the maximum
 number of jobs allowed to be queued on cluster. 
 
 =cut
+
 sub _getHashOfOpenSlotsPerCluster {
   my $self = shift;
   my %clusterSlotHash = ();
