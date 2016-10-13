@@ -202,7 +202,10 @@ my $exitCode = 0;
 
 # infinite loop broken only by signal or fatal error.
 while($SIGTERMCALLED == 0 && $keepLooping == 1){
-    
+  
+  # check for unassigned jobs and assign to clusters as appropriate
+  # $jobAssigner->assignJobs();
+   
   for (my $x = 0; $x < @clusterList ; $x++){
     if ($logger->isDebugEnabled() && !defined($clusterArgValue)){
       $logger->debug("$clusterList[$x] --".
